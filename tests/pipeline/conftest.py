@@ -8,15 +8,16 @@ from pathlib import Path
 
 import pytest
 import yaml
-from helpers.config_utils import TestContext, make_test_paths
-from helpers.data import ensure_fastqs_present
-from helpers.genome import ensure_genome_resources
-from helpers.project import (
+from helpers import (
+    TestContext,
+    make_test_paths,
+    get_fastq_pattern,
+    FastqFiles,
+    GenomeResources,
     create_config_yaml,
     create_design_file,
     init_seqnado_project,
 )
-from helpers.utils import get_fastq_pattern, setup_genome_config
 
 
 # Fixture for all genome resources
@@ -28,7 +29,7 @@ def genome_resources(test_context: TestContext) -> dict:
     """
 
     def _get_resources(assay: str) -> dict:
-        return ensure_genome_resources(test_context.test_paths.genome, assay)
+        return GenomeResources.download_resources(test_context.test_paths.genome, assay).model_dump()
 
     return _get_resources
 
@@ -105,23 +106,6 @@ def config_yaml_for_testing(
         test_context, genome_resources, assay, monkeypatch
     )
 
-    # Copy hg38_genes.bed from tests/data to test_output/data if it doesn't exist
-    genes_bed_source = (
-        test_context.test_paths.repo / "tests" / "data" / "hg38_genes.bed"
-    )
-    genes_bed = test_context.test_paths.test_data / "hg38_genes.bed"
-    if not genes_bed.exists() and genes_bed_source.exists():
-        shutil.copy2(genes_bed_source, genes_bed)
-
-    # Copy plotting_coordinates.bed from tests/data to test_output/data if it doesn't exist
-    plot_coords_source = (
-        test_context.test_paths.repo / "tests" / "data" / "plotting_coordinates.bed"
-    )
-    plot_coords = test_context.test_paths.test_data / "plotting_coordinates.bed"
-    if not plot_coords.exists() and plot_coords_source.exists():
-        shutil.copy2(plot_coords_source, plot_coords)
-
-    # Now create config YAML using the same run directory
     config_path = create_config_yaml(run_directory, assay, monkeypatch, resources)
     return config_path
 
@@ -132,7 +116,7 @@ def design(test_context: TestContext, assay: str, seqnado_run_dir: Path) -> Path
     assay_type = test_context.assay_type(assay)
 
     # Download FASTQ files
-    ensure_fastqs_present(test_context.test_paths.fastq, [assay])
+    FastqFiles.download(test_context.test_paths.fastq, [assay])
     fastq_source_dir = test_context.test_paths.fastq
 
     # Use the correct pattern from get_fastq_pattern - use original assay name (e.g., "rna-rx")
@@ -227,44 +211,18 @@ def multiomics_configs(
     # Ensure FASTQ files are present for all requested assays
     # Do this AFTER init_seqnado_project to avoid the directory being cleaned up
     fastq_path = test_context.test_paths.fastq
-    ensure_fastqs_present(fastq_path, multiomics)
+    FastqFiles.download(fastq_path, multiomics)
 
     # Add assay-specific genome configs for each assay (except the one used for init)
     # Each assay gets its own genome config entry with assay-specific resources
 
-
     genome_config_file = run_dir / ".config" / "seqnado" / "genome_config.json"
-
-    # Copy hg38_genes.bed from tests/data to test_output/data if it doesn't exist
-    genes_bed_source = (
-        test_context.test_paths.repo / "tests" / "data" / "hg38_genes.bed"
-    )
-    genes_bed = test_context.test_paths.test_data / "hg38_genes.bed"
-    if not genes_bed.exists() and genes_bed_source.exists():
-        shutil.copy2(genes_bed_source, genes_bed)
-
-    # Copy plotting_coordinates.bed from tests/data to test_output/data if it doesn't exist
-    plot_coords_source = (
-        test_context.test_paths.repo / "tests" / "data" / "plotting_coordinates.bed"
-    )
-    plot_coords = test_context.test_paths.test_data / "plotting_coordinates.bed"
-    if not plot_coords.exists() and plot_coords_source.exists():
-        shutil.copy2(plot_coords_source, plot_coords)
+    plot_coords = test_context.test_paths.genome / "plotting_coordinates.bed"
 
     for assay in multiomics:
         if assay != init_assay:
-            # Add this assay's specific configuration
-            setup_genome_config(
-                genome_config_file,
-                star_index=all_resources[assay].get("star_index"),
-                bt2_index=all_resources[assay]["bt2_index"],
-                chromsizes=all_resources[assay]["chromsizes"],
-                gtf=all_resources[assay]["gtf"],
-                blacklist=all_resources[assay]["blacklist"],
-                genes_bed=genes_bed,
-                fasta=all_resources[assay].get("fasta"),
-                assay=assay,
-            )
+            resource_obj = GenomeResources(**all_resources[assay])
+            resource_obj.write_config(genome_config_file)
 
     # Create assay-specific fastq subdirectories and copy FASTQ files
     # This creates the fastqs/{assay}/ structure expected by multiomics mode
@@ -341,7 +299,9 @@ def multiomics_configs(
 
         # Also bind run_dir if it's different from test_data_dir
         # This ensures the temporary test directory is accessible in the container
-        if run_dir_resolved != test_data_dir and not str(run_dir_resolved).startswith(str(test_data_dir)):
+        if run_dir_resolved != test_data_dir and not str(run_dir_resolved).startswith(
+            str(test_data_dir)
+        ):
             bind_args.append(f"--bind {run_dir_resolved}:{run_dir_resolved}")
 
         bind_arg = " ".join(bind_args)
@@ -419,7 +379,10 @@ def multiomics_configs(
 
         # Fix plotting coordinates path to use test_output/data instead of package directory
         if "assay_config" in config and config["assay_config"] is not None:
-            if "plotting" in config["assay_config"] and config["assay_config"]["plotting"] is not None:
+            if (
+                "plotting" in config["assay_config"]
+                and config["assay_config"]["plotting"] is not None
+            ):
                 config["assay_config"]["plotting"]["coordinates"] = str(plot_coords)
 
         # Write updated config

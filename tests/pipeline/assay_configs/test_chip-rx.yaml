@@ -4,7 +4,9 @@ project:
   description: "Test project for ChIP-seq with spike in"
 assay_config:
   spikein:
-    method: "orlando"
+    method: 
+    - "orlando"
+    - "with_input"
     exogenous_genome: "dm6"
     endogenous_genome: "hg38"
   plot_with_plotnado: False

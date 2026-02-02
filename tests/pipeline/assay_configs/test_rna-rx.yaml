@@ -4,7 +4,9 @@ project:
   description: "Test project for RNA-seq with spike in"
 assay_config:
   spikein:
-    method: "deseq2"
+    method: 
+    - "deseq2"
+    - "edger"
     exogenous_genome: "plasmid"
     endogenous_genome: "hg38"
     control_genes:

@@ -5,7 +5,7 @@ project:
 
 assay_config:
   mcc:
-    viewpoints: ../mcc_viewpoints.bed
+    viewpoints: ${SEQNADO_MCC_VIEWPOINTS}
     resolutions:
       - 100
       - 1000

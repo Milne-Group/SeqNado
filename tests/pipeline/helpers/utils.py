@@ -1,9 +1,13 @@
 import json
+import re
 import tarfile
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
+import pytest
 import requests
+import yaml
 
 
 def download_with_retry(url: str, dest: Path, max_retries: int = 3, timeout: int = 30):
@@ -59,52 +63,89 @@ def get_fastq_pattern(assay: str) -> str:
     return pattern
 
 
-def setup_genome_config(
-    genome_config_file: Path,
-    star_index: Path,
-    bt2_index: Path,
-    chromsizes: Path,
-    gtf: Path,
-    blacklist: Path,
-    genes_bed: Path,
-    fasta: Path,
-    assay: str = None,
-):
-    """Write genome_config.json for seqnado tests.
+@dataclass(frozen=True)
+class TestPaths:
+    """Container for all important test and project paths. All paths are created and ready for use."""
 
-    If assay is provided, creates an assay-specific genome entry (e.g., "meth").
-    Otherwise, creates the default "hg38" entry.
+    repo: Path
+    package: Path
+    test_dir: Path
+    test_data: Path
+    workflow: Path
+    test_profile: Path
+    genome: Path
+    fastq: Path
 
-    For Multiomic tests, this function can be called multiple times to add
-    assay-specific configurations to the same file.
-    """
-    genome_config_file.parent.mkdir(parents=True, exist_ok=True)
 
-    # Load existing config if it exists, but filter to only keep test-specific entries
-    # Valid test genome keys are: assay names (atac, chip, meth, rna, snp, etc.) or "hg38"
-    valid_test_genomes = ["hg38", "atac", "chip", "cat", "chip-rx", "crispr", "meth", "rna", "rna-rx", "snp", "mcc"]
+def make_test_paths(file: Path) -> TestPaths:
+    """Factory function for TestPaths."""
+    # Find project root by searching upwards for pyproject.toml
+    repo = file.resolve()
+    while not (repo / "pyproject.toml").exists():
+        if repo.parent == repo:
+            raise RuntimeError(
+                f"Could not find project root (pyproject.toml) from {file}"
+            )
+        repo = repo.parent
 
-    if genome_config_file.exists():
-        with open(genome_config_file, "r") as f:
-            all_config_data = json.load(f)
-        # Filter to keep only test-specific genome configs
-        config_data = {k: v for k, v in all_config_data.items() if k in valid_test_genomes}
-    else:
-        config_data = {}
+    # Define paths
+    package = repo / "seqnado"
+    test_dir = repo / "test_output"
+    test_data = test_dir / "data"
+    genome = test_data / "genome"
+    fastq = test_data / "fastq"
 
-    # Determine the genome key - use assay name if provided, otherwise "hg38"
-    genome_key = assay if assay else "hg38"
+    # Create directories
+    for path in (test_dir, test_data, genome, fastq):
+        path.mkdir(parents=True, exist_ok=True)
 
-    # Add or update the genome configuration for this assay
-    config_data[genome_key] = {
-        "star_index": str(star_index) if star_index else None,
-        "bt2_index": str(bt2_index) if bt2_index else None,
-        "chromosome_sizes": str(chromsizes) if chromsizes else None,
-        "gtf": str(gtf) if gtf else None,
-        "blacklist": str(blacklist) if blacklist else None,
-        "genes": str(genes_bed) if genes_bed else None,
-        "fasta": str(fasta) if fasta else None,
-    }
+    return TestPaths(
+        repo=repo,
+        package=package,
+        test_dir=test_dir,
+        test_data=test_data,
+        workflow=package / "workflow",
+        test_profile=package / "workflow" / "envs" / "profiles" / "profile_test",
+        genome=genome,
+        fastq=fastq,
+    )
 
-    with open(genome_config_file, "w") as f:
-        json.dump(config_data, f, indent=2)
+
+class TestContext:
+    """Unified context class for test session/function-scoped helpers."""
+
+    def __init__(self, pytestconfig, tmp_path_factory):
+        self.pytestconfig = pytestconfig
+        self.tmp_path_factory = tmp_path_factory
+        self.test_paths = make_test_paths(Path(__file__).resolve())
+
+    @property
+    def cores(self):
+        return int(self.pytestconfig.getoption("--cores"))
+
+    @property
+    def selected_assays(self):
+        assays_str: str = self.pytestconfig.getoption("--assays") or "chip"
+        assays = [a.strip() for a in assays_str.split(",") if a.strip()]
+        return assays or ["chip"]
+
+    def assay_type(self, assay: str) -> str:
+        """Extract base assay type from assay name."""
+        return re.sub(r"(.*)\-.*", r"\1", assay)
+
+    def run_directory(self, assay: str) -> Path:
+        try:
+            base_temp = self.tmp_path_factory.getbasetemp()
+        except (FileExistsError, AttributeError):
+            base_temp = self.tmp_path_factory._basetemp
+
+        # If base_temp is still None, use mktemp to create it
+        if base_temp is None:
+            base_temp = self.tmp_path_factory.mktemp("pytest")
+
+        run_dir = base_temp / assay
+        run_dir.mkdir(exist_ok=True, parents=True)
+        return run_dir
+
+    def plot_bed(self, test_data_path: Path):
+        return test_data_path / "genome" / "plotting_coordinates.bed"

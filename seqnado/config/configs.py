@@ -319,7 +319,7 @@ class PeakCallingConfig(BaseModel):
 class SpikeInConfig(BaseModel):
     """Configuration for spike-in normalization."""
 
-    method: SpikeInMethod
+    method: list[SpikeInMethod]
     exogenous_genome: str | None = None
     endogenous_genome: str | None = None
     control_genes: list[str] | None = None
