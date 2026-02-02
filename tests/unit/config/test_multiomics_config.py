@@ -45,30 +45,31 @@ class TestMultiomicsConfig:
 
     def test_default_values(self):
         """Test MultiomicsConfig with default values."""
-        config = MultiomicsConfig()
+        # create_dataset=False to avoid requiring fasta_index
+        config = MultiomicsConfig(create_dataset=False)
 
         assert config.output_dir == "seqnado_output/"
         assert config.binsize == 1000
         assert config.assays == []
         assert config.assay_configs == {}
         assert config.create_heatmaps is True
-        assert config.create_dataset is True
+        assert config.create_dataset is False
         assert config.create_summary is True
         assert config.regions_bed is None
 
     def test_custom_output_dir(self):
         """Test MultiomicsConfig with custom output directory."""
-        config = MultiomicsConfig(output_dir="custom_output/")
+        config = MultiomicsConfig(output_dir="custom_output/", create_dataset=False)
         assert config.output_dir == "custom_output/"
 
     def test_custom_binsize(self):
         """Test MultiomicsConfig with custom binsize."""
-        config = MultiomicsConfig(binsize=500)
+        config = MultiomicsConfig(binsize=500, create_dataset=False)
         assert config.binsize == 500
 
     def test_custom_assays(self):
         """Test MultiomicsConfig with custom assays list."""
-        config = MultiomicsConfig(assays=["atac", "chip", "rna"])
+        config = MultiomicsConfig(assays=["atac", "chip", "rna"], create_dataset=False)
         assert config.assays == ["atac", "chip", "rna"]
 
     def test_custom_flags(self):
@@ -94,7 +95,7 @@ class TestMultiomicsConfig:
             "atac": {"assay": "atac", "project": {"name": "test"}},
             "chip": {"assay": "chip", "project": {"name": "test"}},
         }
-        config = MultiomicsConfig(assay_configs=assay_configs)
+        config = MultiomicsConfig(assay_configs=assay_configs, create_dataset=False)
         assert config.assay_configs == assay_configs
 
     def test_model_serialization(self):
@@ -103,6 +104,7 @@ class TestMultiomicsConfig:
             output_dir="test_output/",
             binsize=200,
             assays=["atac", "rna"],
+            create_dataset=False,
         )
 
         data = config.model_dump()
@@ -119,6 +121,7 @@ class TestMultiomicsConfig:
             "binsize": 200,
             "assays": ["chip"],
             "create_heatmaps": False,
+            "create_dataset": False,
         }
         config = MultiomicsConfig(**data)
 

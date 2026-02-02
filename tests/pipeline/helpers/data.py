@@ -53,7 +53,7 @@ class GenomeResources(BaseModel):
             "chromosome_sizes": "chr21_dm6.fa.fai",
         },
         "crispr": {
-            **_DEFAULT_RESOURCES, 
+            **_DEFAULT_RESOURCES,
             "bt2_index": (
                 "bt2_TKOv3_guides_chr21",
                 "TKOv3_guides_chr21",
@@ -63,7 +63,7 @@ class GenomeResources(BaseModel):
             "gtf": "TKOv3_guides_chr21.saf",
         },
         "mcc": {
-            **_DEFAULT_RESOURCES, 
+            **_DEFAULT_RESOURCES,
             "viewpoints": "mcc_viewpoints.bed",
         },
         "meth": {
@@ -89,8 +89,12 @@ class GenomeResources(BaseModel):
         # Prefer exact match, then longest substring match (e.g., 'chip-rx' before 'chip')
         assay_lower = self.assay.lower()
         assay_key = next(
-            (k for k in sorted(self.RESOURCES, key=len, reverse=True) if k in assay_lower),
-            None
+            (
+                k
+                for k in sorted(self.RESOURCES, key=len, reverse=True)
+                if k in assay_lower
+            ),
+            None,
         )
         if not assay_key:
             return self
@@ -137,8 +141,12 @@ class GenomeResources(BaseModel):
         # Prefer exact match, then longest substring match (e.g., 'chip-rx' before 'chip')
         assay_lower = assay.lower()
         assay_key = next(
-            (k for k in sorted(cls.RESOURCES, key=len, reverse=True) if k in assay_lower),
-            "chip"
+            (
+                k
+                for k in sorted(cls.RESOURCES, key=len, reverse=True)
+                if k in assay_lower
+            ),
+            "chip",
         )
         template = cls.RESOURCES[assay_key]
         ref_url = cls.REFERENCE_URL
@@ -254,9 +262,7 @@ class FastqFiles(BaseModel):
 
         if not list(fastq_dir.glob("*.fastq.gz")):
             tar_path = fastq_dir.parent / "fastq.tar.gz"
-            download_with_retry(
-                cls.FQ_URL, tar_path
-            )
+            download_with_retry(cls.FQ_URL, tar_path)
             extract_tar(tar_path, fastq_dir.parent, flatten=False)
 
             nested = fastq_dir / "fastq"

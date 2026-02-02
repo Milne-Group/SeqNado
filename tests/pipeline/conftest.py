@@ -113,8 +113,6 @@ def config_yaml_for_testing(
 @pytest.fixture(scope="function")
 def design(test_context: TestContext, assay: str, seqnado_run_dir: Path) -> Path:
     """Generate design file for the assay in the seqnado run directory."""
-    assay_type = test_context.assay_type(assay)
-
     # Download FASTQ files
     FastqFiles.download(test_context.test_paths.fastq, [assay])
     fastq_source_dir = test_context.test_paths.fastq
@@ -421,6 +419,19 @@ def multiomics_configs(
     assert multiomics_config.exists(), (
         "config_multiomics.yaml not created by seqnado config"
     )
+
+    # Update multiomics config with regions_bed for dataset generation
+    with open(multiomics_config) as f:
+        multi_config = yaml.safe_load(f)
+
+    # Set the regions_bed from merged_resources (using genes BED file)
+    # and disable binsize mode to use regions mode instead
+    if merged_resources.get("genes"):
+        multi_config["regions_bed"] = str(merged_resources["genes"])
+        multi_config["binsize"] = None
+
+    with open(multiomics_config, "w") as f:
+        yaml.dump(multi_config, f, sort_keys=False)
 
     return configs
 

@@ -1112,6 +1112,12 @@ def build_multiomics_config(
 
         assay_configs[assay_name] = config
 
+    # Get fasta_index from the first assay's genome config (needed for binsize mode)
+    first_assay_config = next(iter(assay_configs.values()))
+    fasta_index = None
+    if first_assay_config.genome and first_assay_config.genome.fasta:
+        fasta_index = Path(str(first_assay_config.genome.fasta) + ".fai")
+
     # Create MultiomicsConfig
     multiomics_config = MultiomicsConfig(
         assays=selected_assays,
@@ -1121,6 +1127,7 @@ def build_multiomics_config(
         create_summary=create_summary,
         regions_bed=Path(regions_bed) if regions_bed else None,
         binsize=binsize,
+        fasta_index=fasta_index,
     )
 
     return multiomics_config, assay_configs

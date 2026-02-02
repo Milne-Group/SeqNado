@@ -729,10 +729,16 @@ class MultiomicsOutputBuilder:
         path = str(Path(self.output_dir) / "multiomics" / "heatmap" / "metaplot.pdf")
         self.file_collections.append(BasicFileCollection(files=[path]))
 
-    def add_multiomics_dataset(self) -> str:
-        """Get the output directory."""
+    def add_multiomics_dataset(self, use_binsize: bool = True) -> str:
+        """Add the multiomics dataset output file.
+
+        Args:
+            use_binsize: If True, adds dataset_bins.h5ad (binsize mode).
+                        If False, adds dataset_regions.h5ad (regions mode).
+        """
+        filename = "dataset_bins.h5ad" if use_binsize else "dataset_regions.h5ad"
         path = str(
-            Path(self.output_dir) / "multiomics" / "dataset" / "dataset_bins.h5ad"
+            Path(self.output_dir) / "multiomics" / "dataset" / filename
         )
         self.file_collections.append(BasicFileCollection(files=[path]))
 
