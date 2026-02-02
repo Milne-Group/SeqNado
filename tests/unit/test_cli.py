@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 import shutil
+import subprocess
 
 from seqnado.cli import (
     _assay_names,
@@ -382,5 +383,6 @@ def setup_module(module):
     """Ensure test_output directory is cleaned up before tests."""
     test_output = Path("./test_output")
     if test_output.exists():
-        shutil.rmtree(test_output)
+        # Use subprocess rm -rf for more robust removal on NFS filesystems
+        subprocess.run(["rm", "-rf", str(test_output)], check=False)
     test_output.mkdir(parents=True, exist_ok=True)
