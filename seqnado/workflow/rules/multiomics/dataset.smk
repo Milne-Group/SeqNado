@@ -41,7 +41,7 @@ rule make_dataset_binsize:
         dataset=OUTPUT_DIR + "multiomics/dataset/dataset_bins.h5ad",
     params:
         bigwig_dir=OUTPUT_DIR + "multiomics/bigwigs/",
-        chromosome_sizes=EXAMPLE_CONFIG.genome.chromosome_sizes,
+        chromosome_sizes=MULTIOMICS_CONFIG.fasta_index,
         blacklist=EXAMPLE_CONFIG.genome.blacklist,
         binsize=MULTIOMICS_CONFIG.binsize,
     threads: 1

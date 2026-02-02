@@ -22,6 +22,7 @@ class GenomeResources(BaseModel):
     blacklist: Path | None = None
     genes: Path | None = None
     fasta: Path | None = None
+    fasta_index: Path | None = None
     viewpoints: Path | None = None
     plot_coords: Path | None = None
 
@@ -39,6 +40,7 @@ class GenomeResources(BaseModel):
         "blacklist": "hg38_chr21-blacklist.bed",
         "genes": "hg38_genes.bed",
         "fasta": "chr21.fa",
+        "fasta_index": "chr21.fa.fai",
         "plot_coords": "plotting_coordinates.bed",
     }
 
@@ -71,11 +73,13 @@ class GenomeResources(BaseModel):
             "bt2_index": ("bt2_chr21_meth", "chr21_meth", "hg38_meth"),
             "chromosome_sizes": "chr21_meth.fa.fai",
             "fasta": "chr21_meth.fa",
+            "fasta_index": "chr21_meth.fa.fai",
         },
         "rna": {
             **_DEFAULT_RESOURCES,
             "star_index": "STAR_chr21_rna_spikein",
             "gtf": "chr21_rna_spikein.gtf",
+            "fasta_index": "chr21_rna_spikein.fa.fai",
         },
         "snp": _DEFAULT_RESOURCES,
     }
