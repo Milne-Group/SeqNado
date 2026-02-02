@@ -914,7 +914,9 @@ class SpikeInSection(ProtocolSection):
             return []
 
         spikein_config = self.assay_config.get("spikein", {})
-        method = spikein_config.get("method", "").lower()
+        method_list = spikein_config.get("method", [])
+        method = str(method_list[0]).lower() if method_list else ""
+        
         endogenous = spikein_config.get("endogenous_genome", "reference")
         exogenous = spikein_config.get("exogenous_genome", "spike-in")
         control_genes = spikein_config.get("control_genes", [])

@@ -90,7 +90,6 @@ The tool detects groups using several strategies:
 **Example:**
 
 For samples named:
-
 - `rna-spikein-control-rep1_R1.fastq.gz`
 - `rna-spikein-treated-rep1_R1.fastq.gz`
 

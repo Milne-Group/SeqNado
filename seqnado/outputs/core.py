@@ -1,7 +1,6 @@
 from itertools import chain
 from pathlib import Path
 from typing import Any, List
-from xml.etree.ElementInclude import include
 
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -364,12 +363,15 @@ class SeqnadoOutputBuilder:
     
     def add_spikein_bigwig_files(self) -> None:
         """Add spike-in normalized bigwig files to the output collection."""
+        spikein_config = getattr(self.config.assay_config, 'spikein', None)
+        spikein_methods = spikein_config.method if spikein_config else []
 
         bigwig_files = BigWigFiles(
             assay=self.assay,
             names=self.samples.sample_names,
             pileup_methods=self.config.assay_config.bigwigs.pileup_method,
             scale_methods=[DataScalingTechnique.SPIKEIN],
+            spikein_methods=spikein_methods,
             output_dir=self.output_dir,
         )
 
@@ -521,14 +523,13 @@ class SeqnadoOutputBuilder:
 
     def add_spikein_files(self) -> None:
         """Add spike-in files to the output collection."""
-        # Get the spike-in method from config
         spikein_config = getattr(self.config.assay_config, 'spikein', None)
-        method = spikein_config.method.value if spikein_config else "orlando"
+        methods = spikein_config.method if spikein_config else []
 
         spikein_files = SpikeInFiles(
             assay=self.assay,
             names=self.samples.sample_names,
-            method=method,
+            method=methods,
             output_dir=self.output_dir,
         )
         self.file_collections.append(spikein_files)

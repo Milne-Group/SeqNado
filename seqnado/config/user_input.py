@@ -7,11 +7,14 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 import jinja2
 from loguru import logger
 from pydantic import ValidationError
+
+if TYPE_CHECKING:
+    from seqnado.config.multiomics import MultiomicsConfig
 
 from seqnado import (
     Assay,
@@ -23,7 +26,6 @@ from seqnado import (
     SNPCallingMethod,
     SpikeInMethod,
 )
-
 from seqnado.config import (
     AssaySpecificConfig,
     ATACAssayConfig,
@@ -363,10 +365,15 @@ def get_spikein_config(assay: Assay) -> Optional[SpikeInConfig]:
         return None
 
     normalisation_method = get_user_input(
-        "Normalisation method?",
+        "Normalisation method(s) (comma-separated for multiple)?",
         choices=[m.value for m in SpikeInMethod],
         default="deseq2" if assay == Assay.RNA else "orlando",
+        multi_select=True,
     )
+
+    # Convert single string to list if default was used
+    if isinstance(normalisation_method, str):
+        normalisation_method = [normalisation_method]
 
     reference_genome = get_user_input("Reference genome:", default="hg38")
     spikein_genome = get_user_input(
@@ -375,7 +382,7 @@ def get_spikein_config(assay: Assay) -> Optional[SpikeInConfig]:
 
     # Ask for control genes if using DESeq2 or edgeR methods
     control_genes = None
-    if normalisation_method in ["deseq2", "edger"]:
+    if any(m in ["deseq2", "edger"] for m in normalisation_method):
         control_genes_input = get_user_input(
             "Spike-in control gene names (comma-separated):",
             default="AmpR,Cas9_3p,Cas9_5p",
@@ -384,7 +391,7 @@ def get_spikein_config(assay: Assay) -> Optional[SpikeInConfig]:
             control_genes = [g.strip() for g in control_genes_input.split(",")]
 
     return SpikeInConfig(
-        method=SpikeInMethod(normalisation_method),
+        method=[SpikeInMethod(m) for m in normalisation_method],
         endogenous_genome=reference_genome,
         exogenous_genome=spikein_genome,
         control_genes=control_genes,

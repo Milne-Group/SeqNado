@@ -13,6 +13,7 @@ from seqnado import (
     PeakCallingMethod,
     MethylationMethod,
     QuantificationMethod,
+    SpikeInMethod,
 )
 from seqnado.core import AssaysWithHeatmaps, AssaysWithSpikein, AssaysWithPeakCalling
 from seqnado.inputs import (
@@ -135,6 +136,7 @@ class BigWigFiles(BaseModel):
     names: list[str] = Field(default_factory=list)
     pileup_methods: list[PileupMethod]
     scale_methods: list[DataScalingTechnique] = [DataScalingTechnique.UNSCALED]
+    spikein_methods: list[SpikeInMethod] = Field(default_factory=list)
     output_dir: str = "seqnado_output"
 
     @property
@@ -176,17 +178,32 @@ class BigWigFiles(BaseModel):
                 if not self._is_compatible(method, scale, self.assay):
                     continue
 
-                if self.is_rna:
-                    for name in self.names:
-                        for strand in ["plus", "minus"]:
-                            path = f"{self.prefix}{method.value}/{scale.value}/{name}_{strand}.bigWig"
-                            paths.append(path)
+                # For spike-in scaling, iterate over all spikein methods
+                if scale == DataScalingTechnique.SPIKEIN and self.spikein_methods:
+                    for spikein_method in self.spikein_methods:
+                        scale_path = f"{scale.value}/{spikein_method.value}"
+                        if self.is_rna:
+                            for name in self.names:
+                                for strand in ["plus", "minus"]:
+                                    path = f"{self.prefix}{method.value}/{scale_path}/{name}_{strand}.bigWig"
+                                    paths.append(path)
+                        else:
+                            for name in self.names:
+                                path = f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
+                                paths.append(path)
                 else:
-                    for name in self.names:
-                        path = (
-                            f"{self.prefix}{method.value}/{scale.value}/{name}.bigWig"
-                        )
-                        paths.append(path)
+                    scale_path = scale.value
+                    if self.is_rna:
+                        for name in self.names:
+                            for strand in ["plus", "minus"]:
+                                path = f"{self.prefix}{method.value}/{scale_path}/{name}_{strand}.bigWig"
+                                paths.append(path)
+                    else:
+                        for name in self.names:
+                            path = (
+                                f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
+                            )
+                            paths.append(path)
 
         return paths
 
@@ -316,7 +333,7 @@ class HubFiles(BaseModel):
 class SpikeInFiles(BaseModel):
     assay: Assay
     names: list[str]
-    method: str
+    method: list[SpikeInMethod]
     output_dir: str = "seqnado_output"
 
     @field_validator("assay")
@@ -326,13 +343,16 @@ class SpikeInFiles(BaseModel):
         return value
 
     @property
-    def norm_factors(self):
-        return f"{self.output_dir}/resources/{self.method}/normalisation_factors.tsv"
+    def norm_factors(self) -> list[str]:
+        return expand(
+            f"{self.output_dir}/resources/{{method}}/normalisation_factors.tsv",
+            method=[m.value for m in self.method],
+        )
 
     @computed_field
     @property
     def files(self) -> list[str]:
-        return [self.norm_factors]
+        return self.norm_factors
 
 
 class PlotFiles(BaseModel):

@@ -13,6 +13,7 @@ from seqnado import (
     PileupMethod,
     QuantificationMethod,
     SNPCallingMethod,
+    SpikeInMethod,
 )
 from seqnado.config.configs import BigwigConfig, GenomeConfig, STARIndex, QCConfig
 from seqnado.config.core import ATACAssayConfig, SeqnadoConfig
@@ -21,7 +22,11 @@ from seqnado.inputs.bigwigs import BigWigCollection, BigWigFile
 from seqnado.inputs.core import Metadata
 from seqnado.inputs.fastq import FastqCollection, FastqFile, FastqSet
 from seqnado.inputs.grouping import SampleGroup, SampleGroupings, SampleGroups
-from seqnado.outputs.core import SeqnadoOutputBuilder, SeqnadoOutputFactory, SeqnadoOutputFiles
+from seqnado.outputs.core import (
+    SeqnadoOutputBuilder,
+    SeqnadoOutputFactory,
+    SeqnadoOutputFiles,
+)
 from seqnado.outputs.files import (
     BigBedFiles,
     BigWigFiles,
@@ -67,7 +72,6 @@ def test_file_collection_protocol():
     collection = TestFileCollection()
     assert isinstance(collection.files, list)
     assert len(collection.files) == 2
-
 
 
 def _minimal_config(tmp: Path) -> SeqnadoConfig:
@@ -237,8 +241,6 @@ class TestQCFiles:
         files = qc.files
         assert any("fastq_screen" in f for f in files)
 
-    # Removed test_default_files_property: QCFiles no longer has default_files property
-
 class SeqNadoReportFileTest:
     """Tests for SeqNadoReportFiles class."""
 
@@ -357,10 +359,18 @@ class TestBigWigFiles:
             assay=Assay.CHIP, names=["sample1"], pileup_methods=[PileupMethod.HOMER]
         )
 
-        assert bw._is_compatible(PileupMethod.HOMER, DataScalingTechnique.UNSCALED, assay=Assay.CHIP)
-        assert not bw._is_compatible(PileupMethod.HOMER, DataScalingTechnique.CSAW, assay=Assay.CHIP)
-        assert not bw._is_compatible(PileupMethod.HOMER, DataScalingTechnique.SPIKEIN, assay=Assay.CHIP)
-        assert not bw._is_compatible(PileupMethod.DEEPTOOLS, DataScalingTechnique.UNSCALED, assay=Assay.MCC)
+        assert bw._is_compatible(
+            PileupMethod.HOMER, DataScalingTechnique.UNSCALED, assay=Assay.CHIP
+        )
+        assert not bw._is_compatible(
+            PileupMethod.HOMER, DataScalingTechnique.CSAW, assay=Assay.CHIP
+        )
+        assert not bw._is_compatible(
+            PileupMethod.HOMER, DataScalingTechnique.SPIKEIN, assay=Assay.CHIP
+        )
+        assert not bw._is_compatible(
+            PileupMethod.DEEPTOOLS, DataScalingTechnique.UNSCALED, assay=Assay.MCC
+        )
 
 
 class TestPeakCallingFiles:
@@ -461,7 +471,9 @@ class TestSpikeInFiles:
 
     def test_spikein_files_chip(self):
         """Test SpikeInFiles for ChIP assay."""
-        sif = SpikeInFiles(assay=Assay.CHIP, names=["sample1", "sample2"], method="orlando")
+        sif = SpikeInFiles(
+            assay=Assay.CHIP, names=["sample1", "sample2"], method=[SpikeInMethod.ORLANDO]
+        )
 
         files = sif.files
         assert len(files) == 1
@@ -470,15 +482,20 @@ class TestSpikeInFiles:
     def test_spikein_invalid_assay(self):
         """Test SpikeInFiles raises error for invalid assay."""
         with pytest.raises(ValueError, match="Invalid assay for spike-in"):
-            SpikeInFiles(assay=Assay.SNP, names=["sample1"], method="orlando")
+            SpikeInFiles(assay=Assay.SNP, names=["sample1"], method=[SpikeInMethod.ORLANDO])
 
     def test_norm_factors_property(self):
         """Test norm_factors property."""
         sif = SpikeInFiles(
-            assay=Assay.CHIP, names=["sample1"], method="orlando", output_dir="custom_output"
+            assay=Assay.CHIP,
+            names=["sample1"],
+            method=[SpikeInMethod.ORLANDO],
+            output_dir="custom_output",
         )
 
-        assert sif.norm_factors == "custom_output/resources/orlando/normalisation_factors.tsv"
+        assert sif.norm_factors == [
+            "custom_output/resources/orlando/normalisation_factors.tsv"
+        ]
 
 
 class TestPlotFiles:
@@ -923,18 +940,18 @@ class TestSeqnadoOutputFilesCore:
 
         # Filter for ATAC
         result = output.select_bigwig_subtype(
-            method=PileupMethod.DEEPTOOLS, 
+            method=PileupMethod.DEEPTOOLS,
             scale=DataScalingTechnique.UNSCALED,
-            assay=Assay.ATAC
+            assay=Assay.ATAC,
         )
         assert len(result) == 1
         assert Assay.ATAC.value.lower() in result[0].lower()
 
         # Filter for RNA
         result = output.select_bigwig_subtype(
-            method=PileupMethod.DEEPTOOLS, 
+            method=PileupMethod.DEEPTOOLS,
             scale=DataScalingTechnique.UNSCALED,
-            assay=Assay.RNA
+            assay=Assay.RNA,
         )
         assert len(result) == 1
         assert "RNA" in result[0]
@@ -993,7 +1010,11 @@ class TestSeqnadoOutputBuilderCore:
 
         fs1 = FastqSet(sample_id="s1", r1=FastqFile(path=r1_path))
         fs2 = FastqSet(sample_id="s2", r1=FastqFile(path=r2_path))
-        samples = FastqCollection(assay=Assay.ATAC, metadata=[Metadata(assay=Assay.ATAC), Metadata(assay=Assay.ATAC)], fastq_sets=[fs1, fs2])
+        samples = FastqCollection(
+            assay=Assay.ATAC,
+            metadata=[Metadata(assay=Assay.ATAC), Metadata(assay=Assay.ATAC)],
+            fastq_sets=[fs1, fs2],
+        )
 
         groups = SampleGroupings(
             groupings={
@@ -1156,10 +1177,36 @@ class TestSeqnadoOutputBuilderCore:
 
     def test_add_spikein_files(self, tmp_path):
         """Test add_spikein_files method."""
-        cfg = _minimal_config(tmp_path)
-        samples = _small_collection(tmp_path)
+        from seqnado.config.configs import SpikeInConfig
+        from seqnado.config.core import RNAAssayConfig
 
-        builder = SeqnadoOutputBuilder(Assay.ATAC, samples, cfg)
+        star = tmp_path / "star"
+        star.mkdir()
+        genome = GenomeConfig(name="hg38", index=STARIndex(prefix=star))
+        assay_cfg = RNAAssayConfig(
+            bigwigs=BigwigConfig(pileup_method=[PileupMethod.DEEPTOOLS]),
+            spikein=SpikeInConfig(method=[SpikeInMethod.ORLANDO]),
+        )
+        cfg = SeqnadoConfig(
+            assay=Assay.RNA,
+            project=dict(name="p"),
+            genome=genome,
+            metadata=tmp_path / "m.csv",
+            assay_config=assay_cfg,
+        )
+
+        r1_path = tmp_path / "s1_R1.fastq.gz"
+        r1_path.write_text("@r\nN\n+\n#\n")
+        r2_path = tmp_path / "s1_R2.fastq.gz"
+        r2_path.write_text("@r\nN\n+\n#\n")
+        r1 = FastqFile(path=r1_path)
+        r2 = FastqFile(path=r2_path)
+        fs = FastqSet(sample_id="s1", r1=r1, r2=r2)
+        samples = FastqCollection(
+            assay=Assay.RNA, metadata=[Metadata(assay=Assay.RNA)], fastq_sets=[fs]
+        )
+
+        builder = SeqnadoOutputBuilder(Assay.RNA, samples, cfg)
         builder.add_spikein_files()
 
         output = builder.build()
