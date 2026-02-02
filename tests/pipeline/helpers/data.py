@@ -22,7 +22,6 @@ class GenomeResources(BaseModel):
     blacklist: Path | None = None
     genes: Path | None = None
     fasta: Path | None = None
-    fasta_index: Path | None = None
     viewpoints: Path | None = None
     plot_coords: Path | None = None
 
