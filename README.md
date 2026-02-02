@@ -58,7 +58,7 @@ Modular, reproducible, and container-ready pipelines powered by Snakemake that t
 - **Micro-Capture-C** (`mcc`) - Chromatin conformation capture analysis
 - **Multiomics** - Run multiple assay types together in a single integrated workflow
 
-→ [View detailed assay workflows](https://alsmith151.github.io/SeqNado/pipeline/)
+→ [View detailed assay workflows](https://Milne-Group.github.io/SeqNado/pipeline/)
 
 ## Installation
 
@@ -102,7 +102,7 @@ seqnado init
 - Configures Apptainer/Singularity containers (if available)
 - Installs Snakemake execution profiles for local and cluster execution
 
-→ [Learn more about initialization](https://alsmith151.github.io/SeqNado/initialisation/)
+→ [Learn more about initialization](https://Milne-Group.github.io/SeqNado/initialisation/)
 
 ## Quick Start
 
@@ -120,7 +120,7 @@ seqnado genomes list atac
 seqnado genomes build rna --fasta hg38.fasta --name hg38 --outdir /path/to/genomes
 ```
 
-→ [Complete genome setup guide](https://alsmith151.github.io/SeqNado/genomes/)
+→ [Complete genome setup guide](https://Milne-Group.github.io/SeqNado/genomes/)
 
 ### 2. Create Project Configuration
 
@@ -137,7 +137,7 @@ YYYY-MM-DD_ATAC_project/
 └── fastqs/             # Place your FASTQ files here
 ```
 
-→ [Configuration options guide](https://alsmith151.github.io/SeqNado/configuration/)
+→ [Configuration options guide](https://Milne-Group.github.io/SeqNado/configuration/)
 
 ### 3. Add FASTQ Files
 
@@ -163,7 +163,7 @@ seqnado design atac
 - Control/treatment relationships
 - DESeq2 comparisons (for RNA-seq)
 
-→ [Design file specification](https://alsmith151.github.io/SeqNado/design/)
+→ [Design file specification](https://Milne-Group.github.io/SeqNado/design/)
 
 ### 5. Run the Pipeline
 
@@ -179,7 +179,7 @@ seqnado pipeline atac --preset ss --queue short
 # Multiomics mode (processes multiple assays together)
 seqnado pipeline  --preset ss# Detects all config files in current directory
 ```
-→ [Pipeline execution details](https://alsmith151.github.io/SeqNado/pipeline/) | [Output files explained](https://alsmith151.github.io/SeqNado/outputs/)
+→ [Pipeline execution details](https://Milne-Group.github.io/SeqNado/pipeline/) | [Output files explained](https://Milne-Group.github.io/SeqNado/outputs/)
 ### Common Pipeline Options
 
 **Execution Presets:**
@@ -195,24 +195,24 @@ seqnado pipeline  --preset ss# Detects all config files in current directory
 - `-n` - Dry run to preview commands without executing
 - `--unlock` - Unlock directory after interrupted runs
 
-→ [All CLI options](https://alsmith151.github.io/SeqNado/cli/) | [HPC cluster setup](https://alsmith151.github.io/SeqNado/cluster_config/)
+→ [All CLI options](https://Milne-Group.github.io/SeqNado/cli/) | [HPC cluster setup](https://Milne-Group.github.io/SeqNado/cluster_config/)
 
 ## Documentation
 
 For comprehensive guides and API documentation, visit:
 
-**📚 [SeqNado Documentation](https://alsmith151.github.io/SeqNado/)**
+**📚 [SeqNado Documentation](https://Milne-Group.github.io/SeqNado/)**
 
 ### Key Topics
 
-- [Installation Guide](https://alsmith151.github.io/SeqNado/installation/)
-- [Genome Setup](https://alsmith151.github.io/SeqNado/genomes/)
-- [Configuration](https://alsmith151.github.io/SeqNado/configuration/)
-- [Design Files](https://alsmith151.github.io/SeqNado/design/)
-- [Pipeline Details](https://alsmith151.github.io/SeqNado/pipeline/)
-- [Outputs](https://alsmith151.github.io/SeqNado/outputs/)
-- [CLI Reference](https://alsmith151.github.io/SeqNado/cli/)
-- [HPC Cluster Configuration](https://alsmith151.github.io/SeqNado/cluster_config/)
+- [Installation Guide](https://Milne-Group.github.io/SeqNado/installation/)
+- [Genome Setup](https://Milne-Group.github.io/SeqNado/genomes/)
+- [Configuration](https://Milne-Group.github.io/SeqNado/configuration/)
+- [Design Files](https://Milne-Group.github.io/SeqNado/design/)
+- [Pipeline Details](https://Milne-Group.github.io/SeqNado/pipeline/)
+- [Outputs](https://Milne-Group.github.io/SeqNado/outputs/)
+- [CLI Reference](https://Milne-Group.github.io/SeqNado/cli/)
+- [HPC Cluster Configuration](https://Milne-Group.github.io/SeqNado/cluster_config/)
 
 ## License
 
