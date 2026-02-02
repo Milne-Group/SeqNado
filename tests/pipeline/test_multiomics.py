@@ -113,8 +113,8 @@ def test_multiomics(
         f"Multiomics metaplot not found at {metaplot_pdf}"
     )
 
-    # ML dataset
-    dataset_h5ad = output_dir / "multiomics" / "dataset" / "dataset_bins.h5ad"
+    # ML dataset (using regions_bed mode with hg38_genes.bed)
+    dataset_h5ad = output_dir / "multiomics" / "dataset" / "dataset_regions.h5ad"
     assert dataset_h5ad.exists(), (
         f"Multiomics dataset not found at {dataset_h5ad}"
     )

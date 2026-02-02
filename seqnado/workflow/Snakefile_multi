@@ -84,7 +84,9 @@ if MULTIOMICS_CONFIG.create_heatmaps:
     multiomics_builder.add_heatmap()
     multiomics_builder.add_metaplot()
 if MULTIOMICS_CONFIG.create_dataset:
-    multiomics_builder.add_multiomics_dataset()
+    # Use binsize mode if binsize is provided, otherwise use regions mode
+    use_binsize = MULTIOMICS_CONFIG.binsize is not None
+    multiomics_builder.add_multiomics_dataset(use_binsize=use_binsize)
 if MULTIOMICS_CONFIG.create_summary:
     multiomics_builder.add_summary_report()
 
