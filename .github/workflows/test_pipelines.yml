@@ -15,7 +15,7 @@ jobs:
           - chip
           - chip-rx
           - crispr
-          # - mcc
+          - mcc
           - meth
           - rna
           - rna-rx

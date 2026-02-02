@@ -31,21 +31,14 @@ class GenomeResources(BaseModel):
     )
 
     # Base resources shared by multiple assays
+
     _DEFAULT_RESOURCES: ClassVar[dict] = {
-        "bt2_index": ("bt2_chr21_dm6_chr2L", "bt2_chr21_dm6_chr2L", "hg38"),
-        "chromosome_sizes": "chr21_dm6.fa.fai",
+        "bt2_index": ("bt2_chr21", "bt2_chr21", "hg38"),
+        "chromosome_sizes": "chr21.chrom.sizes",
         "gtf": "chr21.gtf",
         "blacklist": "hg38_chr21-blacklist.bed",
         "genes": "hg38_genes.bed",
-        "plot_coords": "plotting_coordinates.bed",
-    }
-    _METH_RESOURCES: ClassVar[dict] = {
-        "bt2_index": ("bt2_chr21_meth", "chr21_meth", "hg38_meth"),
-        "chromosome_sizes": "chr21_meth.fa.fai",
-        "gtf": "chr21.gtf",
-        "blacklist": "hg38_chr21-blacklist.bed",
-        "genes": "hg38_genes.bed",
-        "fasta": "chr21_meth.fa",
+        "fasta": "chr21.fa",
         "plot_coords": "plotting_coordinates.bed",
     }
 
@@ -54,7 +47,13 @@ class GenomeResources(BaseModel):
         "atac": _DEFAULT_RESOURCES,
         "cat": _DEFAULT_RESOURCES,
         "chip": _DEFAULT_RESOURCES,
+        "chip-rx": {
+            **_DEFAULT_RESOURCES,
+            "bt2_index": ("bt2_chr21_dm6_chr2L", "bt2_chr21_dm6_chr2L", "hg38"),
+            "chromosome_sizes": "chr21_dm6.fa.fai",
+        },
         "crispr": {
+            **_DEFAULT_RESOURCES, 
             "bt2_index": (
                 "bt2_TKOv3_guides_chr21",
                 "TKOv3_guides_chr21",
@@ -62,23 +61,23 @@ class GenomeResources(BaseModel):
             ),
             "chromosome_sizes": "TKOv3_guides_chr21.fasta.fai",
             "gtf": "TKOv3_guides_chr21.saf",
-            "blacklist": "hg38_chr21-blacklist.bed",
-            "genes": "hg38_genes.bed",
-            "plot_coords": "plotting_coordinates.bed",
         },
         "mcc": {
-            **_DEFAULT_RESOURCES,
-            "chromosome_sizes": "chr21.fa.fai",
-            "fasta": "chr21.fa",
+            **_DEFAULT_RESOURCES, 
             "viewpoints": "mcc_viewpoints.bed",
         },
-        "meth": _METH_RESOURCES,
+        "meth": {
+            **_DEFAULT_RESOURCES,
+            "bt2_index": ("bt2_chr21_meth", "chr21_meth", "hg38_meth"),
+            "chromosome_sizes": "chr21_meth.fa.fai",
+            "fasta": "chr21_meth.fa",
+        },
         "rna": {
             **_DEFAULT_RESOURCES,
             "star_index": "STAR_chr21_rna_spikein",
             "gtf": "chr21_rna_spikein.gtf",
         },
-        "snp": _METH_RESOURCES,
+        "snp": _DEFAULT_RESOURCES,
     }
 
     @model_validator(mode="after")
@@ -87,7 +86,12 @@ class GenomeResources(BaseModel):
         if not self.assay:
             return self
 
-        assay_key = next((k for k in self.RESOURCES if k in self.assay.lower()), None)
+        # Prefer exact match, then longest substring match (e.g., 'chip-rx' before 'chip')
+        assay_lower = self.assay.lower()
+        assay_key = next(
+            (k for k in sorted(self.RESOURCES, key=len, reverse=True) if k in assay_lower),
+            None
+        )
         if not assay_key:
             return self
 
@@ -130,7 +134,12 @@ class GenomeResources(BaseModel):
         genome_path.mkdir(parents=True, exist_ok=True)
 
         # Look up resources for this assay
-        assay_key = next((k for k in cls.RESOURCES if k in assay.lower()), "chip")
+        # Prefer exact match, then longest substring match (e.g., 'chip-rx' before 'chip')
+        assay_lower = assay.lower()
+        assay_key = next(
+            (k for k in sorted(cls.RESOURCES, key=len, reverse=True) if k in assay_lower),
+            "chip"
+        )
         template = cls.RESOURCES[assay_key]
         ref_url = cls.REFERENCE_URL
         config: dict[str, Path | None] = {}
