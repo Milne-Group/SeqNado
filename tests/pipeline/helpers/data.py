@@ -73,13 +73,11 @@ class GenomeResources(BaseModel):
             "bt2_index": ("bt2_chr21_meth", "chr21_meth", "hg38_meth"),
             "chromosome_sizes": "chr21_meth.fa.fai",
             "fasta": "chr21_meth.fa",
-            "fasta_index": "chr21_meth.fa.fai",
         },
         "rna": {
             **_DEFAULT_RESOURCES,
             "star_index": "STAR_chr21_rna_spikein",
             "gtf": "chr21_rna_spikein.gtf",
-            "fasta_index": "chr21_rna_spikein.fa.fai",
         },
         "snp": _DEFAULT_RESOURCES,
     }

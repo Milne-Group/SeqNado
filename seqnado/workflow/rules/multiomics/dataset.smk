@@ -11,8 +11,8 @@ rule make_dataset_regions:
         dataset=OUTPUT_DIR + "multiomics/dataset/dataset_regions.h5ad",
     params:
         bigwig_dir=OUTPUT_DIR + "multiomics/bigwigs/",
-        chromosome_sizes=lambda wildcards: LOADED_CONFIGS[ASSAYS[0]]["genome"]["chromosome_sizes"],
-        blacklist=lambda wildcards: LOADED_CONFIGS[ASSAYS[0]]["genome"]["blacklist"],
+        chromosome_sizes=lambda wildcards: LOADED_CONFIGS[ASSAYS[0].clean_name]["genome"]["chromosome_sizes"],
+        blacklist=lambda wildcards: LOADED_CONFIGS[ASSAYS[0].clean_name]["genome"]["blacklist"],
         regions=lambda wildcards: str(MULTIOMICS_CONFIG.regions_bed) if MULTIOMICS_CONFIG.regions_bed else None,
     threads: 1
     resources:
@@ -41,7 +41,7 @@ rule make_dataset_binsize:
         dataset=OUTPUT_DIR + "multiomics/dataset/dataset_bins.h5ad",
     params:
         bigwig_dir=OUTPUT_DIR + "multiomics/bigwigs/",
-        chromosome_sizes=MULTIOMICS_CONFIG.fasta_index,
+        chromosome_sizes=lambda wildcards: LOADED_CONFIGS[ASSAYS[0].clean_name]["genome"]["chromosome_sizes"],
         blacklist=EXAMPLE_CONFIG.genome.blacklist,
         binsize=MULTIOMICS_CONFIG.binsize,
     threads: 1

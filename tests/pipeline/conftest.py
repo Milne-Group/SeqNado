@@ -420,13 +420,15 @@ def multiomics_configs(
         "config_multiomics.yaml not created by seqnado config"
     )
 
-    # Update multiomics config with fasta_index for dataset generation
+    # Update multiomics config with regions_bed for dataset generation
     with open(multiomics_config) as f:
         multi_config = yaml.safe_load(f)
 
-    # Set the fasta_index from merged_resources
-    if merged_resources.get("fasta_index"):
-        multi_config["fasta_index"] = str(merged_resources["fasta_index"])
+    # Set the regions_bed from merged_resources (using genes BED file)
+    # and disable binsize mode to use regions mode instead
+    if merged_resources.get("genes"):
+        multi_config["regions_bed"] = str(merged_resources["genes"])
+        multi_config["binsize"] = None
 
     with open(multiomics_config, "w") as f:
         yaml.dump(multi_config, f, sort_keys=False)
