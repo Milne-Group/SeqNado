@@ -40,7 +40,6 @@ class GenomeResources(BaseModel):
         "blacklist": "hg38_chr21-blacklist.bed",
         "genes": "hg38_genes.bed",
         "fasta": "chr21.fa",
-        "fasta_index": "chr21.fa.fai",
         "plot_coords": "plotting_coordinates.bed",
     }
 
