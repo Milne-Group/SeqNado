@@ -1,7 +1,7 @@
 <!-- Header and badges -->
 # SeqNado
 
-[![Documentation](https://github.com/alsmith151/SeqNado/actions/workflows/build_docs.yml/badge.svg)](https://github.com/alsmith151/SeqNado/actions/workflows/build_docs.yml)
+[![Documentation](https://github.com/Milne-Group/SeqNado/actions/workflows/build_docs.yml/badge.svg)](https://github.com/Milne-Group/SeqNado/actions/workflows/build_docs.yml)
 [![Bioconda](https://anaconda.org/bioconda/seqnado/badges/version.svg)](https://anaconda.org/bioconda/seqnado)
 [![Bioconda Updated](https://anaconda.org/bioconda/seqnado/badges/latest_release_date.svg)](https://anaconda.org/bioconda/seqnado)
 [![PyPI Downloads](https://static.pepy.tech/badge/seqnado)](https://pepy.tech/projects/seqnado)
