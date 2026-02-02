@@ -56,8 +56,8 @@ rule minimap2_to_viewpoints:
     resources:
         mem="4GB",
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log: OUTPUT_DIR + "/logs/aligned/{sample}.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/aligned/{sample}.tsv",
+    log: OUTPUT_DIR + "/logs/aligned/aligned_to_viewpoints/{sample}.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/aligned/aligned_to_viewpoints/{sample}.tsv",
     message: "Aligning reads to viewpoints for sample {wildcards.sample}",
     shell: """
     minimap2 -x sr -a -k 8 -w 1 --cs=long {input.viewpoints} {input.fq} 2> {log} |

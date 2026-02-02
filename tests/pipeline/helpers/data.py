@@ -67,8 +67,8 @@ class GenomeResources(BaseModel):
             "plot_coords": "plotting_coordinates.bed",
         },
         "mcc": {
-            **_DEFAULT_RESOURCES,
-            "chromosome_sizes": "chr21.fa.fai",
+            **_METH_RESOURCES, 
+            "chromosome_sizes": "chr21.chrom.sizes",
             "fasta": "chr21.fa",
             "viewpoints": "mcc_viewpoints.bed",
         },
