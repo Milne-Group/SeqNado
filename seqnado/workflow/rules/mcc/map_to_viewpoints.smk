@@ -51,13 +51,13 @@ rule minimap2_to_viewpoints:
         fq=OUTPUT_DIR + "/flashed/{sample}/{sample}.extendedFrags.fastq.gz",
         viewpoints=OUTPUT_DIR + "/resources/viewpoints.fa",
     output:
-        bam=temp(OUTPUT_DIR + "/aligned/aligned_to_viewpoints/{sample}.bam"),
+        bam=temp(OUTPUT_DIR + "/aligned/to_viewpoints/{sample}.bam"),
     threads: 4
     resources:
         mem="4GB",
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log: OUTPUT_DIR + "/logs/aligned/aligned_to_viewpoints/{sample}.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/aligned/aligned_to_viewpoints/{sample}.tsv",
+    log: OUTPUT_DIR + "/logs/aligned/to_viewpoints/{sample}.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/aligned/to_viewpoints/{sample}.tsv",
     message: "Aligning reads to viewpoints for sample {wildcards.sample}",
     shell: """
     minimap2 -x sr -a -k 8 -w 1 --cs=long {input.viewpoints} {input.fq} 2> {log} |
