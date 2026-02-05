@@ -79,8 +79,11 @@ jobs:
           # Update sha256
           sed -i "s/sha256: .*/sha256: ${SHA}/" meta.yaml
 
+          # Fix entry point (cli_pipeline -> app)
+          sed -i "s/seqnado.cli:cli_pipeline/seqnado.cli:app/g" meta.yaml
+
           echo "Updated meta.yaml:"
-          head -20 meta.yaml
+          head -30 meta.yaml
 
       - name: Create Pull Request
         env:
