@@ -2,38 +2,7 @@ import re
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested, format_deeptools_options
 from seqnado.config.third_party_tools import CommandLineArguments
 
-
-rule homer_make_tag_directory:
-    input:
-        bam=OUTPUT_DIR + "/aligned/{sample}.bam",
-    output:
-        homer_tag_directory=directory(OUTPUT_DIR + "/tag_dirs/{sample}"),
-    wildcard_constraints:
-        sample=r"(?!merged/).*",
-    params:
-        options=str(
-            CONFIG.third_party_tools.homer.make_tag_directory.command_line_arguments
-        ),
-    resources:
-        mem=lambda wildcards, attempt: define_memory_requested(
-            initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
-        ),
-        runtime=lambda wildcards, attempt: define_time_requested(
-            initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
-        ),
-    container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log:
-        OUTPUT_DIR + "/logs/homer/maketagdirectory_{sample}.log",
-    benchmark:
-        OUTPUT_DIR + "/.benchmark/homer/maketagdirectory_{sample}.tsv"
-    message:
-        "Making tag directory with HOMER for sample {wildcards.sample}"
-    shell:
-        """
-    makeTagDirectory {output.homer_tag_directory} {input.bam} {params.options} > {log} 2>&1
-    """
-
+include: "common.smk"
 
 rule homer_make_bigwigs:
     input:
@@ -68,7 +37,6 @@ rule homer_make_bigwigs:
     makeBigWig.pl {input.homer_tag_directory} {params.genome_name} -chromSizes {params.genome_chrom_sizes} -url INSERT_URL -webdir {params.outdir} {params.options} > {log} 2>&1 &&
     mv {params.outdir}/{wildcards.sample}.ucsc.bigWig {output.homer_bigwig}
     """
-
 
 rule deeptools_make_bigwigs:
     input:

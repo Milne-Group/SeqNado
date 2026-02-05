@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional, Any
 
 from pydantic import BaseModel, field_validator, model_validator, ValidationInfo
+from seqnado import Assay
 
 
 # -----------------------------------------------------------------------------
@@ -48,6 +49,7 @@ class CommonComputedFieldsMixin(BaseModel):
     create_dataset: Optional[bool] = None
     create_ucsc_hub: Optional[bool] = None
     has_spikein: Optional[bool] = None
+    create_quantification_files: bool = False
 
     create_geo_submission_files: bool = False
 
@@ -115,6 +117,25 @@ class CommonComputedFieldsMixin(BaseModel):
         v: Any,
     ) -> bool:
         return bool(v)
+    
+    @field_validator("create_quantification_files", mode="before")
+    def validate_create_quantification_files(
+        cls,
+        v: Any,
+        info: ValidationInfo,
+    ) -> bool:
+        
+        if v is not None:
+            return bool(v)
+
+        # Check to see if we need to create quantification files
+        # For RNA-seq this is always True
+        # For other assays, this will be left to False unless explicitly set to True
+        if info.data.get('assay') == Assay.RNA:
+            return True
+
+       
+
 
     @model_validator(mode="after")
     def compute_missing_computed_fields(cls, model: "CommonComputedFieldsMixin") -> "CommonComputedFieldsMixin":

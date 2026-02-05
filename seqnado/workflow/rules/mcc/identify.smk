@@ -67,7 +67,7 @@ use rule index_bam as index_bam_viewpoints with:
     input:
         bam=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.bam",
     output:
-        bai=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.bam.bai",
+        bai=temp(OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.bam.bai"),
     log: OUTPUT_DIR + "/logs/index_bam_viewpoints/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/index_bam_viewpoints/{sample}.tsv",
     message: "Indexing BAM file for viewpoints for sample {wildcards.sample}",
