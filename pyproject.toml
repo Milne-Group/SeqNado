@@ -64,6 +64,7 @@ local_scheme = "no-local-version"
 
 [tool.setuptools.packages.find]
 where = ["."]
+exclude = ["tests", "tests.*"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
