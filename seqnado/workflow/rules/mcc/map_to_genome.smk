@@ -9,12 +9,14 @@ rule split_reads_aligned_to_viewpoints:
     threads: 1
     resources:
         mem="1GB",
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: "docker://ghcr.io/alsmith151/mccnado:latest"
     log: OUTPUT_DIR + "/logs/split_reads/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/split_reads/{sample}.tsv",
     message: "Splitting reads aligned to viewpoints for sample {wildcards.sample}",
-    script:
-        "../../scripts/mcc_split_reads_aligned_to_viewpoints.py"
+    shell: """
+    mkdir -p $(dirname {output.fq}) &&
+    mccnado split-viewpoint-reads {input.bam} {output.fq} > {log} 2>&1
+    """
 
 
 rule align_mcc_reads_to_genome:
