@@ -53,6 +53,6 @@ Follow the step-by-step guide to get up and running:
 4. **[Configuration](configuration.md)**: Define your experiment parameters (CLI: [seqnado config](cli.md#cli-seqnado-config)).
 5. **[Design Guide](design.md)**: Create your sample metadata design (CLI: [seqnado design](cli.md#cli-seqnado-design)).
 6. **[Pipeline Overview](pipeline.md)**: Run the workflow (CLI: [seqnado pipeline](cli.md#cli-seqnado-pipeline)) and explore [Outputs](outputs.md).
+7. **[Output Examples](examples.md)**: See real example outputs from test data runs.
 
 For a quick end-to-end example, see the **[Quick Start](quick_start.md)** guide.
-- [Pipeline](pipeline.md)
