@@ -1,0 +1,124 @@
+name: Update Bioconda Recipe
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update (without v prefix)'
+        required: true
+
+jobs:
+  update-bioconda:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"  # Remove 'v' prefix if present
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Wait for PyPI
+        run: |
+          echo "Waiting for PyPI to update..."
+          sleep 60
+
+      - name: Get SHA256 from PyPI
+        id: sha
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          for i in {1..10}; do
+            SHA=$(curl -sL "https://pypi.org/pypi/seqnado/${VERSION}/json" | python3 -c "import sys, json; data=json.load(sys.stdin); print(next(u['digests']['sha256'] for u in data['urls'] if u['packagetype']=='sdist'))" 2>/dev/null) && break
+            echo "Attempt $i failed, retrying in 30s..."
+            sleep 30
+          done
+          if [ -z "$SHA" ]; then
+            echo "Failed to get SHA256 from PyPI"
+            exit 1
+          fi
+          echo "sha256=$SHA" >> $GITHUB_OUTPUT
+          echo "Found SHA256: $SHA"
+
+      - name: Fork and clone bioconda-recipes
+        id: fork
+        env:
+          GH_TOKEN: ${{ secrets.BIOCONDA_PR_TOKEN }}
+        run: |
+          # Get the authenticated user (fork owner)
+          FORK_OWNER=$(gh api user --jq '.login')
+          echo "fork_owner=$FORK_OWNER" >> $GITHUB_OUTPUT
+
+          # Fork if not already forked
+          gh repo fork bioconda/bioconda-recipes --default-branch-only || true
+
+          # Clone fresh from upstream
+          git clone --depth 1 --single-branch https://github.com/bioconda/bioconda-recipes.git
+          cd bioconda-recipes
+
+          # Set up fork remote with authenticated user
+          git remote add fork "https://x-access-token:${GH_TOKEN}@github.com/${FORK_OWNER}/bioconda-recipes.git"
+
+          # Create new branch from HEAD
+          git checkout -b update-seqnado-${{ steps.version.outputs.version }}
+
+      - name: Update meta.yaml
+        run: |
+          cd bioconda-recipes/recipes/seqnado
+          VERSION="${{ steps.version.outputs.version }}"
+          SHA="${{ steps.sha.outputs.sha256 }}"
+
+          # Update version
+          sed -i "s/{% set version = \".*\" %}/{% set version = \"${VERSION}\" %}/" meta.yaml
+
+          # Update sha256
+          sed -i "s/sha256: .*/sha256: ${SHA}/" meta.yaml
+
+          # Fix entry point (cli_pipeline -> app)
+          sed -i "s/seqnado.cli:cli_pipeline/seqnado.cli:app/g" meta.yaml
+
+          echo "Updated meta.yaml:"
+          head -30 meta.yaml
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.BIOCONDA_PR_TOKEN }}
+        run: |
+          cd bioconda-recipes
+          VERSION="${{ steps.version.outputs.version }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add recipes/seqnado/meta.yaml
+          git commit -m "Update seqnado to ${VERSION}"
+          git push fork update-seqnado-${VERSION} --force
+
+          gh pr create \
+            --repo bioconda/bioconda-recipes \
+            --title "Update seqnado to ${VERSION}" \
+            --body "Update seqnado to version ${VERSION}.
+
+          This PR was automatically created by the SeqNado release workflow.
+
+          - [Release notes](https://github.com/${{ github.repository }}/releases/tag/v${VERSION})
+          - [PyPI](https://pypi.org/project/seqnado/${VERSION}/)" \
+            --head "${{ steps.fork.outputs.fork_owner }}:update-seqnado-${VERSION}"
+
+      - name: Request BiocondaBot label
+        env:
+          GH_TOKEN: ${{ secrets.BIOCONDA_PR_TOKEN }}
+        run: |
+          cd bioconda-recipes
+          VERSION="${{ steps.version.outputs.version }}"
+          # Wait a moment for the PR to be indexed
+          sleep 5
+          gh pr comment \
+            --repo bioconda/bioconda-recipes \
+            "update-seqnado-${VERSION}" \
+            --body "@BiocondaBot please add label"

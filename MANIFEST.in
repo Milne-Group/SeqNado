@@ -2,6 +2,8 @@ global-include *.smk
 global-include snakefile*
 global-include *.yaml
 global-include *.yml
-global-include *.py
+recursive-include seqnado *.py
 recursive-include seqnado data/*
 include seqnado/init.sh
+global-exclude tests/*
+prune tests
