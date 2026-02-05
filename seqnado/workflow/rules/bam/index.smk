@@ -8,7 +8,7 @@ rule sort_bam:
         bam=temp(OUTPUT_DIR + "/aligned/sorted/{sample}.bam"),
         read_log=temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_sort.tsv"),
     resources:
-        mem=lambda wildcards, attempt: define_memory_requested(initial_value=6, attempts=attempt, scale=SCALE_RESOURCES),
+        mem=lambda wildcards, attempt: define_memory_requested(initial_value=CONFIG.third_party_tools.samtools.sort.threads, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
     threads: CONFIG.third_party_tools.samtools.sort.threads
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"

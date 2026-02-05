@@ -1472,6 +1472,9 @@ def design(
 
 # -------------------------------- pipeline ---------------------------------- #
 # Allow pass-through of *unknown* options to Snakemake via ctx.args
+# Replace your current pipeline function with the following:
+
+# Allow pass-through of *unknown* options to Snakemake via ctx.args
 @app.command(
     help="Run the data processing pipeline for ASSAY (Snakemake under the hood). Any additional arguments are passed to Snakemake (e.g., `seqnado pipeline rna -n` for dry-run, `--unlock`, etc.).",
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
@@ -1515,6 +1518,14 @@ def pipeline(
         False, "--print-cmd", help="Print the Snakemake command before running it."
     ),
 ) -> None:
+    """
+    Run the data processing pipeline for ASSAY.
+
+    This command wraps Snakemake to execute the SeqNado workflows. Any additional arguments
+    provided after the known options are passed directly to Snakemake. For example:
+        seqnado pipeline rna -n --unlock
+    will run a dry-run of the RNA-seq pipeline and unlock the working directory if needed.
+    """
     _configure_logging(verbose)
 
     if show_version:
@@ -1529,24 +1540,29 @@ def pipeline(
         )
         raise typer.Exit(code=127)
 
-    # Local import for helper
+    # Local import (keeps single-point-of-truth)
     from seqnado.utils import extract_cores_from_options
 
-    extra_args = list(ctx.args)
-
-    # Check for Multiomic mode before requiring assay argument
+    # Detect multiomics configs early
     config_files = find_assay_config_paths(Path("."))
     use_multiomics = len(config_files) > 1 and not config_file and not assay
 
-    # Debug: check if assay looks like a flag (starts with -)
+    # If the user accidentally put a flag into the assay position (e.g. `-n`),
+    # treat it as not providing an assay and restore that token to args.
+    # Note: we don't materialize extra args until we've handled `assay`.
     if assay and assay.startswith("-"):
-        # This is actually a flag, not an assay - treat as Multiomic mode
         logger.debug(
-            f"Detected flag '{assay}' in assay position, checking for Multiomic mode"
+            "Argument provided in 'assay' position looks like a flag; treating as no assay."
         )
-        extra_args.insert(0, assay)  # Put it back in extra args
+        # Put that token back into the argv list for proper passthrough.
+        # Typer removed it from ctx.args when it assigned to `assay`.
+        # We'll restore it below when building raw_args.
+        flag_in_assay = assay
         assay = None
+        # recompute multiomics condition (if config_file specified, it's single-assay)
         use_multiomics = len(config_files) > 1 and not config_file
+    else:
+        flag_in_assay = None
 
     if not assay and not use_multiomics:
         logger.error(
@@ -1554,29 +1570,43 @@ def pipeline(
         )
         raise typer.Exit(code=2)
 
-    cleaned_opts, cores = extract_cores_from_options(extra_args)
+    # Now collect extra args from Typer context (this contains only unknown/extra args).
+    raw_extra_args = list(ctx.args)  # tokens Typer didn't map to declared params
+    # If we restored a flag from the assay position, prepend it to preserve ordering.
+    if flag_in_assay:
+        # Insert at 0 to approximate original position; append could bury it.
+        raw_extra_args.insert(0, flag_in_assay)
+
+    # Extract cores and produce cleaned options
+    cleaned_opts, cores = extract_cores_from_options(raw_extra_args)
+
+    # Sensible default cores logic for multiomics: at least one core per assay unless user requested more.
+    if use_multiomics:
+        cores = max(cores, len(config_files))
 
     os.environ["SCALE_RESOURCES"] = str(scale_resources)
 
     if clean_symlinks:
-        target = Path(f"seqnado_output/{assay}/fastqs")
-        logger.info(f"Cleaning symlinks in {target} ...")
-        for link in target.glob("*"):
-            if link.is_symlink():
-                link.unlink(missing_ok=True)
+        # If assay is None (multiomics), we still have to pick a path; skip if not present
+        if assay:
+            target = Path(f"seqnado_output/{assay}/fastqs")
+            logger.info(f"Cleaning symlinks in {target} ...")
+            for link in target.glob("*"):
+                if link.is_symlink():
+                    link.unlink(missing_ok=True)
+        else:
+            logger.info("clean_symlinks requested but no assay specified; skipping.")
 
     pkg_root_trav = _pkg_traversable("seqnado")
 
+    # Choose Snakefile
     if use_multiomics:
-        # Multiomic mode: use Snakefile_multi
         logger.info(f"Multiomic mode detected: found {len(config_files)} config files")
-        logger.info(f"Assays: {', '.join([assay.name for assay in config_files])}")
+        logger.info(f"Assays: {', '.join([c.name for c in config_files])}")
         snake_trav = pkg_root_trav.joinpath("workflow").joinpath("Snakefile_multi")
-        config_file = None  # Multiomic mode doesn't use --configfile
+        config_file = None
     else:
-        # Single-assay mode: use standard Snakefile
         snake_trav = pkg_root_trav.joinpath("workflow").joinpath("Snakefile")
-
         if not config_file:
             config_file = Path(f"config_{assay}.yaml")
             if not config_file.exists():
@@ -1585,7 +1615,7 @@ def pipeline(
                 )
                 raise typer.Exit(code=1)
 
-    # Prepare profile context manager if needed
+    # Resolve profile if requested
     profile_trav = None
     if preset:
         profiles = _preset_profiles()
@@ -1598,10 +1628,10 @@ def pipeline(
                 .joinpath(profile_dir_name)
             )
 
-    # Use resources.as_file to ensure the packaged Snakefile and profile are available as paths
     profile_ctx = (
         resources.as_file(profile_trav) if profile_trav else contextlib.nullcontext()
     )
+
     try:
         with (
             resources.as_file(snake_trav) as snakefile_path,
@@ -1613,6 +1643,7 @@ def pipeline(
                 )
                 raise typer.Exit(code=1)
 
+            # Base command
             cmd: List[str] = [
                 "snakemake",
                 "--snakefile",
@@ -1620,23 +1651,19 @@ def pipeline(
                 "--show-failed-logs",
             ]
 
-            # Set cores: use user-specified cores, or default based on mode
-            if use_multiomics:
-                # For Multiomic, default to number of assays if cores not specified
-                if cores == 1:  # Default from extract_cores_from_options
-                    cores = cores + len(config_files)
-
+            # Ensure cores is passed
             cmd += ["-c", str(cores)]
 
-            # Build workflow arguments to pass to nested snakemake calls (Multiomic mode)
-            workflow_args = []
+            # Build workflow_args for nested Snakemake runs (only used in Multiomic mode)
+            workflow_args: List[str] = []
             if use_multiomics:
-                # Collect arguments that should be passed to nested snakemake calls
+                # Nested workflow should get profile and default-resources if applicable
                 if preset and profile_path:
                     workflow_args.append(f"--profile {profile_path}")
                 if queue and preset and preset.startswith("s"):
                     workflow_args.append(f"--default-resources slurm_partition={queue}")
-                # Add other common flags
+
+                # Always enable these nested-run friendly flags
                 workflow_args.extend(
                     [
                         "--printshellcmds",
@@ -1644,25 +1671,56 @@ def pipeline(
                         "--show-failed-logs",
                     ]
                 )
-                # Add any extra cleaned opts
+
+                # Add all cleaned options to the nested workflow args so nested snakemake sees them.
+                # They will be joined into a single string and injected via --config workflow_args="..."
                 workflow_args.extend(cleaned_opts)
 
-                # Pass workflow_args via config without nested quotes to avoid SLURM --wrap issues
+                # Policy: some flags must also be present on the top-level snakemake invocation.
+                # Example: -n/--dry-run, --unlock, printshellcmds, --rerun-incomplete are meaningful at top-level.
+                # TOP_LEVEL_PASS_THROUGH can be adjusted if you want more/fewer flags forwarded.
+                TOP_LEVEL_PASS_THROUGH = (
+                    "-n",
+                    "--dry-run",
+                    "--printshellcmds",
+                    "--unlock",
+                    "--rerun-incomplete",
+                    "--show-failed-logs",
+                )
+
+                def should_pass_to_top_level(opt: str) -> bool:
+                    # This accepts exact matches and single-token flags that startwith a pass-through key.
+                    for p in TOP_LEVEL_PASS_THROUGH:
+                        if opt == p or opt.startswith(p + "="):
+                            return True
+                    # Also accept short flags like "-n" that may be standalone in cleaned_opts list.
+                    return False
+
+                # Filter cleaned_opts into top-level opts (preserving order)
+                top_level_opts = [o for o in cleaned_opts if should_pass_to_top_level(o)]
+
+                # Append top-level opts to the top-level command so those flags take effect immediately.
+                if top_level_opts:
+                    cmd += top_level_opts
+
+                # Pack workflow_args into a single config key for the multi-run Snakefile to consume.
                 workflow_args_str = " ".join(workflow_args)
                 cmd += ["--config", f"workflow_args={workflow_args_str}"]
 
-            # Add config file only for single-assay mode
+            # Non-multiomics: pass through cleaned options directly to the single-assay snakemake
+            if not use_multiomics:
+                # For single-assay, it's safe to pass everything through; users expect flags to be honored.
+                cmd += cleaned_opts
+
+            # Add configfile for single-assay mode only
             if config_file:
                 cmd += ["--configfile", str(config_file)]
 
-            # For Multiomic mode, use project directory as working directory to avoid lock conflicts
-            # Single-assay mode runs in current directory as before
+            # Run in project directory for multiomics to avoid lock conflicts
             if use_multiomics:
                 cmd += ["--directory", "."]
 
-            if not use_multiomics:
-                cmd += cleaned_opts
-
+            # Add top-level profile if requested (both modes)
             if preset and profile_path:
                 cmd += ["--profile", str(profile_path)]
                 logger.info(
@@ -1672,6 +1730,7 @@ def pipeline(
             if queue and preset.startswith("s") and not use_multiomics:
                 cmd += ["--default-resources", f"slurm_partition={queue}"]
 
+            # Optional: print nice ASCII logo if present
             logo_trav = pkg_root_trav.joinpath("data").joinpath("logo.txt")
             try:
                 with resources.as_file(logo_trav) as lp:
@@ -1682,6 +1741,7 @@ def pipeline(
             except Exception:
                 pass
 
+            # Final working directory setup
             cwd = str(Path(".").resolve())
             os.chdir(cwd)
             os.environ["PWD"] = cwd
@@ -1689,6 +1749,7 @@ def pipeline(
             if print_cmd:
                 logger.info("Snakemake command:\n$ " + " ".join(map(str, cmd)))
 
+            # Execute and propagate exit code
             completed = subprocess.run(cmd, cwd=cwd)
             raise typer.Exit(code=completed.returncode)
     except typer.Exit:
@@ -1696,6 +1757,7 @@ def pipeline(
     except Exception as e:
         logger.exception("Failed to run snakemake: %s", e)
         raise typer.Exit(code=1)
+
 
 
 # -------------------------------- Entrypoint --------------------------------

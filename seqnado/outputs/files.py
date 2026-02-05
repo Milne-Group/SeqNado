@@ -538,6 +538,20 @@ class BigBedFiles(BaseModel):
         """Return a list of bigBed files."""
         return [str(f.with_suffix(".bb")) for f in self.bed_files if f.suffix == ".bed"]
 
+class PairFiles(BaseModel):
+    assay: Assay
+    names: list[str]
+    viewpoints: list[str] = Field(default_factory=list)
+    output_dir: str = "seqnado_output"
+
+    @computed_field
+    @property
+    def files(self) -> List[str]:
+        """Return a list of pair files."""
+        expand(self.output_dir + "/{name}/ligation_junctions/{viewpoint}.pairs.gz",
+               name=self.names,
+               viewpoint=self.viewpoints,
+               )
 
 class ContactFiles(BaseModel):
     assay: Assay

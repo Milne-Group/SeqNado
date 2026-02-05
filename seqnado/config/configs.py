@@ -487,9 +487,22 @@ class MCCConfig(BaseModel, PathValidatorMixin):
     """Configuration for MCC (Capture-C) analysis."""
 
     viewpoints: Path
-    resolutions: list[int] = [100]
-    exclusion_zone: int = 500  # Default value, adjust as needed
-    create_replicate_bigwigs: bool = False
+    resolutions: list[int] = Field(
+        default_factory=lambda: [100,],
+        description="List of resolutions (in base pairs) for contact file generation",
+    )
+    exclusion_zone: int = Field(
+        default=500,
+        description="Exclusion zone around the viewpoint in base pairs",
+    )
+    create_replicate_bigwigs: bool = Field(
+        default=False,
+        description="Whether to create bigwig files for individual replicates",
+    )
+    create_replicate_contact_files: bool = Field(
+        default=False,
+        description="Whether to create contact files for individual replicates",
+    )
 
     @field_validator("viewpoints")
     def validate_viewpoints(cls, v: Path, info: ValidationInfo) -> Path:
