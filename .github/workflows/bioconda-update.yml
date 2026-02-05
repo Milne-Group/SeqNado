@@ -51,7 +51,7 @@ jobs:
         run: |
           gh repo fork bioconda/bioconda-recipes --clone=true --default-branch-only || true
           cd bioconda-recipes
-          git remote add upstream https://github.com/bioconda/bioconda-recipes.git
+          git remote get-url upstream || git remote add upstream https://github.com/bioconda/bioconda-recipes.git
           git fetch upstream
           git checkout -B update-seqnado-${{ steps.version.outputs.version }} upstream/main
 
