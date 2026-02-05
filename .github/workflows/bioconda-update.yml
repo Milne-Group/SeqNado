@@ -109,3 +109,16 @@ jobs:
           - [Release notes](https://github.com/${{ github.repository }}/releases/tag/v${VERSION})
           - [PyPI](https://pypi.org/project/seqnado/${VERSION}/)" \
             --head "${{ steps.fork.outputs.fork_owner }}:update-seqnado-${VERSION}"
+
+      - name: Request BiocondaBot label
+        env:
+          GH_TOKEN: ${{ secrets.BIOCONDA_PR_TOKEN }}
+        run: |
+          cd bioconda-recipes
+          VERSION="${{ steps.version.outputs.version }}"
+          # Wait a moment for the PR to be indexed
+          sleep 5
+          gh pr comment \
+            --repo bioconda/bioconda-recipes \
+            "update-seqnado-${VERSION}" \
+            --body "@BiocondaBot please add label"
