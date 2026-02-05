@@ -46,14 +46,26 @@ jobs:
           echo "Found SHA256: $SHA"
 
       - name: Fork and clone bioconda-recipes
+        id: fork
         env:
           GH_TOKEN: ${{ secrets.BIOCONDA_PR_TOKEN }}
         run: |
-          gh repo fork bioconda/bioconda-recipes --clone=true --default-branch-only || true
+          # Get the authenticated user (fork owner)
+          FORK_OWNER=$(gh api user --jq '.login')
+          echo "fork_owner=$FORK_OWNER" >> $GITHUB_OUTPUT
+
+          # Fork if not already forked
+          gh repo fork bioconda/bioconda-recipes --default-branch-only || true
+
+          # Clone fresh from upstream
+          git clone --depth 1 --single-branch https://github.com/bioconda/bioconda-recipes.git
           cd bioconda-recipes
-          git remote get-url upstream || git remote add upstream https://github.com/bioconda/bioconda-recipes.git
-          git fetch upstream
-          git checkout -B update-seqnado-${{ steps.version.outputs.version }} upstream/main
+
+          # Set up fork remote with authenticated user
+          git remote add fork "https://x-access-token:${GH_TOKEN}@github.com/${FORK_OWNER}/bioconda-recipes.git"
+
+          # Create new branch from HEAD
+          git checkout -b update-seqnado-${{ steps.version.outputs.version }}
 
       - name: Update meta.yaml
         run: |
@@ -82,7 +94,7 @@ jobs:
 
           git add recipes/seqnado/meta.yaml
           git commit -m "Update seqnado to ${VERSION}"
-          git push -u origin update-seqnado-${VERSION} --force
+          git push fork update-seqnado-${VERSION} --force
 
           gh pr create \
             --repo bioconda/bioconda-recipes \
@@ -93,4 +105,4 @@ jobs:
 
           - [Release notes](https://github.com/${{ github.repository }}/releases/tag/v${VERSION})
           - [PyPI](https://pypi.org/project/seqnado/${VERSION}/)" \
-            --head "${{ github.repository_owner }}:update-seqnado-${VERSION}"
+            --head "${{ steps.fork.outputs.fork_owner }}:update-seqnado-${VERSION}"
