@@ -46,16 +46,24 @@ jobs:
           echo "Found SHA256: $SHA"
 
       - name: Fork and clone bioconda-recipes
+        id: fork
         env:
           GH_TOKEN: ${{ secrets.BIOCONDA_PR_TOKEN }}
         run: |
+          # Get the authenticated user (fork owner)
+          FORK_OWNER=$(gh api user --jq '.login')
+          echo "fork_owner=$FORK_OWNER" >> $GITHUB_OUTPUT
+
           # Fork if not already forked
           gh repo fork bioconda/bioconda-recipes --default-branch-only || true
-          # Clone fresh from upstream with default branch
+
+          # Clone fresh from upstream
           git clone --depth 1 --single-branch https://github.com/bioconda/bioconda-recipes.git
           cd bioconda-recipes
-          # Set up fork remote
-          git remote add fork "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository_owner }}/bioconda-recipes.git"
+
+          # Set up fork remote with authenticated user
+          git remote add fork "https://x-access-token:${GH_TOKEN}@github.com/${FORK_OWNER}/bioconda-recipes.git"
+
           # Create new branch from HEAD
           git checkout -b update-seqnado-${{ steps.version.outputs.version }}
 
@@ -97,4 +105,4 @@ jobs:
 
           - [Release notes](https://github.com/${{ github.repository }}/releases/tag/v${VERSION})
           - [PyPI](https://pypi.org/project/seqnado/${VERSION}/)" \
-            --head "${{ github.repository_owner }}:update-seqnado-${VERSION}"
+            --head "${{ steps.fork.outputs.fork_owner }}:update-seqnado-${VERSION}"
