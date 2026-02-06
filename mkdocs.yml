@@ -1,31 +1,98 @@
-site_name: Seqnado Documentation
+site_name: SeqNado
+site_description: A Snakemake-based bioinformatics toolkit for analyzing sequencing data
+site_author: Milne Group
+site_url: https://milne-group.github.io/SeqNado
+
 theme:
   name: material
+  logo: https://raw.githubusercontent.com/Milne-Group/SeqNado/main/containers/pipeline/seqnado.png
+  favicon: https://raw.githubusercontent.com/Milne-Group/SeqNado/main/containers/pipeline/seqnado.png
   palette:
-    scheme: default
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: green
+      accent: light green
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: lime
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
   font:
-    text: "Roboto"
-    code: "Roboto Mono"
+    text: Roboto
+    code: Roboto Mono
   features:
+    - announce.dismiss
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
     - content.code.copy
+    - content.tabs.link
+    - content.tooltips
     - header.autohide
+    - navigation.expand
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.path
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
   icon:
-    repo: fontawesome/brands/git-alt
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
 markdown_extensions:
   - toc:
       permalink: true
+      permalink_title: Anchor link to this section
       toc_depth: 4
   - pymdownx.highlight:
       use_pygments: true
       line_spans: __span
       pygments_lang_class: true
+      anchor_linenums: true
   - pymdownx.inlinehilite
-  - pymdownx.snippets
-  - pymdownx.superfences
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.tasklist:
+      custom_checkbox: true
   - admonition
   - codehilite:
       guess_lang: false
   - attr_list
+  - md_in_html
+  - def_list
+  - footnotes
+  - abbr
 
 plugins:
   - search
@@ -66,6 +133,7 @@ nav:
   - Usage:
     - Pipeline Overview: pipeline.md
     - Outputs: outputs.md
+    - Output Examples: examples.md
     - CLI Reference: cli.md
   - Reference:
     - API Overview: api/index.md
@@ -79,3 +147,22 @@ nav:
     - FAQ: faq.md
 
 repo_url: https://github.com/alsmith151/SeqNado
+repo_name: Milne-Group/SeqNado
+edit_uri: edit/main/docs/
+
+copyright: Copyright &copy; 2024 - 2026 Milne Group
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Milne-Group/SeqNado
+      name: SeqNado on GitHub
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/seqnado
+      name: SeqNado on PyPI
+  version:
+    provider: mike
+  generator: false
+
+extra_css:
+  - stylesheets/extra.css
