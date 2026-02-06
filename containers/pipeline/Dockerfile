@@ -6,22 +6,22 @@ COPY multiqc_config.yaml /opt/seqnado/multiqc_config.yaml
 COPY seqnado.png /opt/seqnado/seqnado.png
 
 # Set environment variables
-ENV PATH="/opt/conda/bin:$PATH"
-ENV CONDA_DEFAULT_ENV=base
-ENV CONDA_PREFIX="/opt/conda"
-ENV LD_LIBRARY_PATH="/usr/lib:/lib"
-ENV MAMBA_ROOT_PREFIX="/opt/conda"
+ENV PATH="/opt/conda/bin:$PATH" \
+    CONDA_DEFAULT_ENV=base \
+    CONDA_PREFIX="/opt/conda" \
+    LD_LIBRARY_PATH="/usr/lib:/lib" \
+    MAMBA_ROOT_PREFIX="/opt/conda"
 
 # Ensure we have root for package installation and system-level setup
 USER root
 
 # Main build process
-RUN set -e && \
+RUN set -eux && \
     # Fix apt permissions and update
     mkdir -p /var/lib/apt/lists/partial && \
     chmod 755 /var/lib/apt/lists/partial && \
     apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      curl ca-certificates gcc libc6-dev pkg-config libssl-dev wget && \
+      ca-certificates curl gcc libc6-dev pkg-config libssl-dev && \
     rm -rf /var/lib/apt/lists/* && \
     \
     # Install latest Quarto (architecture-aware)
@@ -30,6 +30,7 @@ RUN set -e && \
     ARCH=$(dpkg --print-architecture 2>/dev/null || echo "$(uname -m)") && \
     echo "Detected architecture: ${ARCH}" && \
     QUARTO_TMP=/tmp/quarto.deb && \
+    QUARTO_FOUND=0 && \
     ( \
       if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "x86_64" ]; then \
         urls=( "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.deb" ); \
@@ -44,32 +45,21 @@ RUN set -e && \
       for url in "${urls[@]}"; do \
         echo "Trying $url"; \
         if curl -fSL --retry 3 --retry-delay 2 -o "${QUARTO_TMP}" "$url"; then \
-          echo "Downloaded quarto from $url"; break; \
+          echo "Downloaded quarto from $url"; QUARTO_FOUND=1; break; \
         fi; \
       done; \
     ) && \
+    if [ "${QUARTO_FOUND}" -ne 1 ] || [ ! -s "${QUARTO_TMP}" ]; then \
+      echo "Failed to download Quarto ${QUARTO_VERSION} for ${ARCH}" >&2; \
+      exit 1; \
+    fi && \
     dpkg -i "${QUARTO_TMP}" && \
     rm -f "${QUARTO_TMP}" && \
     \
     # Micromamba environment setup (ensure Python <3.12)
     micromamba install -y -n base -f /opt/environment_pipeline.yml && \
-    \
-    # Install Rust
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
-    export PATH="/root/.cargo/bin:$PATH" && \
-    cargo install bamnado && \
-    \
-    # Move bamnado binary to conda bin and cleanup Rust
-    mv /root/.cargo/bin/bamnado /opt/conda/bin/ && \
-    rm -rf /root/.cargo /root/.rustup && \
-    \
-    # Ensure MCCNado is installed. If not install it using pip
-    if ! command -v mccnado &> /dev/null; then \
-      /opt/conda/bin/python -m pip install mccnado; \
-    fi && \
-    \
     # Remove build tools
-    apt-get purge -y wget gcc libc6-dev pkg-config libssl-dev && \
+    apt-get purge -y gcc libc6-dev pkg-config libssl-dev && \
     apt-get autoremove -y && \
     apt-get clean && \
     \
@@ -83,19 +73,18 @@ RUN set -e && \
     micromamba clean -ay
 
 # Add labels
-LABEL Author="asmith"
-LABEL Version="0.4.0"
-LABEL Description="Minimal SeqNado container with BamNado and Python tools"
-LABEL BamNado.Version="dynamic"
-LABEL BuildDate="$(date '+%Y-%m-%d')"
+ARG BUILD_DATE="unknown"
+LABEL Author="asmith" \
+      Version="0.4.0" \
+      Description="Minimal SeqNado pipeline container with Python tools" \
+      BuildDate="${BUILD_DATE}"
 
 # Switch back to micromamba user (set by the base image)
 USER $MAMBA_USER
 
 # Health check / test
 RUN echo "Testing minimal container..." && \
-    echo "$(python --version)" && \
-    echo "$(bamnado --help > /dev/null 2>&1 && echo "BamNado test passed" || exit 1)" && \
+    python --version && \
     echo "All tests passed!"
 
 # Default command
