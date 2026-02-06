@@ -1,0 +1,31 @@
+name: Bioconda Solver Test
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  bioconda-solver:
+    name: Bioconda solve regression
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Conda environment and install SeqNado
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: testing.yml
+          miniforge-version: latest
+          use-mamba: true
+
+      - name: Install SeqNado package
+        shell: bash -el {0}
+        run: pip install .
+
+      - name: Run bioconda solver test
+        shell: bash -el {0}
+        env:
+          SEQNADO_RUN_BIOCONDA_SOLVER_TEST: "1"
+        run: pytest tests/integration/test_bioconda_solver.py --maxfail=1 --disable-warnings -q
