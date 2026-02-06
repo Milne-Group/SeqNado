@@ -34,7 +34,9 @@ def format_qualimap_options(wildcards, options: CommandLineArguments, INPUT_FILE
             options = CommandLineArguments(
                 value=options.value, exclude={"--collect-overlap-pairs"}
             )
-
+    
+    # Also remove any memory specification as this is handled elsewhere
+    options = CommandLineArguments(value=options.value, exclude={"--java-mem-size"})
     return str(options)
 
 

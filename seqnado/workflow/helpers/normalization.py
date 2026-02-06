@@ -9,7 +9,7 @@ def get_norm_factor_spikein(wildcards, OUTPUT_DIR, CONFIG, negative=False):
     Get normalization factor from spike-in data.
 
     Args:
-        wildcards: Snakemake wildcards object containing 'sample'.
+        wildcards: Snakemake wildcards object containing 'sample' and 'spikein_method'.
         OUTPUT_DIR: The output directory path.
         CONFIG: The configuration object.
         negative (bool): If True, return negative scaling factor. Default False.
@@ -17,12 +17,7 @@ def get_norm_factor_spikein(wildcards, OUTPUT_DIR, CONFIG, negative=False):
     Returns:
         float: The normalization scaling factor.
     """
-    # Get the spike-in method from config
-    method = (
-        CONFIG.assay_config.spikein.method.value
-        if CONFIG.assay_config.spikein
-        else "orlando"
-    )
+    method = wildcards.spikein_method
     norm_file = OUTPUT_DIR + f"/resources/{method}/normalisation_factors.json"
 
     with open(norm_file, "r") as f:

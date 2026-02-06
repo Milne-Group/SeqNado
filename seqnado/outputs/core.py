@@ -1,7 +1,6 @@
 from itertools import chain
 from pathlib import Path
 from typing import Any, List
-from xml.etree.ElementInclude import include
 
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -28,6 +27,7 @@ from seqnado.outputs.files import (
     HeatmapFiles,
     HubFiles,
     MethylationFiles,
+    PairFiles,
     PeakCallingFiles,
     PlotFiles,
     QCFiles,
@@ -43,21 +43,21 @@ from seqnado.utils import FileSelector
 
 class GeoMetadataFilesWrapper:
     """Wrapper that exposes only metadata files from GeoSubmissionFiles for Snakemake output tracking.
-    
+
     This wrapper ensures that only the metadata files (checksums, samples table) that are
     declared as explicit rule outputs are included in the Snakemake OUTPUT object.
     The individual symlinked FASTQ and processed files are created by the geo_symlink rule
     but are not tracked as explicit outputs since they cannot be declared dynamically.
     """
-    
+
     def __init__(self, geo_files: GeoSubmissionFiles):
         self._geo_files = geo_files
-    
+
     @property
     def files(self) -> List[str]:
         """Return only metadata files."""
         return self._geo_files.metadata_files if self._geo_files.metadata_files else []
-    
+
     def __bool__(self) -> bool:
         """Return True if there are any metadata files."""
         return bool(self.files)
@@ -82,9 +82,9 @@ class SeqnadoOutputFiles(BaseModel):
         return self.files
 
     def select_files(
-        self, 
-        suffix: str, 
-        include: str | None = None, 
+        self,
+        suffix: str,
+        include: str | None = None,
         exclude: str | None = None,
         must_include_all_patterns: bool = False,
         use_regex: bool = False,
@@ -111,8 +111,6 @@ class SeqnadoOutputFiles(BaseModel):
             use_regex=use_regex,
             includes_all=must_include_all_patterns,
         )
-
-
 
     @property
     def bigwig_files(self):
@@ -175,7 +173,7 @@ class SeqnadoOutputFiles(BaseModel):
     @property
     def genome_browser_plots(self):
         return self.select_files(".pdf", include="genome_browser")
-    
+
     @property
     def sentinel_files(self):
         return self.select_files(".txt", include=".mcc_")
@@ -239,8 +237,13 @@ class SeqNadoReportFiles:
 
             # Add motif files for assays with peak calling
             peak_config = self.config.assay_config.peak_calling
-            if peak_config and peak_config.run_motif_analysis and peak_config.motif_method:
+            if (
+                peak_config
+                and peak_config.run_motif_analysis
+                and peak_config.motif_method
+            ):
                 from seqnado import MotifMethod
+
                 run_homer = MotifMethod.HOMER in peak_config.motif_method
                 run_meme = MotifMethod.MEME in peak_config.motif_method
                 builder.add_motif_files(
@@ -249,7 +252,11 @@ class SeqNadoReportFiles:
                 )
 
         # Add quantification files for RNA assays with quantification method or if explicitly requested
-        if self.assay == Assay.RNA and hasattr(self.config.assay_config, "rna_quantification") and self.config.assay_config.rna_quantification:
+        if (
+            self.assay == Assay.RNA
+            and hasattr(self.config.assay_config, "rna_quantification")
+            and self.config.assay_config.rna_quantification
+        ):
             builder.add_quantification_files()
         elif (
             "create_quantification_files" in self.config.assay_config
@@ -361,15 +368,18 @@ class SeqnadoOutputBuilder:
         )
 
         self.file_collections.append(bigwig_files)
-    
+
     def add_spikein_bigwig_files(self) -> None:
         """Add spike-in normalized bigwig files to the output collection."""
+        spikein_config = getattr(self.config.assay_config, 'spikein', None)
+        spikein_methods = spikein_config.method if spikein_config else []
 
         bigwig_files = BigWigFiles(
             assay=self.assay,
             names=self.samples.sample_names,
             pileup_methods=self.config.assay_config.bigwigs.pileup_method,
             scale_methods=[DataScalingTechnique.SPIKEIN],
+            spikein_methods=spikein_methods,
             output_dir=self.output_dir,
         )
 
@@ -407,7 +417,7 @@ class SeqnadoOutputBuilder:
         ]
         sentinel_files = BasicFileCollection(files=[str(bw) for bw in bigwigs])
         self.file_collections.append(sentinel_files)
-    
+
     def add_mcc_sentinel_peak_files(self) -> None:
         """Add MCC sentinel files to the output collection.
 
@@ -420,6 +430,20 @@ class SeqnadoOutputBuilder:
             Path(self.output_dir) / "peaks/mcc/.mcc_peaks_called.txt",
         ]
         sentinel_files = BasicFileCollection(files=[str(pk) for pk in peaks])
+        self.file_collections.append(sentinel_files)
+    
+    def add_mcc_sentinel_contact_files(self) -> None:
+        """Add MCC sentinel files to the output collection.
+
+        The issue with MCC contact files is that they are generated per viewpoint group.
+        It's possible that we don't actually have the viewpoint coming through from the sample,
+        this would cause a crash and a pipeline failure. So instead we just create a sentinel file
+        to indicate that the contacts have been identified.
+        """
+        contacts = [
+            Path(self.output_dir) / "mcc/.mcc_contacts_identified.txt",
+        ]
+        sentinel_files = BasicFileCollection(files=[str(ct) for ct in contacts])
         self.file_collections.append(sentinel_files)
 
     def add_peak_files(self) -> None:
@@ -521,14 +545,13 @@ class SeqnadoOutputBuilder:
 
     def add_spikein_files(self) -> None:
         """Add spike-in files to the output collection."""
-        # Get the spike-in method from config
         spikein_config = getattr(self.config.assay_config, 'spikein', None)
-        method = spikein_config.method.value if spikein_config else "orlando"
+        methods = spikein_config.method if spikein_config else []
 
         spikein_files = SpikeInFiles(
             assay=self.assay,
             names=self.samples.sample_names,
-            method=method,
+            method=methods,
             output_dir=self.output_dir,
         )
         self.file_collections.append(spikein_files)
@@ -572,9 +595,12 @@ class SeqnadoOutputBuilder:
 
     def add_contact_files(self) -> None:
         """Add contact files to the output collection."""
+
         contact_files = ContactFiles(
             assay=self.assay,
-            names=self.samples.sample_names,
+            names=self.samples.sample_names
+            if not self.sample_groupings
+            else self.sample_groupings.get_grouping("consensus").group_names,
             output_dir=f"{self.output_dir}/mcc",
         )
         self.file_collections.append(contact_files)
@@ -618,7 +644,7 @@ class SeqnadoOutputBuilder:
         **Note**: This method builds the output files collection
         and appends it to the file_collections list. So it should be called
         after all other file collections have been added if you want to include GEO files in the final output.
-        
+
         Only the metadata files (checksums, samples table) are added to the output,
         not the individual symlinked FASTQ and processed files, as those cannot be
         declared as dynamic rule outputs in Snakemake.
@@ -703,10 +729,16 @@ class MultiomicsOutputBuilder:
         path = str(Path(self.output_dir) / "multiomics" / "heatmap" / "metaplot.pdf")
         self.file_collections.append(BasicFileCollection(files=[path]))
 
-    def add_multiomics_dataset(self) -> str:
-        """Get the output directory."""
+    def add_multiomics_dataset(self, use_binsize: bool = True) -> str:
+        """Add the multiomics dataset output file.
+
+        Args:
+            use_binsize: If True, adds dataset_bins.h5ad (binsize mode).
+                        If False, adds dataset_regions.h5ad (regions mode).
+        """
+        filename = "dataset_bins.h5ad" if use_binsize else "dataset_regions.h5ad"
         path = str(
-            Path(self.output_dir) / "multiomics" / "dataset" / "dataset_bins.h5ad"
+            Path(self.output_dir) / "multiomics" / "dataset" / filename
         )
         self.file_collections.append(BasicFileCollection(files=[path]))
 
@@ -798,8 +830,13 @@ class SeqnadoOutputFactory:
 
             # Add motif files if motif analysis is enabled
             peak_config = self.assay_config.peak_calling
-            if peak_config and peak_config.run_motif_analysis and peak_config.motif_method:
+            if (
+                peak_config
+                and peak_config.run_motif_analysis
+                and peak_config.motif_method
+            ):
                 from seqnado import MotifMethod
+
                 run_homer = MotifMethod.HOMER in peak_config.motif_method
                 run_meme = MotifMethod.MEME in peak_config.motif_method
                 builder.add_motif_files(
@@ -838,7 +875,7 @@ class SeqnadoOutputFactory:
                 if self.assay_config.call_methylation:
                     builder.add_methylation_files()
             case Assay.MCC:
-                builder.add_contact_files()
+                builder.add_mcc_sentinel_contact_files()
             case _:
                 logger.debug(f"No additional files to add for assay {self.assay}")
 

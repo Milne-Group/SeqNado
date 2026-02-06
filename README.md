@@ -1,13 +1,16 @@
 <!-- Header and badges -->
 # SeqNado
 
-[![Documentation](https://github.com/alsmith151/SeqNado/actions/workflows/build_docs.yml/badge.svg)](https://github.com/alsmith151/SeqNado/actions/workflows/build_docs.yml)
+[![Documentation](https://github.com/Milne-Group/SeqNado/actions/workflows/build_docs.yml/badge.svg)](https://github.com/Milne-Group/SeqNado/actions/workflows/build_docs.yml)
+[![PyPI Version](https://img.shields.io/pypi/v/seqnado.svg)](https://pypi.org/project/seqnado)
+[![PyPI Downloads](https://static.pepy.tech/badge/seqnado)](https://pepy.tech/projects/seqnado)
 [![Bioconda](https://anaconda.org/bioconda/seqnado/badges/version.svg)](https://anaconda.org/bioconda/seqnado)
 [![Bioconda Updated](https://anaconda.org/bioconda/seqnado/badges/latest_release_date.svg)](https://anaconda.org/bioconda/seqnado)
-[![PyPI Downloads](https://static.pepy.tech/badge/seqnado)](https://pepy.tech/projects/seqnado)
+[![Release](https://img.shields.io/github/v/release/Milne-Group/SeqNado?sort=semver)](https://github.com/Milne-Group/SeqNado/releases)
+[![License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/alsmith151/SeqNado/main/containers/pipeline/seqnado.png" alt="SeqNado logo" />
+  <img src="https://raw.githubusercontent.com/Milne-Group/SeqNado/main/containers/pipeline/seqnado.png" alt="SeqNado logo" />
 </p>
 
 *A Snakemake-based bioinformatics toolkit for analyzing sequencing data from ATAC-seq, ChIP-seq, CUT&Tag, RNA-seq, SNP analysis, Methylation, CRISPR screens, and Micro-Capture-C experiments.*
@@ -58,7 +61,7 @@ Modular, reproducible, and container-ready pipelines powered by Snakemake that t
 - **Micro-Capture-C** (`mcc`) - Chromatin conformation capture analysis
 - **Multiomics** - Run multiple assay types together in a single integrated workflow
 
-→ [View detailed assay workflows](https://alsmith151.github.io/SeqNado/pipeline/)
+→ [View detailed assay workflows](https://Milne-Group.github.io/SeqNado/pipeline/)
 
 ## Installation
 
@@ -102,7 +105,7 @@ seqnado init
 - Configures Apptainer/Singularity containers (if available)
 - Installs Snakemake execution profiles for local and cluster execution
 
-→ [Learn more about initialization](https://alsmith151.github.io/SeqNado/initialisation/)
+→ [Learn more about initialization](https://Milne-Group.github.io/SeqNado/initialisation/)
 
 ## Quick Start
 
@@ -120,7 +123,7 @@ seqnado genomes list atac
 seqnado genomes build rna --fasta hg38.fasta --name hg38 --outdir /path/to/genomes
 ```
 
-→ [Complete genome setup guide](https://alsmith151.github.io/SeqNado/genomes/)
+→ [Complete genome setup guide](https://Milne-Group.github.io/SeqNado/genomes/)
 
 ### 2. Create Project Configuration
 
@@ -137,7 +140,7 @@ YYYY-MM-DD_ATAC_project/
 └── fastqs/             # Place your FASTQ files here
 ```
 
-→ [Configuration options guide](https://alsmith151.github.io/SeqNado/configuration/)
+→ [Configuration options guide](https://Milne-Group.github.io/SeqNado/configuration/)
 
 ### 3. Add FASTQ Files
 
@@ -163,7 +166,7 @@ seqnado design atac
 - Control/treatment relationships
 - DESeq2 comparisons (for RNA-seq)
 
-→ [Design file specification](https://alsmith151.github.io/SeqNado/design/)
+→ [Design file specification](https://Milne-Group.github.io/SeqNado/design/)
 
 ### 5. Run the Pipeline
 
@@ -177,42 +180,58 @@ seqnado pipeline atac --preset le
 seqnado pipeline atac --preset ss --queue short
 
 # Multiomics mode (processes multiple assays together)
-seqnado pipeline  --preset ss# Detects all config files in current directory
+seqnado pipeline --preset ss  # Detects all config files in current directory
 ```
-→ [Pipeline execution details](https://alsmith151.github.io/SeqNado/pipeline/) | [Output files explained](https://alsmith151.github.io/SeqNado/outputs/)
+→ [Pipeline execution details](https://Milne-Group.github.io/SeqNado/pipeline/) | [Output files explained](https://Milne-Group.github.io/SeqNado/outputs/)
 ### Common Pipeline Options
 
 **Execution Presets:**
+These presets configure Snakemake execution parameters for different environments. Our default presets are optimized for typical use cases on a SLURM based HPC cluster. These are saved in ~/.config/seqnado/ when you run `seqnado init` and can be customized as needed.
+
 - `--preset le` - Local execution (default, recommended for workstations)
 - `--preset lc` - Local execution using conda environments
 - `--preset ss` - SLURM scheduler (for HPC clusters)
 
 **Resource Management:**
 - `--queue short` - Specify SLURM partition/queue name
-- `--scale-resources 1.5` - Multiply memory/time requirements by 1.5×
+
+This is only needed on HPC clusters and your cluster uses multiple partitions. The default queue can be set in the SLURM preset configuration file.
+
+- `-s/--scale-resources 1.5` - Multiply memory/time requirements by 1.5×
+
+This is useful on HPC clusters to ensure jobs have sufficient resources and reduce the likelihood of out-of-memory errors. Very useful when processing very deeply sequenced datasets and avoids needing to manually adjust resource requirements for each rule on the command line.
+
+**Commands passed to snakemake:**
+
+Any snakemake command line options will automatically be passed through when you run `seqnado pipeline`. This allows you to easily customize the execution of the workflow. For example, you can specify `--rerun-incomplete` to automatically rerun any failed or incomplete jobs, or `--keep-going` to continue running independent jobs even if some fail.
+
+Very useful flags:
+
+`--rerun-incomplete` - Automatically rerun any failed or incomplete jobs
+`--keep-going` - Continue running independent jobs even if some fail
+`--unlock` - Unlock the workflow if it becomes locked due to an error or interruption or the workflow was cancelled before completion. This allows you to fix the issue and then rerun the workflow without needing to manually delete the lock file.
 
 **Debugging & Testing:**
 - `-n` - Dry run to preview commands without executing
-- `--unlock` - Unlock directory after interrupted runs
 
-→ [All CLI options](https://alsmith151.github.io/SeqNado/cli/) | [HPC cluster setup](https://alsmith151.github.io/SeqNado/cluster_config/)
+→ [All CLI options](https://Milne-Group.github.io/SeqNado/cli/) | [HPC cluster setup](https://Milne-Group.github.io/SeqNado/cluster_config/)
 
 ## Documentation
 
 For comprehensive guides and API documentation, visit:
 
-**📚 [SeqNado Documentation](https://alsmith151.github.io/SeqNado/)**
+**📚 [SeqNado Documentation](https://Milne-Group.github.io/SeqNado/)**
 
 ### Key Topics
 
-- [Installation Guide](https://alsmith151.github.io/SeqNado/installation/)
-- [Genome Setup](https://alsmith151.github.io/SeqNado/genomes/)
-- [Configuration](https://alsmith151.github.io/SeqNado/configuration/)
-- [Design Files](https://alsmith151.github.io/SeqNado/design/)
-- [Pipeline Details](https://alsmith151.github.io/SeqNado/pipeline/)
-- [Outputs](https://alsmith151.github.io/SeqNado/outputs/)
-- [CLI Reference](https://alsmith151.github.io/SeqNado/cli/)
-- [HPC Cluster Configuration](https://alsmith151.github.io/SeqNado/cluster_config/)
+- [Installation Guide](https://Milne-Group.github.io/SeqNado/installation/)
+- [Genome Setup](https://Milne-Group.github.io/SeqNado/genomes/)
+- [Configuration](https://Milne-Group.github.io/SeqNado/configuration/)
+- [Design Files](https://Milne-Group.github.io/SeqNado/design/)
+- [Pipeline Details](https://Milne-Group.github.io/SeqNado/pipeline/)
+- [Outputs](https://Milne-Group.github.io/SeqNado/outputs/)
+- [CLI Reference](https://Milne-Group.github.io/SeqNado/cli/)
+- [HPC Cluster Configuration](https://Milne-Group.github.io/SeqNado/cluster_config/)
 
 ## License
 

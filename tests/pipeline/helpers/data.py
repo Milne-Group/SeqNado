@@ -1,112 +1,282 @@
-import os
+"""Test data management for SeqNado pipeline tests."""
+
+from __future__ import annotations
+
+import json
 from pathlib import Path
+from typing import ClassVar
+
+from pydantic import BaseModel, model_validator
 
 from .utils import download_with_retry, extract_tar, get_fastq_pattern
 
 
-def ensure_fastqs_present(
-    fastq_dir: Path, selected_assays: list[str]
-) -> dict[str, list[Path]]:
-    """
-    Download FASTQ files and return them indexed by assay.
+class GenomeResources(BaseModel):
+    """Validated genome resources for an assay."""
 
-    Args:
-        fastq_dir: Directory where FASTQ files should be stored
-        selected_assays: List of assay names to get FASTQs for
+    assay: str | None = None  # Used for validation
+    star_index: Path | None = None
+    bt2_index: Path | None = None
+    chromosome_sizes: Path | None = None
+    gtf: Path | None = None
+    blacklist: Path | None = None
+    genes: Path | None = None
+    fasta: Path | None = None
+    viewpoints: Path | None = None
+    plot_coords: Path | None = None
 
-    Returns:
-        Dict mapping assay name to list of FASTQ file paths
-    """
-    # Download FASTQs if not present
-    fastq_dir.mkdir(parents=True, exist_ok=True)
-    existing_fastqs = list(fastq_dir.glob("*.fastq.gz"))
+    # Configuration constants
+    REFERENCE_URL: ClassVar[str] = (
+        "https://userweb.molbiol.ox.ac.uk/public/project/milne_group/seqnado/test_data/reference"
+    )
 
-    if not existing_fastqs:
-        import tarfile
+    # Base resources shared by multiple assays
 
-        url = "https://userweb.molbiol.ox.ac.uk/public/project/milne_group/asmith/seqnado_data/fastq.tar.gz"
-        tar_path = fastq_dir.parent / "fastq.tar.gz"
-        download_with_retry(url, tar_path)
+    _DEFAULT_RESOURCES: ClassVar[dict] = {
+        "bt2_index": ("bt2_chr21", "bt2_chr21", "hg38"),
+        "chromosome_sizes": "chr21.chrom.sizes",
+        "gtf": "chr21.gtf",
+        "blacklist": "hg38_chr21-blacklist.bed",
+        "genes": "hg38_genes.bed",
+        "fasta": "chr21.fa",
+        "plot_coords": "plotting_coordinates.bed",
+    }
 
-        # Extract tar to parent directory (it contains fastq/ folder)
-        with tarfile.open(tar_path) as tar:
-            tar.extractall(path=fastq_dir.parent)
+    # Resources keyed directly by assay name
+    RESOURCES: ClassVar[dict] = {
+        "atac": _DEFAULT_RESOURCES,
+        "cat": _DEFAULT_RESOURCES,
+        "chip": _DEFAULT_RESOURCES,
+        "chip-rx": {
+            **_DEFAULT_RESOURCES,
+            "bt2_index": ("bt2_chr21_dm6_chr2L", "bt2_chr21_dm6_chr2L", "hg38"),
+            "chromosome_sizes": "chr21_dm6.fa.fai",
+        },
+        "crispr": {
+            **_DEFAULT_RESOURCES,
+            "bt2_index": (
+                "bt2_TKOv3_guides_chr21",
+                "TKOv3_guides_chr21",
+                "TKOv3_guides",
+            ),
+            "chromosome_sizes": "TKOv3_guides_chr21.fasta.fai",
+            "gtf": "TKOv3_guides_chr21.saf",
+        },
+        "mcc": {
+            **_DEFAULT_RESOURCES,
+            "viewpoints": "mcc_viewpoints.bed",
+        },
+        "meth": {
+            **_DEFAULT_RESOURCES,
+            "bt2_index": ("bt2_chr21_meth", "chr21_meth", "hg38_meth"),
+            "chromosome_sizes": "chr21_meth.fa.fai",
+            "fasta": "chr21_meth.fa",
+        },
+        "rna": {
+            **_DEFAULT_RESOURCES,
+            "star_index": "STAR_chr21_rna_spikein",
+            "gtf": "chr21_rna_spikein.gtf",
+        },
+        "snp": _DEFAULT_RESOURCES,
+    }
 
-        # Handle nested directory structure if present
-        nested_fastq = fastq_dir / "fastq"
-        if nested_fastq.exists() and nested_fastq.is_dir():
-            # Move files from fastq/fastq/ to fastq/
-            for f in nested_fastq.glob("*.fastq.gz"):
-                f.rename(fastq_dir / f.name)
-            try:
-                nested_fastq.rmdir()
-            except Exception as e:
-                print(f"[WARNING] Could not remove nested directory {nested_fastq}: {e}")
+    @model_validator(mode="after")
+    def validate_required_fields(self):
+        """Validate that required fields for this assay are present based on its template."""
+        if not self.assay:
+            return self
 
-        # Verify extraction worked
-        extracted_fastqs = list(fastq_dir.glob("*.fastq.gz"))
-        if not extracted_fastqs:
-            raise RuntimeError(f"FASTQ extraction failed - no files found in {fastq_dir} after extraction")
+        # Prefer exact match, then longest substring match (e.g., 'chip-rx' before 'chip')
+        assay_lower = self.assay.lower()
+        assay_key = next(
+            (
+                k
+                for k in sorted(self.RESOURCES, key=len, reverse=True)
+                if k in assay_lower
+            ),
+            None,
+        )
+        if not assay_key:
+            return self
 
-        os.remove(tar_path)
+        for field in self.RESOURCES[assay_key]:
+            if getattr(self, field, None) is None:
+                raise ValueError(f"{field} required for {self.assay} but not found")
+        return self
 
-    def pick_fastqs(assay_name: str) -> list[Path]:
-        pattern = get_fastq_pattern(assay_name)
-        
-        return sorted(fastq_dir.glob(pattern))
+    def write_config(self, config_file: Path) -> None:
+        """Write genome_config.json from this instance."""
+        config_file.parent.mkdir(parents=True, exist_ok=True)
 
-    return {a: pick_fastqs(a) for a in selected_assays}
+        existing = {}
+        if config_file.exists():
+            with open(config_file) as f:
+                existing = json.load(f)
+
+        existing[self.assay] = {
+            k: str(v) if v else None
+            for k, v in self.model_dump(exclude={"assay"}).items()
+        }
+
+        with open(config_file, "w") as f:
+            json.dump(existing, f, indent=2)
+
+    @classmethod
+    def download_resources(cls, genome_path: Path, assay: str) -> GenomeResources:
+        """Download genome resources for an assay.
+
+        Args:
+            genome_path: Path to store genome files
+            assay: Assay type (e.g., 'rna', 'chip', 'atac')
+
+        Returns:
+            GenomeResources: Validated genome resources
+
+        Raises:
+            FileNotFoundError: If required resources cannot be obtained
+        """
+        genome_path.mkdir(parents=True, exist_ok=True)
+
+        # Look up resources for this assay
+        # Prefer exact match, then longest substring match (e.g., 'chip-rx' before 'chip')
+        assay_lower = assay.lower()
+        assay_key = next(
+            (
+                k
+                for k in sorted(cls.RESOURCES, key=len, reverse=True)
+                if k in assay_lower
+            ),
+            "chip",
+        )
+        template = cls.RESOURCES[assay_key]
+        ref_url = cls.REFERENCE_URL
+        config: dict[str, Path | None] = {}
+
+        for key, value in template.items():
+            if key == "bt2_index":
+                bt2_dir, bt2_prefix, db_name = value
+                config[key] = cls._ensure_index(
+                    genome_path, ref_url, bt2_dir, prefix=bt2_prefix
+                )
+                if config[key]:
+                    cls._update_fastq_screen_config(genome_path, config[key], db_name)
+            elif key == "star_index":
+                config[key] = cls._ensure_index(genome_path, ref_url, value)
+            else:
+                dest = genome_path / value
+                if not dest.exists():
+                    download_with_retry(f"{ref_url}/{value}", dest)
+                config[key] = dest
+
+        # Create and validate instance (validation happens automatically via model_validator)
+        return cls(assay=assay, **config)
+
+    @staticmethod
+    def _ensure_index(
+        genome_path: Path,
+        ref_url: str,
+        index_name: str,
+        prefix: str | None = None,
+    ) -> Path | None:
+        """Download and extract an index (STAR or Bowtie2)."""
+        is_bt2 = prefix is not None
+
+        if is_bt2:
+            index_dir = genome_path / index_name
+            dest = index_dir / prefix
+            if list(index_dir.glob(f"{prefix}.*.bt2*")):
+                return dest
+        else:
+            dest = genome_path / index_name
+            index_dir = dest
+            if dest.exists():
+                return dest
+
+        tar_path = genome_path / f"{index_name}.tar.gz"
+        try:
+            download_with_retry(f"{ref_url}/{tar_path.name}", tar_path)
+            if is_bt2:
+                index_dir.mkdir(parents=True, exist_ok=True)
+                extract_tar(tar_path, index_dir)
+            else:
+                extract_tar(tar_path, genome_path)
+            tar_path.unlink(missing_ok=True)
+        except Exception as e:
+            print(f"[WARNING] Could not download index {index_name}: {e}")
+            tar_path.unlink(missing_ok=True)
+            return None
+
+        # Verify and return
+        if is_bt2:
+            return dest if list(index_dir.glob(f"{prefix}.*.bt2*")) else None
+        return dest if dest.exists() else None
+
+    @staticmethod
+    def _update_fastq_screen_config(
+        genome_path: Path, bt2_index_path: Path, db_name: str
+    ) -> None:
+        """Append genome entry to fastq_screen.conf."""
+        config_path = genome_path / "fastq_screen.conf"
+
+        # Check if this database entry already exists
+        existing_entries = set()
+        if config_path.exists():
+            with open(config_path) as f:
+                for line in f:
+                    if line.startswith("DATABASE"):
+                        parts = line.strip().split("\t")
+                        if len(parts) >= 2:
+                            existing_entries.add(parts[1])
+
+        if db_name not in existing_entries:
+            with open(config_path, "a") as f:
+                f.write(f"DATABASE\t{db_name}\t{bt2_index_path}\n")
 
 
-def ensure_all_genome_data(genome_path: Path, genome_files: dict):
-    """
-    Download all genome data files and extract indices as needed.
+class FastqFiles(BaseModel):
+    """Manages FASTQ file downloads and organization by assay."""
 
-    Args:
-        genome_path: Base directory for genome data
-        genome_files: Dict mapping filename to download URL
-    """
-    for fname, url in genome_files.items():
-        dest = genome_path / fname
-        if not dest.exists():
-            download_with_retry(url, dest)
+    fastq_dir: Path
+    files: dict[str, list[Path]] = {}
 
-    # Extract STAR index
-    star_dir = genome_path / "STAR_chr21_rna_spikein"
-    star_tar = genome_path / "STAR_chr21_rna_spikein.tar.gz"
-    if star_tar.exists() and not star_dir.exists():
-        extract_tar(star_tar, genome_path, flatten=True)
+    # Configuration constants
+    FQ_URL: ClassVar[str] = (
+        "https://userweb.molbiol.ox.ac.uk/public/project/milne_group/seqnado/test_data/fastq.tar.gz"
+    )
 
-    # Extract Bowtie2 index
-    bt2_dir = genome_path / "bt2_chr21_dm6_chr2L" / "bt2_chr21_dm6_chr2L"
-    bt2_tar = genome_path / "bt2_chr21_dm6_chr2L.tar.gz"
-    if bt2_tar.exists() and not bt2_dir.exists():
-        dest_parent = bt2_dir.parent
-        dest_parent.mkdir(parents=True, exist_ok=True)
-        extract_tar(bt2_tar, dest_parent)
-        # Move .bt2* files up if nested
-        nested = dest_parent / bt2_dir.name
-        if nested.exists() and nested.is_dir():
-            for f in nested.glob("*.bt2*"):
-                f.rename(dest_parent / f.name)
-            try:
+    @classmethod
+    def download(cls, fastq_dir: Path, selected_assays: list[str]) -> FastqFiles:
+        """Download FASTQ files and organize them by assay.
+
+        Args:
+            fastq_dir: Directory to store FASTQ files
+            selected_assays: List of assay types to get FASTQs for
+
+        Returns:
+            FastqFiles: Instance with files organized by assay
+
+        Raises:
+            RuntimeError: If FASTQ extraction fails
+        """
+        fastq_dir.mkdir(parents=True, exist_ok=True)
+
+        if not list(fastq_dir.glob("*.fastq.gz")):
+            tar_path = fastq_dir.parent / "fastq.tar.gz"
+            download_with_retry(cls.FQ_URL, tar_path)
+            extract_tar(tar_path, fastq_dir.parent, flatten=False)
+
+            nested = fastq_dir / "fastq"
+            if nested.is_dir():
+                for f in nested.glob("*.fastq.gz"):
+                    f.rename(fastq_dir / f.name)
                 nested.rmdir()
-            except Exception as e:
-                print(f"[WARNING] Could not remove nested directory {nested}: {e}")
 
-    # Extract Methylation Bowtie2 index
-    meth_index_dir = genome_path / "bt2_chr21_meth"
-    meth_index_tar = genome_path / "bt2_chr21_meth.tar.gz"
-    if meth_index_tar.exists() and not meth_index_dir.exists():
-        dest_parent = meth_index_dir.parent
-        dest_parent.mkdir(parents=True, exist_ok=True)
-        extract_tar(meth_index_tar, dest_parent)
-        # Move .bt2* files up if nested
-        nested = dest_parent / meth_index_dir.name
-        if nested.exists() and nested.is_dir():
-            for f in nested.glob("*.bt2*"):
-                f.rename(dest_parent / f.name)
-            try:
-                nested.rmdir()
-            except Exception as e:
-                print(f"[WARNING] Could not remove nested directory {nested}: {e}")
+            tar_path.unlink(missing_ok=True)
+
+            if not list(fastq_dir.glob("*.fastq.gz")):
+                raise RuntimeError(f"FASTQ extraction failed - no files in {fastq_dir}")
+
+        files = {
+            a: sorted(fastq_dir.glob(get_fastq_pattern(a))) for a in selected_assays
+        }
+        return cls(fastq_dir=fastq_dir, files=files)

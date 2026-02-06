@@ -1,3 +1,4 @@
+include: "common.smk"
 include: "identify.smk"
 include: "interactions.smk"
 include: "map_to_genome.smk"

@@ -19,7 +19,6 @@ SeqNado can be run for any of the following assay types, as well as in multiomic
 - CRISPR analysis: `crispr`
 
 ## Example Workflow
-
 ### 1. Install SeqNado
 
 The fastest method to install SeqNado is from bioconda via mamba.
@@ -34,19 +33,16 @@ mamba activate seqnado
 The `seqnado init` command initializes the SeqNado user environment. This step ensures that the necessary configuration files and dependencies are set up for the package to function correctly.
 
 #### Usage
-
 ```bash
 seqnado init [OPTIONS]
 ```
 
 #### Options
-
 - `--preset, --no-preset`: Use packaged preset genomes instead of the editable template (default: disabled).
 - `--dry-run, --no-dry-run`: Show actions without writing files or running scripts (default: disabled).
 - `--verbose, -v`: Increase logging verbosity.
 
 #### Actions Performed
-
 - Logs the current Conda environment if active (optional).
 - Runs the packaged Apptainer/Singularity initialization if `apptainer` is available on the system PATH.
 - Ensures the `~/.config/seqnado/genome_config.json` file exists, either as a template or using a preset.

@@ -26,6 +26,9 @@ if CONFIG.shift_for_tn5_insertion:
             bai=temp(OUTPUT_DIR + "/aligned/shifted_for_tn5_insertion/{sample}.bam.bai"),
             read_log=temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_atac_shift.tsv"),
         threads: 1
+        resources:
+            mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
+            runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
         container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_atac_shift.tsv",
         message: "Sorting and indexing shifted ATAC-seq alignments for sample {wildcards.sample}",
