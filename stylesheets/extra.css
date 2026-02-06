@@ -1,0 +1,226 @@
+/* SeqNado Documentation Custom Styles */
+
+:root {
+  /* Custom color palette for SeqNado - Green Theme */
+  --seqnado-primary: #43A047;
+  --seqnado-accent: #66BB6A;
+  --seqnado-gradient-start: #00897B;
+  --seqnado-gradient-end: #43A047;
+}
+
+/* Enhanced header styling */
+.md-header {
+  background: linear-gradient(135deg, var(--seqnado-gradient-start) 0%, var(--seqnado-gradient-end) 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Logo styling - larger and cleaner */
+.md-header__button.md-logo img,
+.md-logo img {
+  height: 3.5rem;
+  width: auto;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.md-header__button.md-logo:hover img,
+.md-logo:hover img {
+  transform: scale(1.08);
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2));
+}
+
+/* Enhanced code blocks with gradient border */
+.highlight {
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, var(--seqnado-accent), var(--seqnado-primary)) 1;
+  border-radius: 0.2rem;
+  margin: 1em 0;
+}
+
+/* Command line prompts styling */
+code.language-bash::before {
+  content: "$ ";
+  color: var(--seqnado-accent);
+  font-weight: bold;
+  user-select: none;
+}
+
+/* Enhanced admonition styling */
+.md-typeset .admonition,
+.md-typeset details {
+  border-left: 4px solid var(--seqnado-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.3s ease;
+}
+
+.md-typeset .admonition:hover,
+.md-typeset details:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Gradient for main headings */
+.md-typeset h1 {
+  background: linear-gradient(135deg, var(--seqnado-gradient-start), var(--seqnado-gradient-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+/* Enhanced navigation tabs */
+.md-tabs {
+  background: linear-gradient(135deg, var(--seqnado-gradient-start) 0%, var(--seqnado-gradient-end) 100%);
+}
+
+/* Improved table styling */
+.md-typeset table:not([class]) {
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 0.4rem;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.md-typeset table:not([class]) thead {
+  background: linear-gradient(135deg, var(--seqnado-primary), var(--seqnado-accent));
+}
+
+.md-typeset table:not([class]) thead th {
+  color: white;
+  font-weight: 600;
+}
+
+.md-typeset table:not([class]) tbody tr:hover {
+  background-color: rgba(67, 160, 71, 0.05);
+}
+
+/* Enhanced button styling */
+.md-button {
+  border-radius: 0.3rem;
+  transition: all 0.3s ease;
+}
+
+.md-button--primary {
+  background: linear-gradient(135deg, var(--seqnado-primary), var(--seqnado-accent));
+  border: none;
+}
+
+.md-button--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(67, 160, 71, 0.3);
+}
+
+/* Enhanced navigation items */
+.md-nav__link--active {
+  color: var(--seqnado-accent);
+  font-weight: 600;
+}
+
+.md-nav__link:hover {
+  color: var(--seqnado-accent);
+}
+
+/* Search bar enhancement */
+.md-search__input {
+  border-radius: 2rem;
+  transition: box-shadow 0.3s ease;
+}
+
+.md-search__input:focus {
+  box-shadow: 0 0 0 3px rgba(67, 160, 71, 0.2);
+}
+
+/* Code inline styling */
+.md-typeset code:not(.hljs) {
+  background-color: rgba(67, 160, 71, 0.08);
+  color: var(--seqnado-primary);
+  padding: 0.15em 0.4em;
+  border-radius: 0.2rem;
+  font-weight: 500;
+}
+
+/* Footer styling */
+.md-footer {
+  background: linear-gradient(135deg, var(--seqnado-gradient-start) 0%, var(--seqnado-gradient-end) 100%);
+}
+
+/* Improve spacing for content sections */
+.md-typeset h2 {
+  margin-top: 2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid rgba(67, 160, 71, 0.2);
+}
+
+/* Badge styling for tags */
+.md-tag {
+  background: linear-gradient(135deg, var(--seqnado-primary), var(--seqnado-accent));
+  color: white;
+  border-radius: 1rem;
+  padding: 0.2em 0.6em;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+/* Improved list styling */
+.md-typeset ul li {
+  line-height: 1.8;
+}
+
+.md-typeset ul li::marker {
+  color: var(--seqnado-accent);
+}
+
+/* Responsive adjustments for better mobile experience */
+@media screen and (max-width: 76.1875em) {
+  .md-header {
+    background: var(--seqnado-primary);
+  }
+  
+  .md-tabs {
+    background: var(--seqnado-primary);
+  }
+}
+
+/* Scrollbar styling for webkit browsers */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--seqnado-primary), var(--seqnado-accent));
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--seqnado-accent);
+}
+
+/* Animation for content cards */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.md-content article {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+/* Icon styling for social links */
+.md-social__link svg {
+  transition: transform 0.3s ease;
+}
+
+.md-social__link:hover svg {
+  transform: scale(1.2);
+}
