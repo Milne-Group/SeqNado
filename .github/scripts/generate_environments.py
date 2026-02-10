@@ -3,16 +3,16 @@
 Auto-generate conda environment files from pyproject.toml.
 
 This script parses pyproject.toml and generates consistent environment files
-to prevent version drift across environment.yml, environment_minimal.yml,
-testing.yml, etc.
+to prevent version drift across envs/environment.yml, envs/environment_minimal.yml,
+envs/testing.yml, etc.
 
 Usage:
     python .github/scripts/generate_environments.py
 
 Generated files:
-    - environment.yml (full pipeline with bioinformatics tools)
-    - environment_minimal.yml (minimal dev environment)
-    - testing.yml (testing environment)
+    - envs/environment.yml (full pipeline with bioinformatics tools)
+    - envs/environment_minimal.yml (minimal dev environment)
+    - envs/testing.yml (testing environment)
     - containers/pipeline/environment_pipeline.yml (updated with core deps)
 """
 
@@ -97,7 +97,7 @@ def separate_conda_and_pip(deps: List[str]) -> Tuple[List[str], List[str]]:
 
 
 def generate_environment_yml(core_deps: List[str], py_req: str, output_path: Path):
-    """Generate environment.yml with full pipeline dependencies."""
+    """Generate envs/environment.yml with full pipeline dependencies."""
 
     conda_deps, pip_deps = separate_conda_and_pip(core_deps)
 
@@ -146,7 +146,7 @@ def generate_environment_yml(core_deps: List[str], py_req: str, output_path: Pat
 def generate_environment_minimal_yml(
     core_deps: List[str], py_req: str, output_path: Path
 ):
-    """Generate environment_minimal.yml for development."""
+    """Generate envs/environment_minimal.yml for development."""
 
     conda_deps, pip_deps = separate_conda_and_pip(core_deps)
 
@@ -179,7 +179,7 @@ def generate_environment_minimal_yml(
 
 
 def generate_testing_yml(core_deps: List[str], py_req: str, output_path: Path):
-    """Generate testing.yml for CI/testing."""
+    """Generate envs/testing.yml for CI/testing."""
 
     conda_deps, pip_deps = separate_conda_and_pip(core_deps)
 
@@ -356,11 +356,11 @@ def main():
     repo_root = Path(__file__).parent.parent.parent
 
     print("\nGenerating environment files...")
-    generate_environment_yml(core_deps, py_req, repo_root / "environment.yml")
+    generate_environment_yml(core_deps, py_req, repo_root / "envs/environment.yml")
     generate_environment_minimal_yml(
-        core_deps, py_req, repo_root / "environment_minimal.yml"
+        core_deps, py_req, repo_root / "envs/environment_minimal.yml"
     )
-    generate_testing_yml(core_deps, py_req, repo_root / "testing.yml")
+    generate_testing_yml(core_deps, py_req, repo_root / "envs/testing.yml")
     update_pipeline_environment_yml(
         core_deps, py_req, repo_root / "containers/pipeline/environment_pipeline.yml"
     )
@@ -369,7 +369,7 @@ def main():
     print("\nNext steps:")
     print("  1. Review the generated files")
     print(
-        "  2. Commit: git add environment*.yml containers/pipeline/environment_pipeline.yml"
+        "  2. Commit: git add envs/*.yml containers/pipeline/environment_pipeline.yml"
     )
     print("  3. Update only pyproject.toml in the future - re-run this script")
 

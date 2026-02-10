@@ -5,6 +5,10 @@ COPY environment_pipeline.yml /opt/environment_pipeline.yml
 COPY multiqc_config.yaml /opt/seqnado/multiqc_config.yaml
 COPY seqnado.png /opt/seqnado/seqnado.png
 
+# Copy repository into image so we can install the package. When building
+# from the repository root use: `docker build -f containers/pipeline/Dockerfile .`
+COPY . /opt/seqnado_src/
+
 # Set environment variables
 ENV PATH="/opt/conda/bin:$PATH" \
     CONDA_DEFAULT_ENV=base \
@@ -12,21 +16,21 @@ ENV PATH="/opt/conda/bin:$PATH" \
     LD_LIBRARY_PATH="/usr/lib:/lib" \
     MAMBA_ROOT_PREFIX="/opt/conda"
 
+# Keep apt non-interactive
+ENV DEBIAN_FRONTEND=noninteractive
 # Ensure we have root for package installation and system-level setup
 USER root
 
 # Main build process
 RUN set -eux && \
-    # Fix apt permissions and update
     mkdir -p /var/lib/apt/lists/partial && \
     chmod 755 /var/lib/apt/lists/partial && \
-    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      ca-certificates curl gcc libc6-dev pkg-config libssl-dev && \
+    apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl gnupg dirmngr gcc pkg-config libssl-dev && \
     rm -rf /var/lib/apt/lists/* && \
-    \
+
     # Install latest Quarto (architecture-aware)
     QUARTO_VERSION=$(curl -s https://api.github.com/repos/quarto-dev/quarto-cli/releases/latest | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4 | sed 's/^v//') && \
-    # Try to download a matching deb for the current architecture. prefer native arm64 when available.
     ARCH=$(dpkg --print-architecture 2>/dev/null || echo "$(uname -m)") && \
     echo "Detected architecture: ${ARCH}" && \
     QUARTO_TMP=/tmp/quarto.deb && \
@@ -35,7 +39,6 @@ RUN set -eux && \
       if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "x86_64" ]; then \
         urls=( "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.deb" ); \
       else \
-        # try common arm64/aarch64 filenames, then fall back to amd64
         urls=( \
           "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-aarch64.deb" \
           "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-arm64.deb" \
@@ -53,16 +56,19 @@ RUN set -eux && \
       echo "Failed to download Quarto ${QUARTO_VERSION} for ${ARCH}" >&2; \
       exit 1; \
     fi && \
-    dpkg -i "${QUARTO_TMP}" && \
-    rm -f "${QUARTO_TMP}" && \
-    \
+    dpkg -i "${QUARTO_TMP}" && rm -f "${QUARTO_TMP}" && \
+
+
     # Micromamba environment setup (ensure Python <3.12)
     micromamba install -y -n base -f /opt/environment_pipeline.yml && \
-    # Remove build tools
-    apt-get purge -y gcc libc6-dev pkg-config libssl-dev && \
-    apt-get autoremove -y && \
-    apt-get clean && \
-    \
+
+    # Install seqnado from PyPI into the base environment (no-deps)
+    /opt/conda/bin/pip install --no-deps --no-cache-dir seqnado && \
+
+    # Remove build tools but avoid purging libc6 core packages
+    apt-get purge -y --auto-remove gcc pkg-config libssl-dev && \
+    apt-get autoremove -y && apt-get clean && \
+
     # Remove unnecessary data and dev files
     find /opt/conda/ -type f -name '*.a' -delete && \
     find /opt/conda/ -type f -name '*.pyc' -delete && \
@@ -70,7 +76,7 @@ RUN set -eux && \
     find /opt/conda/ -name '*.egg-info' -type d -exec rm -rf {} + && \
     find /opt/conda/ -name 'tests' -type d -exec rm -rf {} + && \
     rm -rf /root/.cache && \
-    micromamba clean -ay
+    micromamba clean -afy
 
 # Add labels
 ARG BUILD_DATE="unknown"
@@ -79,14 +85,18 @@ LABEL Author="asmith" \
       Description="Minimal SeqNado pipeline container with Python tools" \
       BuildDate="${BUILD_DATE}"
 
+# Expose build date as an environment variable and create a build file
+ENV BUILD_DATE="${BUILD_DATE}"
+
+# Persist build date inside the image for runtime inspection
+RUN mkdir -p /opt/seqnado && echo "${BUILD_DATE}" > /opt/seqnado/BUILD_DATE || true
+
 # Switch back to micromamba user (set by the base image)
 USER $MAMBA_USER
 
 # Health check / test
-RUN echo "Testing minimal container..." && \
-    python --version && \
-    echo "All tests passed!"
+RUN echo "Testing minimal container..." && python --version && echo "All tests passed!"
 
-# Default command
-ENTRYPOINT ["bash", "-c"]
+# Default command: run passed command with bash -lc
+ENTRYPOINT ["/usr/bin/env", "bash", "-lc"]
 CMD ["exec \"$@\""]

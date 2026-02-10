@@ -40,7 +40,7 @@ jobs:
       - name: Setup Conda environment and install SeqNado
         uses: conda-incubator/setup-miniconda@v3
         with:
-          environment-file: testing.yml
+          environment-file: envs/testing.yml
           miniforge-version: latest
           use-mamba: true
 
