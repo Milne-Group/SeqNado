@@ -185,6 +185,7 @@ def _extract_candidate_defaults_from_schema(
 
     # Also ignore deseq2 and group for non-RNA assays
     from seqnado.inputs import Assay as AssayEnum
+
     if assay != AssayEnum.RNA:
         to_ignore.add("deseq2")
         to_ignore.add("group")
@@ -334,13 +335,22 @@ def _extract_deseq2_groups_from_sample_names(
     # Strategy 2 & 3: Keyword detection and heuristics
     # Common group keywords to look for
     group_keywords = [
-        "control", "ctrl",
-        "treated", "treatment", "treat",
-        "wt", "wildtype", "wild-type",
-        "ko", "knockout", "knock-out",
-        "mut", "mutant",
+        "control",
+        "ctrl",
+        "treated",
+        "treatment",
+        "treat",
+        "wt",
+        "wildtype",
+        "wild-type",
+        "ko",
+        "knockout",
+        "knock-out",
+        "mut",
+        "mutant",
         "untreated",
-        "knockdown", "kd",
+        "knockdown",
+        "kd",
         "vehicle",
         "mock",
         "dmso",
@@ -351,7 +361,7 @@ def _extract_deseq2_groups_from_sample_names(
         sample_lower = sample_id.lower()
 
         # Split on both hyphens and underscores
-        parts = re.split(r'[-_]', sample_id)
+        parts = re.split(r"[-_]", sample_id)
 
         # First, try to find exact keyword matches in the parts
         for keyword in group_keywords:
@@ -431,7 +441,16 @@ def _extract_deseq2_groups_from_sample_names(
 
     # Determine which group is the control (reference) and which is treatment
     # Control keywords (should be coded as 0)
-    control_keywords = ["control", "ctrl", "untreated", "vehicle", "mock", "dmso", "wt", "wildtype"]
+    control_keywords = [
+        "control",
+        "ctrl",
+        "untreated",
+        "vehicle",
+        "mock",
+        "dmso",
+        "wt",
+        "wildtype",
+    ]
 
     # Find which group is the control
     unique_group_names = groups.unique()
@@ -502,20 +521,34 @@ def _apply_interactive_defaults(
         hint = _format_col_hint(col, meta)
 
         # Special handling for deseq2 and group columns: try to extract groups from sample names (RNA only)
-        if accept_all_defaults and col in ("deseq2", "group") and "sample_id" in df.columns and assay is not None:
+        if (
+            accept_all_defaults
+            and col in ("deseq2", "group")
+            and "sample_id" in df.columns
+            and assay is not None
+        ):
             from seqnado.inputs import Assay as AssayEnum
+
             if assay == AssayEnum.RNA:
-                result = _extract_deseq2_groups_from_sample_names(df["sample_id"], pattern=deseq2_pattern)
+                result = _extract_deseq2_groups_from_sample_names(
+                    df["sample_id"], pattern=deseq2_pattern
+                )
                 if result is not None:
                     groups, deseq2_binary = result
                     df["group"] = groups
                     if deseq2_binary is not None:
                         df["deseq2"] = deseq2_binary
-                        logger.info(f"Adding 'group' and 'deseq2' columns with groups: {sorted(set(groups))}")
+                        logger.info(
+                            f"Adding 'group' and 'deseq2' columns with groups: {sorted(set(groups))}"
+                        )
                     else:
                         # 3+ groups case - populate group column and add empty deseq2
-                        df["deseq2"] = pd.NA  # Add empty deseq2 column to prevent prompting
-                        logger.info(f"Adding 'group' column with {len(set(groups))} groups: {sorted(set(groups))}")
+                        df["deseq2"] = (
+                            pd.NA
+                        )  # Add empty deseq2 column to prevent prompting
+                        logger.info(
+                            f"Adding 'group' column with {len(set(groups))} groups: {sorted(set(groups))}"
+                        )
                     continue
 
         if accept_all_defaults and default is not None:
@@ -534,10 +567,17 @@ def _apply_interactive_defaults(
         # Interactive path
         # Special handling for group/deseq2: try to extract groups first (RNA only)
         extracted_result = None
-        if col in ("group", "deseq2") and "sample_id" in df.columns and assay is not None:
+        if (
+            col in ("group", "deseq2")
+            and "sample_id" in df.columns
+            and assay is not None
+        ):
             from seqnado.inputs import Assay as AssayEnum
+
             if assay == AssayEnum.RNA:
-                extracted_result = _extract_deseq2_groups_from_sample_names(df["sample_id"], pattern=deseq2_pattern)
+                extracted_result = _extract_deseq2_groups_from_sample_names(
+                    df["sample_id"], pattern=deseq2_pattern
+                )
                 if extracted_result is not None:
                     groups, deseq2_binary = extracted_result
                     unique_groups = sorted(set(groups))
@@ -551,20 +591,30 @@ def _apply_interactive_defaults(
                         if add_col:
                             df["group"] = groups
                             df["deseq2"] = deseq2_binary
-                            logger.info(f"Added 'group' and 'deseq2' columns with auto-detected groups: {unique_groups}")
+                            logger.info(
+                                f"Added 'group' and 'deseq2' columns with auto-detected groups: {unique_groups}"
+                            )
                             continue
                     else:
                         # 3+ groups - offer uniform value or use detected groups
-                        typer.echo(f"⚠️ Auto-detected {len(unique_groups)} groups: {unique_groups}")
-                        typer.echo("Multi-group comparisons require manual DESeq2 configuration.")
+                        typer.echo(
+                            f"⚠️ Auto-detected {len(unique_groups)} groups: {unique_groups}"
+                        )
+                        typer.echo(
+                            "Multi-group comparisons require manual DESeq2 configuration."
+                        )
                         use_detected = typer.confirm(
                             "Use auto-detected groups for 'group' column (leave 'deseq2' empty for manual config)?",
                             default=True,
                         )
                         if use_detected:
                             df["group"] = groups
-                            df["deseq2"] = pd.NA  # Add empty deseq2 column to prevent prompting
-                            logger.info(f"Added 'group' column with {len(unique_groups)} groups")
+                            df["deseq2"] = (
+                                pd.NA
+                            )  # Add empty deseq2 column to prevent prompting
+                            logger.info(
+                                f"Added 'group' column with {len(unique_groups)} groups"
+                            )
                             continue
                         else:
                             # Fall through to let user specify uniform value
@@ -829,13 +879,19 @@ def genomes(
         None, "--fasta", "-f", help="Input FASTA (required for build)"
     ),
     name: Optional[str] = typer.Option(
-        None, "--name", "-n", help="Genome name(s), comma-separated for multiple (e.g., hg38 or hg38,mm39,dm6)"
+        None,
+        "--name",
+        "-n",
+        help="Genome name(s), comma-separated for multiple (e.g., hg38 or hg38,mm39,dm6)",
     ),
     outdir: Path = typer.Option(
         Path.cwd() / "genome_build", "--outdir", "-o", help="Output directory for build"
     ),
     spikein: Optional[str] = typer.Option(
-        None, "--spikein", "-sp", help="Spike-in genome name for composite builds (e.g., mm39)"
+        None,
+        "--spikein",
+        "-sp",
+        help="Spike-in genome name for composite builds (e.g., mm39)",
     ),
     preset: str = typer.Option(
         "le",
@@ -958,7 +1014,9 @@ def genomes(
 
     elif sub == "build":
         if not name:
-            logger.error("The --name option is required for 'build' (e.g., hg38, mm39, or hg38,mm39,dm6).")
+            logger.error(
+                "The --name option is required for 'build' (e.g., hg38, mm39, or hg38,mm39,dm6)."
+            )
             raise typer.Exit(code=2)
 
         genomes = [g.strip() for g in name.split(",") if g.strip()]
@@ -967,7 +1025,9 @@ def genomes(
             raise typer.Exit(code=2)
 
         if spikein and len(genomes) > 1:
-            logger.error("Spike-in (--spikein) is only supported with a single genome, not multiple.")
+            logger.error(
+                "Spike-in (--spikein) is only supported with a single genome, not multiple."
+            )
             raise typer.Exit(code=2)
 
         if not _snakemake_available():
@@ -998,7 +1058,9 @@ def genomes(
                 )
 
         profile_ctx = (
-            resources.as_file(profile_trav) if profile_trav else contextlib.nullcontext()
+            resources.as_file(profile_trav)
+            if profile_trav
+            else contextlib.nullcontext()
         )
 
         try:
@@ -1054,10 +1116,14 @@ def genomes(
 
                 # Pass through validated extra args from ctx
                 if ctx.args:
-                    filtered_args = [arg for arg in ctx.args if should_pass_to_snakemake(arg)]
+                    filtered_args = [
+                        arg for arg in ctx.args if should_pass_to_snakemake(arg)
+                    ]
                     cmd += filtered_args
 
-                genome_label = f"{genomes[0]}_{spikein}" if spikein else ",".join(genomes)
+                genome_label = (
+                    f"{genomes[0]}_{spikein}" if spikein else ",".join(genomes)
+                )
                 logger.info(f"Building genome(s): {genome_label}")
                 logger.info(f"Output directory: {outdir}")
                 if verbose:
@@ -1336,6 +1402,300 @@ def config(
             )
 
 
+# ----------------------------------- download ------------------------------------ #
+
+
+@app.command(
+    help="Download FASTQ files from GEO/SRA using a metadata TSV file and optionally generate a design file."
+)
+def download(
+    metadata_tsv: Path = typer.Argument(
+        ...,
+        exists=True,
+        help="TSV file from GEO/ENA with columns: run_accession, sample_title, library_name",
+    ),
+    outdir: Path = typer.Option(
+        Path("fastqs"),
+        "-o",
+        "--outdir",
+        help="Output directory for downloaded FASTQ files.",
+    ),
+    assay: Optional[str] = typer.Option(
+        None,
+        "-a",
+        "--assay",
+        autocompletion=assay_autocomplete,
+        help="Assay type for generating design file after download. If not provided, only downloads FASTQs.",
+    ),
+    design_output: Optional[Path] = typer.Option(
+        None,
+        "-d",
+        "--design-output",
+        help="Output path for design CSV (default: metadata_{assay}.csv in outdir).",
+    ),
+    cores: int = typer.Option(
+        4, "-c", "--cores", help="Number of parallel download jobs."
+    ),
+    preset: str = typer.Option(
+        "le",
+        "--preset",
+        click_type=click.Choice(_profile_autocomplete(), case_sensitive=False),
+        help="Snakemake job profile preset for downloads.",
+        case_sensitive=False,
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "-n",
+        "--dry-run",
+        help="Show what would be downloaded without downloading.",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Increase logging verbosity."
+    ),
+) -> None:
+    """
+    Download FASTQ files from GEO/SRA and optionally generate a design file.
+
+    This command:
+    1. Reads a metadata TSV file from GEO/ENA with run accession information
+    2. Uses Snakemake to download FASTQs with retry logic via prefetch/fasterq-dump
+    3. Optionally generates a SeqNado design file from the downloaded FASTQs
+
+    The metadata TSV file should contain at least these columns:
+    - run_accession (e.g., SRR123456)
+    - sample_title (sample name)
+    - library_name (e.g., GSM identifier)
+
+    Example:
+        seqnado geo filereport.tsv --outdir geo_downloads --assay rna -c 8
+    """
+    _configure_logging(verbose)
+
+    # Local imports
+    import pandas as pd
+    import yaml
+
+    from seqnado.inputs import Assay as AssayEnum
+
+    if not _snakemake_available():
+        logger.error(
+            "`snakemake` not found on PATH. Install/activate the environment that provides it."
+        )
+        raise typer.Exit(code=127)
+
+    # Read and parse metadata TSV
+    logger.info(f"Reading metadata from {metadata_tsv}")
+    try:
+        samples_df = pd.read_csv(metadata_tsv, sep="\t")
+        required_cols = ["run_accession", "sample_title", "library_name"]
+        missing_cols = [col for col in required_cols if col not in samples_df.columns]
+        if missing_cols:
+            logger.error(f"Missing required columns in TSV: {', '.join(missing_cols)}")
+            logger.info(f"Required columns: {', '.join(required_cols)}")
+            logger.info(f"Available columns: {', '.join(samples_df.columns)}")
+            raise typer.Exit(code=1)
+        
+        # Check for library_layout column
+        has_layout = "library_layout" in samples_df.columns
+        if not has_layout:
+            logger.warning(
+                "No 'library_layout' column found in TSV. "
+                "Will attempt to detect layout during download, but this may be slower."
+            )
+            logger.info(
+                "For best results, include 'library_layout' column with values 'PAIRED' or 'SINGLE'"
+            )
+    except Exception as e:
+        logger.error(f"Failed to read metadata TSV: {e}")
+        raise typer.Exit(code=1)
+
+    # Build sample dictionaries separated by layout
+    geo_samples_paired = {}
+    geo_samples_single = {}
+    geo_samples_unknown = {}
+    
+    for _, row in samples_df.iterrows():
+        sample_name = f"{row['library_name']}-{row['sample_title']}"
+        sample_info = {
+            "srr": row["run_accession"],
+            "gsm": row["library_name"],
+            "sample": row["sample_title"],
+        }
+        
+        if has_layout:
+            layout = str(row["library_layout"]).upper()
+            if layout == "PAIRED":
+                geo_samples_paired[sample_name] = sample_info
+            elif layout == "SINGLE":
+                geo_samples_single[sample_name] = sample_info
+            else:
+                logger.warning(
+                    f"Unknown library_layout '{layout}' for {sample_name}, treating as unknown"
+                )
+                geo_samples_unknown[sample_name] = sample_info
+        else:
+            # No layout info - will need to detect during download
+            geo_samples_unknown[sample_name] = sample_info
+
+    logger.info(
+        f"Found {len(geo_samples_paired)} paired-end, "
+        f"{len(geo_samples_single)} single-end, "
+        f"{len(geo_samples_unknown)} unknown layout samples"
+    )
+    
+    if geo_samples_unknown:
+        logger.error(
+            f"Cannot proceed with {len(geo_samples_unknown)} samples without layout information. "
+            "Please add 'library_layout' column to your TSV with values 'PAIRED' or 'SINGLE'."
+        )
+        raise typer.Exit(code=1)
+
+    # Create output directory
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    # Create temporary Snakemake config
+    temp_config = {
+        "geo_samples_paired": geo_samples_paired,
+        "geo_samples_single": geo_samples_single,
+        "geo_outdir": str(outdir.resolve()),
+    }
+
+    config_file = Path(".geo_download_config.yaml")
+    with open(config_file, "w") as f:
+        yaml.dump(temp_config, f)
+
+    logger.info(f"Created temporary config: {config_file}")
+
+    # Get the download.smk file from package
+    pkg_root_trav = _pkg_traversable("seqnado")
+    download_smk_trav = (
+        pkg_root_trav.joinpath("workflow")
+        .joinpath("rules")
+        .joinpath("geo")
+        .joinpath("download.smk")
+    )
+
+    # Build Snakemake command
+    with resources.as_file(download_smk_trav) as download_smk:
+        cmd = [
+            "snakemake",
+            "--snakefile",
+            str(download_smk),
+            "--configfile",
+            str(config_file),
+            "--cores",
+            str(cores),
+            "geo_download_all",
+        ]
+
+        # Add container support for Apptainer/Singularity
+        if shutil.which("apptainer"):
+            cmd.append("--use-apptainer")
+            logger.info("Using Apptainer for SRA tools")
+        elif shutil.which("singularity"):
+            cmd.append("--use-singularity")
+            logger.info("Using Singularity for SRA tools")
+        else:
+            logger.warning(
+                "No container runtime (apptainer/singularity) found. "
+                "Downloads will fail without SRA tools installed."
+            )
+
+        if dry_run:
+            cmd.append("--dry-run")
+
+        # Add profile if specified
+        if preset:
+            profiles = _preset_profiles()
+            profile_dir_name = profiles.get(preset.lower())
+            if profile_dir_name:
+                profile_trav = (
+                    _pkg_traversable("seqnado")
+                    .joinpath("workflow")
+                    .joinpath("envs")
+                    .joinpath("profiles")
+                    .joinpath(profile_dir_name)
+                )
+                with resources.as_file(profile_trav) as profile_path:
+                    if profile_path.exists():
+                        cmd += ["--profile", str(profile_path)]
+                        logger.info(f"Using Snakemake profile: {profile_path}")
+                    else:
+                        logger.warning(f"Profile path does not exist: {profile_path}")
+            else:
+                logger.warning(f"Unknown preset '{preset}'. Available: {list(profiles.keys())}")
+
+        logger.info("Starting GEO download with Snakemake...")
+        if verbose or dry_run:
+            logger.info("Command: " + " ".join(map(str, cmd)))
+
+        # Execute Snakemake
+        result = subprocess.run(cmd, cwd=str(Path.cwd()))
+
+        # Clean up temporary config
+        if config_file.exists():
+            config_file.unlink()
+
+        if result.returncode != 0:
+            logger.error(f"Snakemake failed with exit code {result.returncode}")
+            raise typer.Exit(code=result.returncode)
+
+        logger.success("GEO download completed!")
+
+        # Generate design file if assay is specified
+        if assay and not dry_run:
+            logger.info(f"\nGenerating design file for {assay}...")
+
+            # Find downloaded FASTQ files
+            fastq_files = sorted(outdir.glob("*.fastq.gz"))
+            if not fastq_files:
+                logger.error(f"No FASTQ files found in {outdir}")
+                raise typer.Exit(code=1)
+
+            logger.info(f"Found {len(fastq_files)} FASTQ files")
+
+            # Import design generation modules
+            from seqnado.inputs import FastqCollection, FastqCollectionForIP
+            from seqnado.inputs.validation import DesignDataFrame
+
+            _assay = AssayEnum.from_clean_name(assay)
+
+            # Create design object
+            if _assay in {AssayEnum.CHIP, AssayEnum.CAT}:
+                design_obj = FastqCollectionForIP.from_fastq_files(
+                    assay=_assay,
+                    files=fastq_files,
+                    ip_to_control_map={},
+                )
+            else:
+                design_obj = FastqCollection.from_fastq_files(
+                    assay=_assay, files=fastq_files
+                )
+
+            df = design_obj.to_dataframe().sort_values("sample_id")
+
+            # Apply interactive defaults
+            schema_candidates = _extract_candidate_defaults_from_schema(
+                DesignDataFrame, _assay
+            )
+            df = _apply_interactive_defaults(
+                df,
+                schema_candidates,
+                interactive=True,
+                accept_all_defaults=False,
+                deseq2_pattern=None,
+                assay=_assay,
+            )
+
+            # Save design file
+            if design_output is None:
+                design_output = outdir / f"metadata_{assay}.csv"
+
+            design_output.parent.mkdir(parents=True, exist_ok=True)
+            df.to_csv(design_output, index=False)
+            logger.success(f"Design file saved → {design_output}")
+
+
 # -------------------------------- design ------------------------------------ #
 
 
@@ -1410,7 +1770,7 @@ def design(
         None,
         "--deseq2-pattern",
         help="Regex pattern to extract DESeq2 groups from sample names. "
-             "First capture group will be used. Example: r'-(\\w+)-rep' for 'sample-GROUP-rep1'",
+        "First capture group will be used. Example: r'-(\\w+)-rep' for 'sample-GROUP-rep1'",
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Increase logging verbosity."
@@ -1429,7 +1789,6 @@ def design(
     ip_to_control_map: dict[str, str] = {}
     if ip_to_control:
         ip_to_control_map = _parse_ip_to_control_pairings(ip_to_control)
-
 
     # Handle multiomics mode
     if assay is None or assay == Assay.MULTIOMICS.clean_name:
@@ -1544,7 +1903,7 @@ def design(
 
     if _assay in {AssayEnum.CHIP, AssayEnum.CAT}:
         design_obj = FastqCollectionForIP.from_fastq_files(
-            assay=_assay, 
+            assay=_assay,
             files=fastq_paths,
             ip_to_control_map=ip_to_control_map,
         )
@@ -1599,6 +1958,7 @@ def design(
 # -------------------------------- pipeline ---------------------------------- #
 # Allow pass-through of *unknown* options to Snakemake via ctx.args
 # Replace your current pipeline function with the following:
+
 
 # Allow pass-through of *unknown* options to Snakemake via ctx.args
 @app.command(
@@ -1823,7 +2183,9 @@ def pipeline(
                     return False
 
                 # Filter cleaned_opts into top-level opts (preserving order)
-                top_level_opts = [o for o in cleaned_opts if should_pass_to_top_level(o)]
+                top_level_opts = [
+                    o for o in cleaned_opts if should_pass_to_top_level(o)
+                ]
 
                 # Append top-level opts to the top-level command so those flags take effect immediately.
                 if top_level_opts:
@@ -1883,7 +2245,6 @@ def pipeline(
     except Exception as e:
         logger.exception("Failed to run snakemake: %s", e)
         raise typer.Exit(code=1)
-
 
 
 # -------------------------------- Entrypoint --------------------------------
