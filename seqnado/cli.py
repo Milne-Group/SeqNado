@@ -558,7 +558,7 @@ def _apply_interactive_defaults(
                         typer.echo(f"⚠️ Auto-detected {len(unique_groups)} groups: {unique_groups}")
                         typer.echo("Multi-group comparisons require manual DESeq2 configuration.")
                         use_detected = typer.confirm(
-                            f"Use auto-detected groups for 'group' column (leave 'deseq2' empty for manual config)?",
+                            "Use auto-detected groups for 'group' column (leave 'deseq2' empty for manual config)?",
                             default=True,
                         )
                         if use_detected:
@@ -812,9 +812,11 @@ def init(
 
 
 @app.command(
-    help="Manage genome configurations (list, edit, build, or generate fastq-screen config)"
+    help="Manage genome configurations (list, edit, build, or generate fastq-screen config)",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
 def genomes(
+    ctx: typer.Context,
     subcommand: str = typer.Argument(..., help="list, edit, build, or fastqscreen"),
     assay: str = typer.Argument(
         "atac",
@@ -827,10 +829,26 @@ def genomes(
         None, "--fasta", "-f", help="Input FASTA (required for build)"
     ),
     name: Optional[str] = typer.Option(
-        None, "--name", "-n", help="Genome name (prefix) for built genome"
+        None, "--name", "-n", help="Genome name(s), comma-separated for multiple (e.g., hg38 or hg38,mm39,dm6)"
     ),
     outdir: Path = typer.Option(
         Path.cwd() / "genome_build", "--outdir", "-o", help="Output directory for build"
+    ),
+    spikein: Optional[str] = typer.Option(
+        None, "--spikein", "-sp", help="Spike-in genome name for composite builds (e.g., mm39)"
+    ),
+    preset: str = typer.Option(
+        "le",
+        "--preset",
+        click_type=click.Choice(_profile_autocomplete(), case_sensitive=False),
+        help="Snakemake job profile preset (for build subcommand).",
+        case_sensitive=False,
+    ),
+    cores: int = typer.Option(
+        4, "-c", "--cores", help="Number of cores for Snakemake (for build subcommand)."
+    ),
+    scale_resources: float = typer.Option(
+        1.0, "--scale-resources", help="Scale memory/time (for build subcommand)."
     ),
     output: Optional[Path] = typer.Option(
         None,
@@ -854,6 +872,9 @@ def genomes(
         "--contaminant-path",
         help="Path to contaminant reference files (fastqscreen subcommand)",
     ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Pass --dry-run to Snakemake (build subcommand)"
+    ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Increase logging verbosity"
     ),
@@ -864,7 +885,7 @@ def genomes(
     Subcommands:
       list        Show packaged and user genome presets
       edit        Open user genome config in $EDITOR
-      build       Build a genome from FASTA (not yet implemented)
+      build       Download genome and build indices via Snakemake
       fastqscreen Generate FastqScreen configuration file
     """
     # Import locally for snappy startup
@@ -882,8 +903,8 @@ def genomes(
             logger.warning("No genome config found.")
             raise typer.Exit(code=0)
 
-        for name, details in cfg.items():
-            typer.echo(f"[bold]{name}[/bold]")
+        for genome_name, details in cfg.items():
+            typer.echo(f"[bold]{genome_name}[/bold]")
             try:
                 items = details.dict()
             except Exception:
@@ -936,19 +957,120 @@ def genomes(
         raise typer.Exit(code=0)
 
     elif sub == "build":
-        if not fasta:
-            logger.error("The --fasta option is required for 'build'.")
+        if not name:
+            logger.error("The --name option is required for 'build' (e.g., hg38, mm39, or hg38,mm39,dm6).")
             raise typer.Exit(code=2)
 
-        fasta = Path(fasta).expanduser().resolve()
-        if not fasta.exists():
-            logger.error(f"FASTA not found: {fasta}")
-            raise typer.Exit(code=3)
+        genomes = [g.strip() for g in name.split(",") if g.strip()]
+        if not genomes:
+            logger.error("No valid genome names provided.")
+            raise typer.Exit(code=2)
+
+        if spikein and len(genomes) > 1:
+            logger.error("Spike-in (--spikein) is only supported with a single genome, not multiple.")
+            raise typer.Exit(code=2)
+
+        if not _snakemake_available():
+            logger.error(
+                "`snakemake` not found on PATH. Install/activate the environment that provides it."
+            )
+            raise typer.Exit(code=127)
 
         outdir = Path(outdir).expanduser().resolve()
         outdir.mkdir(parents=True, exist_ok=True)
 
-        raise NotImplementedError("Genome build not yet implemented.")
+        os.environ["SCALE_RESOURCES"] = str(scale_resources)
+
+        pkg_root_trav = _pkg_traversable("seqnado")
+        snake_trav = pkg_root_trav.joinpath("workflow").joinpath("Snakefile_genome")
+
+        # Resolve profile
+        profile_trav = None
+        if preset:
+            profiles = _preset_profiles()
+            profile_dir_name = profiles.get(preset.lower())
+            if profile_dir_name:
+                profile_trav = (
+                    pkg_root_trav.joinpath("workflow")
+                    .joinpath("envs")
+                    .joinpath("profiles")
+                    .joinpath(profile_dir_name)
+                )
+
+        profile_ctx = (
+            resources.as_file(profile_trav) if profile_trav else contextlib.nullcontext()
+        )
+
+        try:
+            with (
+                resources.as_file(snake_trav) as snakefile_path,
+                profile_ctx as profile_path,
+            ):
+                cmd: List[str] = [
+                    "snakemake",
+                    "--snakefile",
+                    str(snakefile_path),
+                    "--show-failed-logs",
+                    "-c",
+                    str(cores),
+                ]
+
+                # Pass config values (comma-separated genomes)
+                cmd += [
+                    "--config",
+                    f"genome={','.join(genomes)}",
+                    f"output_dir={outdir}",
+                ]
+                if spikein:
+                    cmd.append(f"spikein={spikein}")
+
+                # Add profile if requested
+                if preset and profile_path:
+                    cmd += ["--profile", str(profile_path)]
+                    logger.info(
+                        f"Using Snakemake profile preset '{preset}' -> {profile_path}"
+                    )
+
+                # Define which flags to pass through to snakemake
+                TOP_LEVEL_PASS_THROUGH = (
+                    "-n",
+                    "--dry-run",
+                    "--printshellcmds",
+                    "--unlock",
+                    "--rerun-incomplete",
+                    "--show-failed-logs",
+                )
+
+                def should_pass_to_snakemake(opt: str) -> bool:
+                    """Check if option should be passed to snakemake."""
+                    for p in TOP_LEVEL_PASS_THROUGH:
+                        if opt == p or opt.startswith(p + "="):
+                            return True
+                    return False
+
+                # Add --dry-run if requested as an explicit option
+                if dry_run:
+                    cmd.append("--dry-run")
+
+                # Pass through validated extra args from ctx
+                if ctx.args:
+                    filtered_args = [arg for arg in ctx.args if should_pass_to_snakemake(arg)]
+                    cmd += filtered_args
+
+                genome_label = f"{genomes[0]}_{spikein}" if spikein else ",".join(genomes)
+                logger.info(f"Building genome(s): {genome_label}")
+                logger.info(f"Output directory: {outdir}")
+                if verbose:
+                    logger.info("Snakemake command:\n$ " + " ".join(map(str, cmd)))
+
+                completed = subprocess.run(cmd)
+                raise typer.Exit(code=completed.returncode)
+
+        except typer.Exit:
+            raise
+        except Exception as e:
+            logger.exception("Failed to run genome build: %s", e)
+            raise typer.Exit(code=1)
 
     elif sub == "fastqscreen":
         from seqnado.config.fastq_screen_generator import (

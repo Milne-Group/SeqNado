@@ -1,0 +1,129 @@
+################################
+# Snakefile_genome
+# Orchestrates genome downloading, indexing, and config updates
+################################
+
+import json
+import os
+from pathlib import Path
+
+from seqnado.workflow.helpers.common import define_memory_requested, define_time_requested
+
+
+################################
+# Hardcoded Config
+################################
+SCALE_RESOURCES = float(os.environ.get("SCALE_RESOURCES", "1"))
+
+
+################################
+# Load Configuration
+################################
+GENOMES = [g.strip() for g in config["genome"].split(",") if g.strip()]
+GENOME = GENOMES[0]  # Primary genome (used by composite rules)
+OUTPUT_DIR = config["output_dir"]
+SPIKEIN = config.get("spikein", None)
+
+
+################################
+# Wildcard Constraints
+# Prevent download rules from matching composite genome names (e.g., hg38_mm39)
+################################
+wildcard_constraints:
+    genome="[a-zA-Z0-9]+",
+
+
+################################
+# Define Targets
+################################
+def get_targets():
+    targets = []
+
+    if SPIKEIN:
+        name = f"{GENOME}_{SPIKEIN}"
+        # Download component genomes
+        for g in [GENOME, SPIKEIN]:
+            targets.append(f"{OUTPUT_DIR}/{g}/sequence/{g}.fa")
+            targets.append(f"{OUTPUT_DIR}/{g}/sequence/{g}.chrom.sizes")
+            targets.append(f"{OUTPUT_DIR}/{g}/genes/{g}.ncbiRefSeq.gtf")
+            targets.append(f"{OUTPUT_DIR}/{g}/{g}-blacklist.bed.gz")
+        # Composite outputs
+        targets.append(f"{OUTPUT_DIR}/{name}/sequence/{name}.fa.fai")
+        targets.append(f"{OUTPUT_DIR}/{name}/bt2_index/{name}.1.bt2")
+        targets.append(f"{OUTPUT_DIR}/{name}/STAR_2.7.10b")
+    else:
+        for g in GENOMES:
+            targets.extend([
+                f"{OUTPUT_DIR}/{g}/sequence/{g}.fa",
+                f"{OUTPUT_DIR}/{g}/sequence/{g}.chrom.sizes",
+                f"{OUTPUT_DIR}/{g}/genes/{g}.ncbiRefSeq.gtf",
+                f"{OUTPUT_DIR}/{g}/{g}-blacklist.bed.gz",
+                f"{OUTPUT_DIR}/{g}/sequence/{g}.fa.fai",
+                f"{OUTPUT_DIR}/{g}/bt2_index/{g}.1.bt2",
+                f"{OUTPUT_DIR}/{g}/STAR_2.7.10b",
+            ])
+
+    return targets
+
+
+################################
+# Target Rule
+################################
+rule all:
+    input:
+        get_targets(),
+
+
+################################
+# Include Rules
+################################
+include: "rules/genomes/download.smk"
+include: "rules/genomes/build_index.smk"
+
+
+################################
+# On Success: Update Genome Config
+################################
+onsuccess:
+    cfg_path = Path.home() / ".config" / "seqnado" / "genome_config.json"
+
+    def _blacklist_or_na(bl_path):
+        """Return the blacklist path if the file has content, otherwise 'NA'."""
+        p = Path(bl_path)
+        if p.exists() and p.stat().st_size > 0:
+            return str(p)
+        return "NA"
+
+    existing = {}
+    if cfg_path.exists():
+        try:
+            existing = json.loads(cfg_path.read_text())
+        except Exception:
+            pass
+
+    if SPIKEIN:
+        name = f"{GENOME}_{SPIKEIN}"
+        existing[name] = {
+            "bt2_index": f"{OUTPUT_DIR}/{name}/bt2_index/{name}",
+            "star_index": f"{OUTPUT_DIR}/{name}/STAR_2.7.10b",
+            "chromosome_sizes": f"{OUTPUT_DIR}/{name}/sequence/{name}.fa.fai",
+            "gtf": f"{OUTPUT_DIR}/{name}/genes/{name}.gtf",
+            "blacklist": _blacklist_or_na(f"{OUTPUT_DIR}/{GENOME}/{GENOME}-blacklist.bed.gz"),
+            "fasta": f"{OUTPUT_DIR}/{name}/sequence/{name}.fa",
+        }
+        print(f"Added genome entry: {name}")
+    else:
+        for g in GENOMES:
+            existing[g] = {
+                "bt2_index": f"{OUTPUT_DIR}/{g}/bt2_index/{g}",
+                "star_index": f"{OUTPUT_DIR}/{g}/STAR_2.7.10b",
+                "chromosome_sizes": f"{OUTPUT_DIR}/{g}/sequence/{g}.chrom.sizes",
+                "gtf": f"{OUTPUT_DIR}/{g}/genes/{g}.ncbiRefSeq.gtf",
+                "blacklist": _blacklist_or_na(f"{OUTPUT_DIR}/{g}/{g}-blacklist.bed.gz"),
+                "fasta": f"{OUTPUT_DIR}/{g}/sequence/{g}.fa",
+            }
+            print(f"Added genome entry: {g}")
+
+    cfg_path.parent.mkdir(parents=True, exist_ok=True)
+    cfg_path.write_text(json.dumps(existing, indent=4))
+    print(f"Updated genome config: {cfg_path}")

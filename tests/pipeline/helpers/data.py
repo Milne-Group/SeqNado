@@ -44,6 +44,12 @@ class GenomeResources(BaseModel):
 
     # Resources keyed directly by assay name
     RESOURCES: ClassVar[dict] = {
+        "build": {
+        "chromosome_sizes": "chr21.chrom.sizes",
+        "gtf": "chr21.gtf",
+        "blacklist": "hg38_chr21-blacklist.bed",
+        "fasta": "chr21.fa",
+    },
         "atac": _DEFAULT_RESOURCES,
         "cat": _DEFAULT_RESOURCES,
         "chip": _DEFAULT_RESOURCES,
