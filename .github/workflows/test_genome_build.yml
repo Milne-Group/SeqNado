@@ -1,0 +1,151 @@
+name: Genome Build Tests
+
+on:
+  push
+
+jobs:
+  test-unit:
+    name: Genome Build Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Setup Conda environment and install SeqNado
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: testing.yml
+          miniforge-version: latest
+          use-mamba: true
+
+      - name: Install SeqNado package
+        shell: bash -el {0}
+        run: |
+          pip install .
+          python -c "import seqnado; print(f'SeqNado installed at: {seqnado.__file__}')"
+          which seqnado
+
+      - name: Run unit tests
+        shell: bash -el {0}
+        run: |
+          pytest tests/unit/config/test_genome_build.py -vv --maxfail=5
+
+  test-cli:
+    name: Genome Build CLI Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Setup Conda environment and install SeqNado
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: testing.yml
+          miniforge-version: latest
+          use-mamba: true
+
+      - name: Install SeqNado package
+        shell: bash -el {0}
+        run: |
+          pip install .
+          python -c "import seqnado; print(f'SeqNado installed at: {seqnado.__file__}')"
+          which seqnado
+
+      - name: Run CLI tests
+        shell: bash -el {0}
+        run: |
+          pytest tests/cli/test_cli_genomes_build.py -vv --maxfail=5
+
+  test-dry-run:
+    name: Genome Build Dry Run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Setup Conda environment and install SeqNado
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: testing.yml
+          miniforge-version: latest
+          use-mamba: true
+
+      - name: Install SeqNado package
+        shell: bash -el {0}
+        run: |
+          pip install .
+          python -c "import seqnado; print(f'SeqNado installed at: {seqnado.__file__}')"
+          which seqnado
+
+      - name: Run genome build dry-run tests
+        shell: bash -el {0}
+        run: |
+          python -m pytest tests/pipeline/test_genome_build.py -vv \
+            -k "DryRun" --run-pipeline --maxfail=3
+
+  test-build:
+    name: Genome Build (Full)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+
+      - name: Setup Conda environment and install SeqNado
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: testing.yml
+          miniforge-version: latest
+          use-mamba: true
+
+      - name: Clean up conda cache before container pulls
+        shell: bash -el {0}
+        run: |
+          mamba clean --all -y
+
+      - name: Install SeqNado package
+        shell: bash -el {0}
+        run: |
+          pip install .
+          python -c "import seqnado; print(f'SeqNado installed at: {seqnado.__file__}')"
+          which seqnado
+
+      - name: Setup Apptainer runtime
+        uses: eWaterCycle/setup-apptainer@v2
+        with:
+          apptainer-version: 1.3.4
+
+      - name: Setup Apptainer directories
+        shell: bash -el {0}
+        run: |
+          mkdir -p "${{ github.workspace }}/.apptainer/cache"
+          mkdir -p "${{ github.workspace }}/.apptainer/tmp"
+
+      - name: Run genome build tests
+        shell: bash -el {0}
+        env:
+          APPTAINER_CACHEDIR: "${{ github.workspace }}/.apptainer/cache"
+          APPTAINER_TMPDIR: "${{ github.workspace }}/.apptainer/tmp"
+        run: |
+          python -m pytest tests/pipeline/test_genome_build.py -vv \
+            -k "not DryRun" --run-pipeline --maxfail=1
