@@ -101,41 +101,49 @@ Micro Capture-C maps chromatin interactions at high resolution using targeted ca
 
 The MCC pipeline follows a multi-phase workflow:
 
-#### Phase 1: Viewpoint Preparation
+**Phase 1: Viewpoint Preparation** 
+
 - **Viewpoint FASTA Generation**: Viewpoint coordinates from the BED file are extracted as FASTA sequences from the reference genome using bedtools. These serve as alignment targets for identifying which capture probe pulled down each read.
 - **Exclusion Regions**: Buffer zones around each viewpoint are defined (configurable via `exclusion_zone`) to exclude self-ligation and undigested fragments from the analysis.
 
-#### Phase 2: Read-to-Viewpoint Assignment
+**Phase 2: Read-to-Viewpoint Assignment** 
+
 - **Viewpoint Alignment**: Trimmed reads (merged with FLASH for overlapping pairs) are aligned to the viewpoint FASTA using minimap2 with short-read settings (`-k 8 -w 1`). This identifies which capture probe each read originated from.
 - **Read Splitting**: Reads that aligned to a viewpoint are extracted and converted back to FASTQ for re-alignment to the full genome.
 
-#### Phase 3: Genome Alignment
+**Phase 3: Genome Alignment** 
+
 - **Primary Genome Alignment**: Viewpoint-assigned reads are aligned to the reference genome with Bowtie2 to determine the genomic location of each captured fragment.
 - **Sensitive Re-alignment**: Reads that failed to map in the primary alignment are re-aligned with `--very-sensitive-local` settings to recover additional mappings. Both sets are then merged.
 
-#### Phase 4: Per-Replicate Processing
+**Phase 4: Per-Replicate Processing** 
+
 - **Query Name Sorting**: BAMs are sorted by read name to group paired reads for junction identification.
 - **Viewpoint Annotation**: Each read pair is annotated with a viewpoint (VP) tag indicating which capture probe it originated from.
 - **Deduplication**: PCR duplicates are removed using viewpoint-aware deduplication to avoid inflating contact frequencies.
 - **Ligation Junction Extraction**: Read pairs representing capture-C ligation junctions are identified for each viewpoint. These are output as pairs files (chromosome, position for each end of the contact).
 - **Ligation Statistics**: Per-sample cis and trans contact counts are extracted for normalisation and QC. A high cis ratio (contacts on the same chromosome as the viewpoint) indicates good capture efficiency.
 
-#### Phase 5: Group Merging and Aggregation
+**Phase 5: Group Merging and Aggregation** 
+
 - **BAM Merging**: Replicate BAMs within each consensus group are merged for increased statistical power.
 - **Grouped Junction Extraction**: Ligation junctions are re-extracted from the merged BAMs for each viewpoint, providing group-level contact data.
 
-#### Phase 6: Contact Matrix Generation
+**Phase 6: Contact Matrix Generation** 
+
 - **Cooler Creation**: Pairs files are loaded into Cooler format (HDF5-based) at the primary resolution defined in the config.
 - **Multi-resolution Zoomification**: Each Cooler is zoomified to create `.mcool` files with multiple resolution levels for browsing at different scales.
 - **Cooler Aggregation**: Per-viewpoint Cooler files are combined into a single group-level `.mcool` file.
 
-#### Phase 7: Signal Tracks
+**Phase 7: Signal Tracks** 
+
 - **Per-Replicate BigWigs**: BigWig tracks are generated for each sample and viewpoint, normalised by the number of cis contacts (n_cis CPM) to allow comparison between samples with different capture efficiencies.
 - **Group BigWigs**: Both normalised (n_cis-scaled) and raw (unscaled) BigWigs are generated for each consensus group.
 - **Aggregated BigWigs**: Replicate BigWigs are averaged within each condition to produce mean signal tracks.
 - **Comparison BigWigs**: Subtraction BigWigs are generated between conditions (e.g., treatment minus control) to highlight differential interactions.
 
-#### Phase 8: Peak Calling
+**Phase 8: Peak Calling** 
+
 - **LanceOtron-MCC**: A deep-learning peak caller identifies significant interaction peaks from the unscaled group BigWigs. This runs on GPU when available.
 
 ### CRISPR Screens (CRISPR)
@@ -150,9 +158,7 @@ Run multiple assay types together in one project for integrated outputs. This is
 
 ---
 
-## Downstream Analysis (ATAC, ChIP, CUT&Tag)
-
-The following steps run automatically for ATAC-seq, ChIP-seq, and CUT&Tag after peak calling:
+## Downstream Analysis
 
 ### Motif Analysis
 Identifies DNA sequence motifs enriched in peak regions, helping to determine which transcription factors may be driving binding or accessibility.
@@ -161,7 +167,7 @@ Identifies DNA sequence motifs enriched in peak regions, helping to determine wh
 - **HOMER**: Runs `findMotifsGenome` for de novo and known motif enrichment, with broader database support.
 
 ### Heatmaps and Metaplots
-deeptools generates signal heatmaps and average profile plots (metaplots) centred on peak regions or gene features. These provide a visual summary of signal distribution across all peaks or genes in a single figure.
+Deeptools generates signal heatmaps and average profile plots (metaplots) centred on peak regions or gene features. These provide a visual summary of signal distribution across all peaks or genes in a single figure.
 
 ### Visualisation
 - **UCSC Genome Browser Hub**: When enabled, SeqNado generates a track hub that can be loaded directly into the UCSC Genome Browser for interactive exploration of BigWig tracks and peak calls.
