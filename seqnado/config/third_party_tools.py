@@ -488,7 +488,7 @@ class Subread(BaseModel):
     feature_counts: ToolConfig = Field(
         default_factory=lambda: ToolConfig(
             threads=16, 
-            command_line_arguments=CommandLineArguments(value="-p --countReadPairs -t exon -g gene_id")
+            command_line_arguments=CommandLineArguments(value="-t exon -g gene_id")
         ),
         description="Feature counting configuration"
     )

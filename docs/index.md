@@ -13,14 +13,14 @@ Welcome to SeqNado! SeqNado is a powerful bioinformatics tool designed to simpli
 
 SeqNado supports the following sequencing assays:
 
-- **RNA-seq**: Transcriptome analysis.
 - **ATAC-seq**: Chromatin accessibility profiling.
-- **SNP Analysis**: Single nucleotide polymorphism detection.
 - **ChIP-seq**: Protein-DNA interaction analysis.
-- **CUT&Tag**: Epigenomic profiling.
-- **Methylation**: DNA methylation analysis.
-- **MCC**: Micro Capture-C.
 - **CRISPR**: CRISPR screening analysis.
+- **CUT&Tag**: Epigenomic profiling.
+- **MCC**: Micro Capture-C.
+- **Methylation**: DNA methylation analysis.
+- **RNA-seq**: Transcriptome analysis.
+- **SNP Analysis**: Single nucleotide polymorphism detection.
 
 ## Use Cases
 

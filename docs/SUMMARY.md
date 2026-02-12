@@ -19,5 +19,6 @@
     * [Outputs API](api/outputs.md)
     * [Tools Reference](tools.md)
 * Help
+    * [Troubleshooting](troubleshooting.md)
     * [HPC Clusters](cluster_config.md)
     * [FAQ](faq.md)

@@ -11,12 +11,12 @@ SeqNado can be run for any of the following assay types, as well as in multiomic
 
 - ATAC-seq: `atac`
 - ChIP-seq: `chip`
-- CUT&Tag: `cat`
-- RNA-seq: `rna`
-- Methylation: `meth`
-- SNP analysis: `snp`
-- MCC: `mcc`
 - CRISPR analysis: `crispr`
+- CUT&Tag: `cat`
+- MCC: `mcc`
+- Methylation: `meth`
+- RNA-seq: `rna`
+- SNP analysis: `snp`
 
 ## Example Workflow
 ### 1. Install SeqNado
