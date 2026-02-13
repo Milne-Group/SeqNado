@@ -34,6 +34,52 @@ TOOL_TEMPLATE = """#### {display_name}
 """
 
 
+def _convert_citation_to_markdown_links(citation_text: str) -> str:
+    """Convert URLs and DOIs in citations to markdown link format.
+    
+    Prefers DOI links over plain URLs when both are present.
+    
+    Converts patterns like:
+        URL: https://example.com, doi:10.1234/example
+    
+    To markdown link with DOI only:
+        [doi:10.1234/example](https://doi.org/10.1234/example)
+    """
+    # Check if there's a DOI in the citation
+    doi_match = re.search(r'doi:\s*([^\s,]+)', citation_text)
+    
+    if doi_match:
+        # If DOI exists, use it and remove the URL part
+        doi = doi_match.group(1)
+        # Remove trailing punctuation
+        doi = doi.rstrip('.,')
+        # Remove the URL field entirely (with or without preceding comma)
+        citation_text = re.sub(
+            r',?\s*URL:\s*https?://[^\s,]+',
+            '',
+            citation_text
+        )
+        # Convert DOI to markdown link - allow periods in DOI (don't exclude with \.)
+        citation_text = re.sub(
+            r'doi:\s*[^\s,]+',
+            f'[https://doi.org/{doi}](https://doi.org/{doi})',
+            citation_text
+        )
+    else:
+        # If no DOI, use the URL
+        citation_text = re.sub(
+            r'URL:\s*(https?://[^\s,]+)',
+            r'[\1](\1)',
+            citation_text
+        )
+    
+    # Clean up double punctuation patterns (e.g., "2011.," -> "2011.")
+    citation_text = re.sub(r'\.,', '.', citation_text)
+    citation_text = re.sub(r',\.', '.', citation_text)
+    
+    return citation_text
+
+
 def _get_tool_version_for_docs(tool_name: str) -> str:
     """Get tool version for documentation.
 
@@ -78,7 +124,8 @@ def generate_tool_entry(tool_name: str, tool_info: Dict) -> str:
             if bibtex:
                 formatted = format_citation(bibtex)
                 if formatted:
-                    citation_text = formatted
+                    # Convert URLs in citations to markdown links
+                    citation_text = _convert_citation_to_markdown_links(formatted)
         except Exception:
             print(
                 f"Warning: Could not get citation for tool '{tool_name}'",
