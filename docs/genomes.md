@@ -158,8 +158,10 @@ contaminant_refs/
 | `--no-contaminants`   | off     | Skip contaminant databases |
 | `--contaminant-path`  | *(prompted)* | Path to contaminant Bowtie2 indices |
 
-## Next Steps
+---
 
-Once you have configured your genomes, proceed to configure a SeqNado run:
+**See Also:**
 
-[Configuration](configuration.md)
+- [Configuration Guide](configuration.md) - Configure your analysis
+- [CLI Reference](cli.md#cli-seqnado-genomes) - Complete genomes command options
+- [Troubleshooting](troubleshooting.md#genome-setup-seqnado-genomes) - Genome setup issues

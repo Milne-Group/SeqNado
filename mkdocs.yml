@@ -116,10 +116,15 @@ plugins:
   - literate-nav:
       nav_file: SUMMARY.md
   - section-index
-  - mkdocs-jupyter
+  - mkdocs-jupyter:
+      ignore:
+        - "scripts/*.py"
   - gen-files:
       scripts:
-        - docs/third_party_tools_config.py
+        - docs/scripts/third_party_tools_config.py
+
+hooks:
+  - docs/scripts/hooks.py
 
 nav:
   - Home: index.md
@@ -143,12 +148,14 @@ nav:
     - Inputs API: api/inputs.md
     - Outputs API: api/outputs.md
     - Tools Reference: tools.md
+    - Assay Configurations: assays.md
+    - Tool Config Examples: tool-config-examples.md
   - Help:
     - Troubleshooting: troubleshooting.md
     - HPC Clusters: cluster_config.md
     - FAQ: faq.md
 
-repo_url: https://github.com/alsmith151/SeqNado
+repo_url: https://github.com/Milne-Group/SeqNado
 repo_name: Milne-Group/SeqNado
 edit_uri: edit/main/docs/
 
@@ -168,3 +175,6 @@ extra:
 
 extra_css:
   - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/toc-collapse.js

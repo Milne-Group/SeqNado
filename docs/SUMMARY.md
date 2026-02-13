@@ -3,13 +3,15 @@
     * [Installation](installation.md)
     * [Initialisation](initialisation.md)
     * [Genome Setup](genomes.md)
+    * [Quick Start](quick_start.md)
+* Usage
     * [Configuration](configuration.md)
     * [Design Guide](design.md)
     * [GEO/SRA Download](geo_download.md)
-    * [Quick Start](quick_start.md)
-* Usage
     * [Pipeline Overview](pipeline.md)
     * [Outputs](outputs.md)
+    * [Output Examples](examples.md)
+    * [Tools Reference](tools.md)
     * [CLI Reference](cli.md)
 * Reference
     * [API Overview](api/index.md)
@@ -17,7 +19,8 @@
     * [Configuration API](api/config.md)
     * [Inputs API](api/inputs.md)
     * [Outputs API](api/outputs.md)
-    * [Tools Reference](tools.md)
+    * [Assay Configurations](assays.md)
+    * [Tool Config Examples](tool-config-examples.md)
 * Help
     * [Troubleshooting](troubleshooting.md)
     * [HPC Clusters](cluster_config.md)

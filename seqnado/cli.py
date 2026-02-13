@@ -38,6 +38,27 @@ except Exception:
     _RICH_CONSOLE = None
     Text = None  # type: ignore
 
+
+def _patch_tools_category_prompt(argv: list[str]) -> list[str]:
+    if len(argv) < 2 or argv[1] != "tools":
+        return argv
+
+    patched = []
+    i = 0
+    while i < len(argv):
+        token = argv[i]
+        patched.append(token)
+        if token in {"--category", "-c"}:
+            next_token = argv[i + 1] if i + 1 < len(argv) else None
+            if next_token is None or next_token.startswith("-"):
+                patched.append("__PROMPT__")
+        i += 1
+
+    return patched
+
+
+sys.argv = _patch_tools_category_prompt(sys.argv)
+
 if TYPE_CHECKING:
     # Available to type-checkers only; does not execute at runtime.
     import pandas as pd
@@ -1239,9 +1260,9 @@ def config(
 
     from seqnado.config import (
         build_default_workflow_config,
+        build_multiomics_config,
         build_workflow_config,
         render_config,
-        build_multiomics_config,
         render_multiomics_configs,
     )
     from seqnado.inputs import Assay
@@ -1402,6 +1423,378 @@ def config(
             )
 
 
+# -------------------------------- tools ------------------------------------ #
+
+
+@app.command(
+    help="List and explore bioinformatics tools available in the SeqNado pipeline.",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
+def tools(
+    ctx: typer.Context,
+    tool_name: Optional[str] = typer.Argument(
+        None,
+        metavar="[TOOL]",
+        help="Specific tool name to get help for (e.g., fastqc, deeptools)",
+    ),
+    list_tools: bool = typer.Option(
+        False, "--list", "-l", help="List all available tools with descriptions."
+    ),
+    category: Optional[str] = typer.Option(
+        None,
+        "--category",
+        "-c",
+        help=(
+            "Filter tools by category name or number. Use without a value to "
+            "prompt for a category number."
+        ),
+    ),
+    show_options: bool = typer.Option(
+        False,
+        "--options",
+        help="Show tool options/help from the container (requires tool name and apptainer).",
+    ),
+    show_citation: bool = typer.Option(
+        False,
+        "--citation",
+        help="Show the BibTeX citation for a tool (requires tool name).",
+    ),
+    subcommand: Optional[str] = typer.Option(
+        None,
+        "--subcommand",
+        "-s",
+        help="Specify a tool subcommand for help (e.g. plotHeatmap).",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Increase logging verbosity."
+    ),
+) -> None:
+    """
+    Explore bioinformatics tools in the SeqNado pipeline.
+
+        Examples:
+            seqnado tools                         # List all tools
+            seqnado tools fastqc                  # Show info for fastqc
+            seqnado tools fastqc --options        # Show fastqc --help from container
+            seqnado tools fastqc --citation       # Show BibTeX citation for fastqc
+            seqnado tools deeptools --options -s plotHeatmap
+            seqnado tools --category 5            # List tools in category #5
+            seqnado tools -c "Quality Control"    # List tools in a category by name
+    """
+    from seqnado.tools import (
+        format_citation,
+        get_categories,
+        get_tool_citation,
+        get_tool_help,
+        get_tool_info,
+        get_tool_subcommands,
+        get_tool_version,
+        is_apptainer_available,
+        run_tool_help_in_container,
+    )
+    from seqnado.tools import (
+        list_tools as list_all_tools,
+    )
+
+    _configure_logging(verbose)
+
+    # If --options is requested, show tool help from container
+    if show_options:
+        if not tool_name:
+            logger.error("Tool name required with --options")
+            raise typer.Exit(code=1)
+
+        if not is_apptainer_available():
+            logger.error("Apptainer/Singularity is required to use --options flag")
+            logger.info("Please install apptainer or singularity and try again")
+            raise typer.Exit(code=1)
+
+        tool_info = get_tool_info(tool_name)
+        if not tool_info:
+            logger.error(f"Tool '{tool_name}' not found")
+            logger.info("Run 'seqnado tools --list' to see all available tools.")
+            raise typer.Exit(code=1)
+
+        subcommands = get_tool_subcommands(tool_name)
+        if subcommand:
+            if not subcommands:
+                logger.error(f"Tool '{tool_name}' does not define subcommands.")
+                raise typer.Exit(code=1)
+
+            subcommand_match = None
+            for cmd in subcommands:
+                if cmd.lower() == subcommand.lower():
+                    subcommand_match = cmd
+                    break
+            if not subcommand_match:
+                logger.error(
+                    f"Unknown subcommand '{subcommand}' for tool '{tool_name}'."
+                )
+                logger.info(f"Available subcommands: {', '.join(subcommands)}")
+                raise typer.Exit(code=1)
+            subcommand = subcommand_match
+
+        logger.info(f"Fetching help for '{tool_name}' from SeqNado container...")
+        help_output = run_tool_help_in_container(tool_name, subcommand=subcommand)
+        if _RICH_CONSOLE:
+            _RICH_CONSOLE.print(help_output)
+        else:
+            typer.echo(help_output)
+        raise typer.Exit(code=0)
+
+    # If --citation is requested, show BibTeX entry
+    if show_citation:
+        if not tool_name:
+            logger.error("Tool name required with --citation")
+            raise typer.Exit(code=1)
+
+        tool_info = get_tool_info(tool_name)
+        if not tool_info:
+            logger.error(f"Tool '{tool_name}' not found")
+            logger.info("Run 'seqnado tools --list' to see all available tools.")
+            raise typer.Exit(code=1)
+
+        bibtex = get_tool_citation(tool_name)
+        if bibtex:
+            formatted = format_citation(bibtex)
+            if _RICH_CONSOLE:
+                if formatted:
+                    _RICH_CONSOLE.print(f"\n[bold cyan]Citation for {tool_name}:[/bold cyan]\n")
+                    _RICH_CONSOLE.print(formatted)
+                _RICH_CONSOLE.print(f"\n[bold cyan]BibTeX:[/bold cyan]\n")
+                _RICH_CONSOLE.print(bibtex)
+            else:
+                if formatted:
+                    typer.echo(f"\nCitation for {tool_name}:\n")
+                    typer.echo(formatted)
+                typer.echo("\nBibTeX:\n")
+                typer.echo(bibtex)
+        else:
+            logger.warning(f"No citation available for '{tool_name}'")
+        raise typer.Exit(code=0)
+
+    # Handle category selection (by number or name)
+    if category:
+        categories = get_categories()
+        if category == "__PROMPT__":
+            if sys.stdin.isatty():
+                if _RICH_CONSOLE:
+                    _RICH_CONSOLE.print(
+                        "[bold cyan]Available Tool Categories:[/bold cyan]"
+                    )
+                    for i, cat in enumerate(categories, 1):
+                        _RICH_CONSOLE.print(f"  {i}. {cat}")
+                else:
+                    typer.echo("Available Tool Categories:")
+                    for i, cat in enumerate(categories, 1):
+                        typer.echo(f"  {i}. {cat}")
+
+                selection = typer.prompt("Select category number")
+                category = selection
+            else:
+                logger.error("Category selection requires a TTY.")
+                raise typer.Exit(code=1)
+
+        # Check if category is a number
+        if category.isdigit():
+            idx = int(category) - 1
+            if 0 <= idx < len(categories):
+                category = categories[idx]
+            else:
+                logger.error(
+                    f"Invalid category number: {category} (1-{len(categories)})"
+                )
+                raise typer.Exit(code=1)
+
+    # List all tools
+    if list_tools or (tool_name is None and not category):
+        if _RICH_CONSOLE:
+            _RICH_CONSOLE.print(
+                "[bold cyan]Available Tools in SeqNado Pipeline[/bold cyan]\n"
+            )
+        else:
+            typer.echo("Available Tools in SeqNado Pipeline\n")
+
+        tools_list = list_all_tools(category=category)
+
+        if not tools_list:
+            typer.echo(f"No tools found for category '{category}'")
+            raise typer.Exit(code=1)
+
+        # Group by category for better readability
+        tools_by_category: dict = {}
+        for tool_name_item, description, cat in tools_list:
+            if cat not in tools_by_category:
+                tools_by_category[cat] = []
+            tools_by_category[cat].append((tool_name_item, description))
+
+        categories = get_categories()
+        for idx, cat in enumerate(categories, 1):
+            if cat not in tools_by_category:
+                continue
+            if _RICH_CONSOLE:
+                _RICH_CONSOLE.print(f"[bold]{idx}. {cat}[/bold]")
+                for tool_name_item, description in tools_by_category[cat]:
+                    _RICH_CONSOLE.print(
+                        f"  [cyan]{tool_name_item:<20}[/cyan] {description}"
+                    )
+                _RICH_CONSOLE.print()
+            else:
+                typer.echo(f"{idx}. {cat}")
+                for tool_name_item, description in tools_by_category[cat]:
+                    typer.echo(f"  {tool_name_item:<20} {description}")
+                typer.echo()
+
+        if _RICH_CONSOLE:
+            _RICH_CONSOLE.print(
+                "Use 'seqnado tools TOOL' to see help for a specific tool."
+            )
+            _RICH_CONSOLE.print(
+                "Use 'seqnado tools TOOL --options' to see tool options from the container."
+            )
+        else:
+            typer.echo("Use 'seqnado tools TOOL' to see help for a specific tool.")
+            typer.echo(
+                "Use 'seqnado tools TOOL --options' to see tool options from the container."
+            )
+        raise typer.Exit(code=0)
+
+    # Show help for specific tool
+    if tool_name:
+        tool_info = get_tool_info(tool_name)
+
+        if not tool_info:
+            logger.error(f"Tool '{tool_name}' not found.")
+            logger.info("Run 'seqnado tools --list' to see all available tools.")
+            raise typer.Exit(code=1)
+
+        subcommands = get_tool_subcommands(tool_name)
+        if subcommand:
+            if not subcommands:
+                logger.error(f"Tool '{tool_name}' does not define subcommands.")
+                raise typer.Exit(code=1)
+
+            subcommand_match = None
+            for cmd in subcommands:
+                if cmd.lower() == subcommand.lower():
+                    subcommand_match = cmd
+                    break
+            if not subcommand_match:
+                logger.error(
+                    f"Unknown subcommand '{subcommand}' for tool '{tool_name}'."
+                )
+                logger.info(f"Available subcommands: {', '.join(subcommands)}")
+                raise typer.Exit(code=1)
+            subcommand = subcommand_match
+
+        # Display tool information
+        if _RICH_CONSOLE:
+            _RICH_CONSOLE.print(f"\n[bold cyan]Tool: {tool_name}[/bold cyan]")
+            _RICH_CONSOLE.print(f"[bold]Description:[/bold] {tool_info['description']}")
+            _RICH_CONSOLE.print(f"[bold]Category:[/bold] {tool_info['category']}")
+            _RICH_CONSOLE.print(f"[bold]Command:[/bold] {tool_info['command']}")
+            if subcommands:
+                _RICH_CONSOLE.print(
+                    f"[bold]Subcommands:[/bold] {', '.join(subcommands)}"
+                )
+
+            # Try to get version info
+            _RICH_CONSOLE.print("\n[bold cyan]Version Information:[/bold cyan]")
+            version_info = get_tool_version(
+                tool_name,
+                use_container=is_apptainer_available(),
+                subcommand=subcommand,
+            )
+            _RICH_CONSOLE.print(version_info)
+
+            # Get and display help
+            _RICH_CONSOLE.print("\n[bold cyan]Help / Usage:[/bold cyan]")
+            help_text = get_tool_help(tool_name, subcommand=subcommand)
+            if (
+                help_text.startswith("Help information not available")
+                and is_apptainer_available()
+            ):
+                help_text = run_tool_help_in_container(tool_name, subcommand=subcommand)
+            _RICH_CONSOLE.print(help_text)
+
+            if is_apptainer_available():
+                _RICH_CONSOLE.print(
+                    "\n[dim]Tip: Use 'seqnado tools "
+                    + tool_name
+                    + " --options' to see detailed options from the container.[/dim]"
+                )
+        else:
+            typer.echo(f"\nTool: {tool_name}")
+            typer.echo(f"Description: {tool_info['description']}")
+            typer.echo(f"Category: {tool_info['category']}")
+            typer.echo(f"Command: {tool_info['command']}")
+            subcommands = get_tool_subcommands(tool_name)
+            if subcommands:
+                typer.echo(f"Subcommands: {', '.join(subcommands)}")
+            typer.echo("\nVersion Information:")
+            version_info = get_tool_version(
+                tool_name,
+                use_container=is_apptainer_available(),
+                subcommand=subcommand,
+            )
+            typer.echo(version_info)
+            typer.echo("\nHelp / Usage:")
+            help_text = get_tool_help(tool_name, subcommand=subcommand)
+            if (
+                help_text.startswith("Help information not available")
+                and is_apptainer_available()
+            ):
+                help_text = run_tool_help_in_container(tool_name, subcommand=subcommand)
+            typer.echo(help_text)
+
+        raise typer.Exit(code=0)
+
+    # If nothing specific requested, show tools list
+    if _RICH_CONSOLE:
+        _RICH_CONSOLE.print(
+            "[bold cyan]Available Tools in SeqNado Pipeline[/bold cyan]\n"
+        )
+    else:
+        typer.echo("Available Tools in SeqNado Pipeline\n")
+
+    tools_list = list_all_tools(category=category)
+
+    if not tools_list:
+        typer.echo(f"No tools found for category '{category}'")
+        raise typer.Exit(code=1)
+
+    tools_by_category: dict = {}
+    for tool_name_item, description, cat in tools_list:
+        if cat not in tools_by_category:
+            tools_by_category[cat] = []
+        tools_by_category[cat].append((tool_name_item, description))
+
+    for cat in sorted(tools_by_category.keys()):
+        if _RICH_CONSOLE:
+            _RICH_CONSOLE.print(f"[bold]{cat}[/bold]")
+            for tool_name_item, description in tools_by_category[cat]:
+                _RICH_CONSOLE.print(
+                    f"  [cyan]{tool_name_item:<20}[/cyan] {description}"
+                )
+            _RICH_CONSOLE.print()
+        else:
+            typer.echo(f"{cat}")
+            for tool_name_item, description in tools_by_category[cat]:
+                typer.echo(f"  {tool_name_item:<20} {description}")
+            typer.echo()
+
+    if _RICH_CONSOLE:
+        _RICH_CONSOLE.print("Use 'seqnado tools TOOL' to see help for a specific tool.")
+        _RICH_CONSOLE.print(
+            "Use 'seqnado tools TOOL --options' to see tool options from the container."
+        )
+    else:
+        typer.echo("Use 'seqnado tools TOOL' to see help for a specific tool.")
+        typer.echo(
+            "Use 'seqnado tools TOOL --options' to see tool options from the container."
+        )
+
+
 # ----------------------------------- download ------------------------------------ #
 
 
@@ -1494,7 +1887,7 @@ def download(
             logger.info(f"Required columns: {', '.join(required_cols)}")
             logger.info(f"Available columns: {', '.join(samples_df.columns)}")
             raise typer.Exit(code=1)
-        
+
         # Check for library_layout column
         has_layout = "library_layout" in samples_df.columns
         if not has_layout:
@@ -1513,7 +1906,7 @@ def download(
     geo_samples_paired = {}
     geo_samples_single = {}
     geo_samples_unknown = {}
-    
+
     for _, row in samples_df.iterrows():
         sample_name = f"{row['library_name']}-{row['sample_title']}"
         sample_info = {
@@ -1521,7 +1914,7 @@ def download(
             "gsm": row["library_name"],
             "sample": row["sample_title"],
         }
-        
+
         if has_layout:
             layout = str(row["library_layout"]).upper()
             if layout == "PAIRED":
@@ -1542,7 +1935,7 @@ def download(
         f"{len(geo_samples_single)} single-end, "
         f"{len(geo_samples_unknown)} unknown layout samples"
     )
-    
+
     if geo_samples_unknown:
         logger.error(
             f"Cannot proceed with {len(geo_samples_unknown)} samples without layout information. "
@@ -1622,7 +2015,9 @@ def download(
                     else:
                         logger.warning(f"Profile path does not exist: {profile_path}")
             else:
-                logger.warning(f"Unknown preset '{preset}'. Available: {list(profiles.keys())}")
+                logger.warning(
+                    f"Unknown preset '{preset}'. Available: {list(profiles.keys())}"
+                )
 
         logger.info("Starting GEO download with Snakemake...")
         if verbose or dry_run:
@@ -1981,7 +2376,6 @@ def pipeline(
         "--preset",
         click_type=click.Choice(_profile_autocomplete(), case_sensitive=False),
         help="Snakemake job profile preset.",
-        case_sensitive=False,
     ),
     clean_symlinks: bool = typer.Option(
         False, help="Remove symlinks created by previous runs."

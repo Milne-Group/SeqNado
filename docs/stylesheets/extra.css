@@ -14,6 +14,30 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Site name - big and bold */
+.md-header__title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.md-header__ellipsis {
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+/* Always show site name instead of page title */
+.md-header__topic:first-child {
+  display: block !important;
+  opacity: 1 !important;
+  transform: translateX(0) !important;
+  transition: none !important;
+}
+
+.md-header__topic:last-child {
+  display: none !important;
+}
+
 /* Logo styling - larger and cleaner */
 .md-header__button.md-logo img,
 .md-logo img {
@@ -223,4 +247,40 @@ code.language-bash::before {
 
 .md-social__link:hover svg {
   transform: scale(1.2);
+}
+
+/* Collapsible TOC styling */
+.md-nav__item--nested > .md-nav__link {
+  cursor: pointer;
+  position: relative;
+}
+
+.md-nav__item--nested > .md-nav__link::after {
+  content: "▼";
+  position: absolute;
+  right: 0.6rem;
+  font-size: 0.7rem;
+  transition: transform 0.2s ease;
+}
+
+.md-nav__item--nested.collapsed > .md-nav__link::after {
+  transform: rotate(-90deg);
+}
+
+.md-nav__item--nested.collapsed > .md-nav {
+  display: none;
+}
+
+.md-nav__item--nested > .md-nav {
+  transition: all 0.2s ease;
+}
+
+/* Make all headings bold */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6 {
+  font-weight: 700;
 }

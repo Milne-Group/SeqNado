@@ -36,6 +36,7 @@ $ seqnado [OPTIONS] COMMAND [ARGS]...
 * `download`: Download FASTQ files from GEO/SRA
 * `design`: Generate a SeqNado design CSV from FASTQ files
 * `pipeline`: Run the data processing pipeline
+* `tools`: Explore bioinformatics tools available in SeqNado
 
 ## `seqnado init` {#cli-seqnado-init}
 
@@ -204,3 +205,134 @@ $ seqnado pipeline [OPTIONS] [ASSAY]
 * `-q, --queue TEXT`: Slurm queue/partition for the `ss` preset.  [default: short]
 * `--print-cmd`: Print the Snakemake command before running it.
 * `--help`: Show this message and exit.
+
+## `seqnado tools` {#cli-seqnado-tools}
+
+Explore bioinformatics tools available in SeqNado. List all tools, filter by category, get version information, and view tool help/options from containers.
+
+**Usage**:
+
+```console
+$ seqnado tools [OPTIONS] [TOOL]
+```
+
+**Arguments**:
+
+- **TOOL**: Optional tool name to get details about a specific tool (e.g., `fastqc`, `bowtie2`, `samtools`)
+
+**Options**:
+
+* `-l, --list`: List all available tools in the pipeline
+* `-c, --category [TEXT]`: Filter tools by category (name or number). Omit value for interactive selection
+* `-o, --options`: Show tool help/options from container (requires tool argument)
+* `-s, --subcommand TEXT`: Specify subcommand for tools that have multiple functions
+* `-v, --verbose`: Increase logging verbosity
+* `--help`: Show this message and exit.
+
+**Tool Categories**:
+
+Tools are organized into the following categories, matching the pipeline workflow:
+
+1. **Download** - Data acquisition (e.g., `sra-tools`)
+2. **Quality Control** - QC and reporting (e.g., `fastqc`, `multiqc`)
+3. **Preprocessing** - Read trimming and filtering (e.g., `trim-galore`, `cutadapt`)
+4. **Alignment** - Read mapping (e.g., `bowtie2`, `hisat2`, `STAR`)
+5. **Analysis** - Peak calling, quantification (e.g., `macs2`, `featureCounts`)
+6. **Visualization** - Generating tracks and plots (e.g., `deeptools`, `preseq`)
+7. **Reporting** - Report generation (e.g., `multiqc`)
+8. **Quantification** - Expression quantification (e.g., `salmon`, `kallisto`)
+9. **Utilities** - Helper tools (e.g., `samtools`, `bedtools`, `pigz`)
+
+### Examples
+
+**List all available tools:**
+
+```bash
+seqnado tools --list
+```
+
+Output shows all tools organized by category with descriptions and version information.
+
+**Interactive category selection:**
+
+```bash
+seqnado tools -c
+# or
+seqnado tools --category
+```
+
+Displays a numbered list of categories and prompts you to select one.
+
+**Filter by category name:**
+
+```bash
+# Show all alignment tools
+seqnado tools --category "Alignment"
+
+# Case-insensitive matching
+seqnado tools --category alignment
+```
+
+**Filter by category number:**
+
+```bash
+# Show category 4 (Alignment)
+seqnado tools --category 4
+```
+
+**Get details about a specific tool:**
+
+```bash
+# Show information about FastQC
+seqnado tools fastqc
+```
+
+Shows the tool's description, category, command, and version (detected from container or local installation).
+
+**View tool help from container:**
+
+```bash
+# Get FastQC help
+seqnado tools fastqc --options
+
+# Get help for samtools view subcommand
+seqnado tools samtools --subcommand view --options
+```
+
+This runs the tool in the SeqNado container and displays its help output, useful for:
+
+- Checking available command-line options
+- Understanding tool-specific parameters
+- Verifying tool behavior in the container environment
+
+**Tools with subcommands:**
+
+Some tools like `samtools`, `bedtools`, and `deeptools` expose multiple subcommands:
+
+```bash
+# Get samtools view help
+seqnado tools samtools --subcommand view --options
+
+# Get bedtools intersect help
+seqnado tools bedtools --subcommand intersect --options
+
+# Get deeptools bamCoverage help
+seqnado tools deeptools --subcommand bamCoverage --options
+```
+
+### Version Detection
+
+The `tools` command attempts to detect tool versions from:
+
+1. **Container environment** (if Apptainer/Singularity is available)
+2. **Local installation** (if tool is in PATH)
+
+Version information helps ensure reproducibility and track tool updates across pipeline runs.
+
+### Use Cases
+
+- **Pipeline exploration**: Discover which tools are available for your analysis
+- **Tool documentation**: Quick access to tool help without running containers manually
+- **Version tracking**: Check which tool versions are used in the pipeline
+- **Troubleshooting**: Verify tool availability and configuration
+- **Learning**: Explore bioinformatics tools organized by analysis workflow

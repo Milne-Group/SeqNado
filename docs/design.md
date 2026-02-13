@@ -150,8 +150,10 @@ seqnado design
 
 For examples of additional options (auto-discovery, grouping, patterns), consult [seqnado design](cli.md#cli-seqnado-design).
 
-## Next Steps
+---
 
-Once you have designed your experiment, proceed to set up the pipeline:
+**See Also:**
 
-[Pipeline](pipeline.md)
+- [Pipeline Overview](pipeline.md) - Run your analysis
+- [CLI Reference](cli.md#cli-seqnado-design) - Complete design command options
+- [Troubleshooting](troubleshooting.md#design-files-seqnado-design) - Design file issues

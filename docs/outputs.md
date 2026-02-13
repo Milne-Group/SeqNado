@@ -4,7 +4,7 @@
 
 All SeqNado analysis results are organized within the `seqnado_output/` directory (or your custom output directory specified during configuration). This page describes the comprehensive structure and types of files you can expect from your pipeline runs.
 
-## 📁 General Output Structure
+## General Output Structure
 
 ```
 seqnado_output/
@@ -21,7 +21,7 @@ seqnado_output/
 │   └── logs/                      # Process execution logs
 ```
 
-## 🎯 Main Entry Point: SeqNado Report
+## Main Entry Point: SeqNado Report
 
 The **`seqnado_report.html`** file is your primary analysis dashboard, providing:
 
@@ -35,7 +35,7 @@ The **`seqnado_report.html`** file is your primary analysis dashboard, providing
 !!! tip "Viewing the Report"
     Open `seqnado_report.html` in any modern web browser. No server required!
 
-## 📊 Core Output Files
+## Core Output Files
 
 ### Alignment Files (`aligned/`)
 
@@ -169,7 +169,20 @@ genome_browser_plots/
 └── regions.bed                    # Plotted genomic regions
 ```
 
-## 🧬 Assay-Specific Outputs
+### GEO Submission (`geo_submission/`)
+
+Pre-formatted files for GEO/SRA submission:
+
+```
+geo_submission/
+├── metadata.xlsx                  # Sample metadata spreadsheet
+├── processed_files/               # Symlinks to key processed files
+│   ├── bigwigs/
+│   └── peaks/
+└── raw_fastq/                     # Links to original FastQ files
+```
+
+## Assay-Specific Outputs
 
 ### ATAC-seq
 
@@ -259,7 +272,7 @@ crispr/
 └── screen_report.html             # CRISPR-specific QC
 ```
 
-## 📈 Example Output Sizes
+## Example Output Sizes
 
 Based on test datasets:
 
@@ -272,7 +285,7 @@ Based on test datasets:
 !!! note "Actual sizes vary"
     Output sizes depend on sequencing depth, genome size, and enabled analyses.
 
-## 🔄 Accessing Your Results
+## Accessing Your Results
 
 ### Command Line
 
@@ -305,24 +318,11 @@ firefox seqnado_output/chip/seqnado_report.html &
 scp -r user@hpc:path/to/seqnado_output/ ./
 ```
 
-## 📤 GEO Submission (`geo_submission/`)
-
-Pre-formatted files for GEO/SRA submission:
-
-```
-geo_submission/
-├── metadata.xlsx                  # Sample metadata spreadsheet
-├── processed_files/               # Symlinks to key processed files
-│   ├── bigwigs/
-│   └── peaks/
-└── raw_fastq/                     # Links to original FastQ files
-```
-
-## 🔍 Finding Specific Outputs
+## Finding Specific Outputs
 
 ### Peak calling results
 ```bash
-find seqnado_output/ -name "*_peaks.narrowPeak"
+find seqnado_output/ -name "*.bed"
 ```
 
 ### Coverage tracks for visualization
@@ -335,14 +335,11 @@ find seqnado_output/ -name "*.bw" -o -name "*.bigWig"
 find seqnado_output/ -name "*qc.html" -o -name "seqnado_report.html"
 ```
 
-## 💡 Next Steps
+---
 
-After reviewing your outputs:
+**See Also:**
 
-1. **QC Assessment**: Check `seqnado_report.html` for sample quality
-2. **Peak Analysis**: Explore peaks in `peaks/` directories
-3. **Visualization**: Load BigWigs in genome browsers
-4. **Downstream Analysis**: Use count tables or peaks for further analysis
-5. **Publication**: Use plots from `genome_browser_plots/` and QC metrics
-
-For pipeline rerunning or parameter adjustments, see: [seqnado pipeline](cli.md#cli-seqnado-pipeline)
+- [Output Examples](examples.md) - Detailed examples with real data
+- [Pipeline Overview](pipeline.md) - How outputs are generated
+- [Tools Reference](tools.md) - Understanding tool-specific outputs
+- [FAQ](faq.md) - Common output-related questions

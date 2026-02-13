@@ -186,7 +186,13 @@ SeqNado automatically calculates required cores and memory for each step based o
 ### Parallelization
 The pipeline leverages Snakemake's ability to run samples in parallel, scaling from local machines to large high-performance computing (HPC) clusters.
 
-## Next Steps
-Once your pipeline is running, you can monitor the progress in the terminal. After completion, visit the [Outputs](outputs.md) page to understand the result structure.
-
 For command-line options (presets, queues, scaling), see [seqnado pipeline](cli.md#cli-seqnado-pipeline).
+
+---
+
+**See Also:**
+
+- [Outputs Reference](outputs.md) - Understanding your results
+- [HPC Clusters](cluster_config.md) - Configure for HPC environments
+- [Troubleshooting](troubleshooting.md#pipeline-execution-seqnado-pipeline) - Pipeline execution issues
+- [Output Examples](examples.md) - Example analysis results

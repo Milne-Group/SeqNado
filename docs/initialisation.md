@@ -30,9 +30,3 @@ To perform a dry run and preview the initialization steps:
 ```bash
 seqnado init --dry-run
 ```
-
-## Next Steps
-
-Once SeqNado has been Initialized, continue with:
-
-[Genomes](genomes.md)

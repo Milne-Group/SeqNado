@@ -2,372 +2,362 @@
 
 SeqNado integrates multiple best-in-class bioinformatics tools to provide comprehensive genomics analysis pipelines. This page documents the tools used, their purposes, and key references.
 
-## 🧬 Core Analysis Tools
+## Tool Versions & Updates
 
-### Alignment & Mapping
-
-#### Bowtie2
-**Purpose**: Short read aligner for ChIP-seq, ATAC-seq, and CUT&Tag  
-**Version**: Latest via container  
-**Usage**: Aligns reads to reference genomes with flexible parameters  
-**Reference**: [Langmead & Salzberg, 2012](http://www.nature.com/nmeth/journal/v9/n4/full/nmeth.1923.html)  
-**Citation**: Langmead B, Salzberg S. Fast gapped-read alignment with Bowtie 2. *Nature Methods*. 2012, 9:357-359.
-
-**Key Options in SeqNado:**
-- `--very-sensitive`: High accuracy mode
-- `--no-mixed/--no-discordant`: Paired-end specific settings
-- `--maxins`: Maximum insert size for PE data
-
-#### HISAT2
-**Purpose**: Splicing-aware aligner for RNA-seq  
-**Version**: Latest via container  
-**Usage**: Maps RNA-seq reads accounting for splice junctions  
-**Reference**: [Kim et al., 2019](https://www.nature.com/articles/s41587-019-0201-4)  
-**Citation**: Kim D, Paggi JM, Park C, Bennett C, Salzberg SL. Graph-based genome alignment and genotyping with HISAT2 and HISAT-genotype. *Nature Biotechnology*. 2019, 37:907-915.
-
-**Key Features:**
-- Graph-based alignment
-- Splice junction detection
-- SNP-aware alignment
-
-### Quality Control
-
-#### FastQC
-**Purpose**: Quality assessment of raw sequencing data  
-**Version**: 0.12.1+  
-**Usage**: Generates per-base quality scores, GC content, adapter contamination metrics  
-**Reference**: [Babraham Bioinformatics](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)  
-
-**Metrics Reported:**
-- Per base sequence quality
-- Per sequence quality scores
-- Per base sequence content
-- Sequence duplication levels
-- Overrepresented sequences
-- Adapter content
-
-#### MultiQC
-**Purpose**: Aggregate QC reports across samples  
-**Version**: Latest  
-**Usage**: Combines FastQC, alignment stats, and tool outputs into interactive HTML  
-**Reference**: [Ewels et al., 2016](https://academic.oup.com/bioinformatics/article/32/19/3047/2196507)  
-**Citation**: Ewels P, Magnusson M, Lundin S, Käller M. MultiQC: summarize analysis results for multiple tools and samples in a single report. *Bioinformatics*. 2016, 32(19):3047-3048.
-
-#### Qualimap
-**Purpose**: BAM file quality control  
-**Version**: 2.2.1+  
-**Usage**: Computes alignment metrics, coverage statistics, insert size distributions  
-**Reference**: [Okonechnikov et al., 2016](https://academic.oup.com/bioinformatics/article/32/2/292/1743969)  
-
-**Key Metrics:**
-- Coverage distribution
-- Insert size distribution
-- Mapping quality distribution
-- GC content
-- Genomic origin of reads
-
-#### FastQ Screen
-**Purpose**: Contamination screening  
-**Version**: 0.15+  
-**Usage**: Screens reads against multiple reference genomes to detect contamination  
-**Reference**: [Babraham Bioinformatics](https://www.bioinformatics.babraham.ac.uk/projects/fastq_screen/)  
-
-**Screens Against:**
-- Human (hg38)
-- Mouse (mm10)
-- E. coli
-- PhiX
-- Adapters
-- Custom genomes
-
-### Read Processing
-
-#### Cutadapt
-**Purpose**: Adapter trimming and quality filtering  
-**Version**: 4.0+  
-**Usage**: Removes adapter sequences, trims low-quality bases  
-**Reference**: [Martin, 2011](https://journal.embnet.org/index.php/embnetjournal/article/view/200)  
-**Citation**: Martin M. Cutadapt removes adapter sequences from high-throughput sequencing reads. *EMBnet.journal*. 2011, 17(1):10-12.
-
-**SeqNado Configuration:**
-- Adapter auto-detection
-- Quality trimming (Q20)
-- Minimum length filtering
-- Poly-A/T tail removal
-
-#### Trimmomatic
-**Purpose**: Alternative adapter trimming (optional)  
-**Version**: 0.39+  
-**Usage**: Flexible trimming with sliding window approach  
-**Reference**: [Bolger et al., 2014](https://academic.oup.com/bioinformatics/article/30/15/2114/2390096)  
-
-### SAM/BAM Processing
-
-#### SAMtools
-**Purpose**: SAM/BAM file manipulation  
-**Version**: 1.17+  
-**Usage**: Sorting, indexing, filtering, statistics  
-**Reference**: [Li et al., 2009](https://academic.oup.com/bioinformatics/article/25/16/2078/204688)  
-**Citation**: Li H, Handsaker B, Wysoker A, et al. The Sequence Alignment/Map format and SAMtools. *Bioinformatics*. 2009, 25(16):2078-2079.
-
-**Common Operations:**
-- `samtools sort`: Coordinate sorting
-- `samtools index`: BAM indexing
-- `samtools flagstat`: Alignment statistics
-- `samtools view`: BAM filtering
-
-#### Picard
-**Purpose**: Java-based BAM processing  
-**Version**: 2.27+  
-**Usage**: Duplicate marking, insert size metrics  
-**Reference**: [Broad Institute](http://broadinstitute.github.io/picard/)  
-
-**Key Tools:**
-- MarkDuplicates: PCR duplicate identification
-- CollectInsertSizeMetrics: PE fragment analysis
-- CollectAlignmentSummaryMetrics: Detailed alignment stats
-
-## 🔬 Peak Calling & Analysis
-
-### MACS2/MACS3
-**Purpose**: Peak calling for ChIP-seq and ATAC-seq  
-**Version**: MACS2 2.2.7+ / MACS3 3.0+  
-**Usage**: Identifies enriched genomic regions  
-**Reference**: [Zhang et al., 2008](https://genomebiology.biomedcentral.com/articles/10.1186/gb-2008-9-9-r137) (MACS2)  
-**Citation**: Zhang Y, Liu T, Meyer CA, et al. Model-based Analysis of ChIP-Seq (MACS). *Genome Biology*. 2008, 9:R137.
-
-**Peak Types:**
-- `narrowPeak`: Sharp peaks (TFs, ATAC)
-- `broadPeak`: Broad domains (histone marks)
-
-**SeqNado Parameters:**
-- Auto genome size detection
-- FDR cutoff (default 0.05)
-- Optional input/control
-- Spike-in normalization
-
-### HOMER
-**Purpose**: Comprehensive ChIP-seq analysis suite  
-**Version**: Latest  
-**Usage**: Peak calling, motif discovery, annotation  
-**Reference**: [Heinz et al., 2010](https://www.cell.com/molecular-cell/fulltext/S1097-2765(10)00334-6)  
-**Citation**: Heinz S, Benner C, et al. Simple combinations of lineage-determining transcription factors prime cis-regulatory elements required for macrophage and B cell identities. *Molecular Cell*. 2010, 38(4):576-589.
-
-**Features:**
-- Tag directory creation
-- Peak calling (findPeaks)
-- Motif discovery (findMotifsGenome)
-- Peak annotation (annotatePeaks.pl)
-
-### SEACR
-**Purpose**: Sparse Enrichment Analysis for CUT&RUN  
-**Version**: 1.3+  
-**Usage**: Peak calling optimized for CUT&Tag/CUT&RUN  
-**Reference**: [Meers et al., 2019](https://epigeneticsandchromatin.biomedcentral.com/articles/10.1186/s13072-019-0287-4)  
-**Citation**: Meers MP, Tenenbaum D, Henikoff S. Peak calling by Sparse Enrichment Analysis for CUT&RUN chromatin profiling. *Epigenetics & Chromatin*. 2019, 12:42.
-
-**Advantages:**
-- Low background noise tolerance
-- No input control required
-- Optimized for sparse data
-
-### LanceOtron
-**Purpose**: Machine learning-based peak calling  
-**Version**: Latest  
-**Usage**: Neural network peak caller for ChIP/ATAC  
-**Reference**: [Lance, 2021](https://www.biorxiv.org/content/10.1101/2021.01.07.425361v1)  
-
-**Benefits:**
-- Learns from data patterns
-- Reduces false positives
-- Works across assay types
-
-## 📊 Coverage & Visualization
-
-### deepTools
-**Purpose**: Comprehensive genomics data analysis and visualization  
-**Version**: 3.5+  
-**Usage**: BigWig generation, heatmaps, profile plots  
-**Reference**: [Ramírez et al., 2016](https://academic.oup.com/nar/article/44/W1/W160/2499308)  
-**Citation**: Ramírez F, Ryan DP, et al. deepTools2: a next generation web server for deep-sequencing data analysis. *Nucleic Acids Research*. 2016, 44(W1):W160-W165.
-
-**Key Tools:**
-- `bamCoverage`: BAM to BigWig conversion
-- `bamCompare`: Compute log2 ratios
-- `computeMatrix`: Generate matrices for plotting
-- `plotHeatmap`: Heatmap generation
-- `plotProfile`: Meta-plots
-
-**Normalization Methods:**
-- CPM (Counts Per Million)
-- RPKM (Reads Per Kilobase per Million)
-- RPGC (Reads Per Genomic Content)
-- BPM (Bins Per Million)
-
-### bedtools
-**Purpose**: Genomic interval manipulation  
-**Version**: 2.30+  
-**Usage**: Intersect, merge, coverage operations  
-**Reference**: [Quinlan & Hall, 2010](https://academic.oup.com/bioinformatics/article/26/6/841/244688)  
-**Citation**: Quinlan AR, Hall IM. BEDTools: a flexible suite of utilities for comparing genomic features. *Bioinformatics*. 2010, 26(6):841-842.
-
-**Common Operations:**
-- `bedtools intersect`: Find overlapping features
-- `bedtools merge`: Combine overlapping intervals
-- `bedtools coverage`: Calculate coverage depth
-- `bedtools genomecov`: Genome-wide coverage
-
-### UCSC Tools
-**Purpose**: Genome browser data format conversion  
-**Version**: Latest  
-**Usage**: BigWig creation and manipulation  
-**Reference**: [Kent et al., 2010](https://academic.oup.com/bioinformatics/article/26/17/2204/199001)  
-
-**Key Tools:**
-- `bedGraphToBigWig`: Convert bedGraph to BigWig
-- `bigWigInfo`: BigWig file information
-- `bigWigMerge`: Combine BigWig files
-
-## 🧮 RNA-seq Specific
-
-### STAR
-**Purpose**: Ultra-fast RNA-seq aligner  
-**Version**: 2.7+  
-**Usage**: High-speed splicing-aware alignment  
-**Reference**: [Dobin et al., 2013](https://academic.oup.com/bioinformatics/article/29/1/15/272537)  
-**Citation**: Dobin A, Davis CA, et al. STAR: ultrafast universal RNA-seq aligner. *Bioinformatics*. 2013, 29(1):15-21.
-
-**Features:**
-- Two-pass alignment mode
-- Splice junction discovery
-- Chimeric read detection
-- Gene/transcript quantification
-
-### featureCounts
-**Purpose**: Read summarization for RNA-seq  
-**Version**: 2.0+  
-**Usage**: Gene-level quantification  
-**Reference**: [Liao et al., 2014](https://academic.oup.com/bioinformatics/article/30/7/923/232889)  
-**Citation**: Liao Y, Smyth GK, Shi W. featureCounts: an efficient general purpose program for assigning sequence reads to genomic features. *Bioinformatics*. 2014, 30(7):923-930.
-
-### DESeq2
-**Purpose**: Differential expression analysis  
-**Version**: 1.40+  
-**Usage**: Statistical testing for RNA-seq  
-**Reference**: [Love et al., 2014](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-014-0550-8)  
-**Citation**: Love MI, Huber W, Anders S. Moderated estimation of fold change and dispersion for RNA-seq data with DESeq2. *Genome Biology*. 2014, 15:550.
-
-## 🔐 Spike-in Normalization
-
-### Bamnado
-**Purpose**: Spike-in aware BAM processing  
-**Version**: Latest  
-**Usage**: Calculate spike-in normalization factors  
-**Reference**: Part of SeqNado ecosystem  
-
-**Workflow:**
-1. Map to spike-in genome
-2. Calculate scaling factors
-3. Normalize experimental data
-4. Generate comparable BigWigs
-
-## 🎨 Visualization
-
-### PlotNado
-**Purpose**: Genome browser-style plots  
-**Version**: Latest (TrackNado)  
-**Usage**: Publication-ready genomic region visualizations  
-**Reference**: Part of SeqNado/TrackNado ecosystem  
-
-**Features:**
-- Multi-track plots
-- Gene annotation overlay
-- Custom color schemes
-- PDF/PNG output
-
-### IGV (Integrative Genomics Viewer)
-**Purpose**: Interactive genome browser  
-**Version**: Latest  
-**Usage**: View BAM, BigWig, and peak files  
-**Reference**: [Robinson et al., 2011](https://www.nature.com/articles/nbt.1754)  
-**Citation**: Robinson JT, Thorvaldsdóttir H, et al. Integrative genomics viewer. *Nature Biotechnology*. 2011, 29:24-26.
-
-## 📦 Container Technology
-
-### Apptainer/Singularity
-**Purpose**: Container runtime for HPC  
-**Version**: Latest  
-**Usage**: Ensures reproducibility and portability  
-**Reference**: [Kurtzer et al., 2017](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0177459)  
-
-**Benefits:**
-- No root privileges required
-- HPC-friendly
-- Bundles all dependencies
-- Version locked for reproducibility
-
-## 📝 Workflow Management
-
-### Snakemake
-**Purpose**: Workflow management system  
-**Version**: 9.12+  
-**Usage**: Orchestrates analysis pipelines  
-**Reference**: [Mölder et al., 2021](https://f1000research.com/articles/10-33)  
-**Citation**: Mölder F, Jablonski KP, et al. Sustainable data analysis with Snakemake. *F1000Research*. 2021, 10:33.
-
-**Features:**
-- Automatic parallelization
-- Resource management
-- Checkpoint/restart capability
-- Conda/container integration
-
-## 🔢 Statistical & Methylation Tools
-
-### Bismark
-**Purpose**: Bisulfite sequencing alignment and methylation calling  
-**Version**: 0.24+  
-**Usage**: WGBS and RRBS analysis  
-**Reference**: [Krueger & Andrews, 2011](https://academic.oup.com/bioinformatics/article/27/11/1571/216956)  
-
-### Preseq
-**Purpose**: Library complexity estimation  
-**Version**: 3.1+  
-**Usage**: Predict sequencing saturation  
-**Reference**: [Daley & Smith, 2013](https://www.nature.com/articles/nmeth.2375)  
-
-## 🌐 Tool Versions & Updates
-
-All tools are version-locked in SeqNado containers to ensure reproducibility. To check versions:
+All tools are version-locked in SeqNado containers to ensure reproducibility. To check versions and get tool information, use the `seqnado tools` command:
 
 ```bash
-# View container manifest
-apptainer exec seqnado.sif cat /opt/versions.txt
+# List all tools with versions
+seqnado tools
 
-# Or check specific tool
-apptainer exec seqnado.sif macs2 --version
+# List tools in a specific category (e.g., Download, Alignment, Peak Calling)
+seqnado tools --category
+
+# View detailed information about a specific tool
+seqnado tools --info macs2
+
+# Check version of a specific tool
+seqnado tools --version macs2
 ```
 
-## 📚 Citation Guidelines
+See the [CLI Reference](cli.md#cli-seqnado-tools) for complete documentation of the `tools` command.
+
+## Citation Guidelines
 
 When publishing results from SeqNado, please cite:
 
-1. **SeqNado** itself (citation pending)
-2. **Key tools used** in your specific analysis (see above)
-3. **Snakemake** workflow manager
-4. **Reference genomes** used
+1. **SeqNado** itself (citation pending - check [GitHub releases](https://github.com/Milne-Group/SeqNado/releases) for latest version)
+2. **Key tools** used in your specific analysis (see [References](#references) section below)
+3. **Snakemake** workflow manager: Mölder F, Jablonski KP, Letcher B, et al. Sustainable data analysis with Snakemake. *F1000Research*. 2021;10:33.
+4. **Reference genomes** used (e.g., hg38, mm10)
 
-Example acknowledgment:
+### Example Acknowledgment
 
-> "Data analysis was performed using SeqNado v1.0, which incorporates Bowtie2 for alignment, MACS2 for peak calling, and deepTools for coverage track generation. Workflows were managed with Snakemake within Apptainer containers."
+*"Data analysis was performed using SeqNado v1.0.2 (Chahrour, C and Smith, AL, 2024), which incorporates Bowtie2 (Langmead & Salzberg, 2012) for alignment, MACS2 (Zhang et al., 2008) for peak calling, and deepTools (Ramírez et al., 2016) for coverage track generation. Workflows were managed with Snakemake (Mölder et al., 2021) within Apptainer containers."*
 
-## 🔗 External Resources
+## Tools
 
-- [SeqNado GitHub](https://github.com/Milne-Group/SeqNado)
-- [Snakemake Documentation](https://snakemake.readthedocs.io/)
-- [deepTools Documentation](https://deeptools.readthedocs.io/)
-- [MACS GitHub](https://github.com/macs3-project/MACS)
-- [HOMER Website](http://homer.ucsd.edu/homer/)
+Tools are organized by category, matching the structure of the `seqnado tools` CLI command. For more information about any tool, use `seqnado tools <toolname> --info`.
 
----
+<!-- AUTO-GENERATED TOOL SECTIONS - DO NOT EDIT MANUALLY -->
+<!-- This section is automatically updated by docs/scripts/generate_tool_citations.py -->
+<!-- To update, run: python docs/scripts/generate_tool_citations.py --update -->
 
-*This page is automatically updated with each SeqNado release to reflect current tool versions and integrations.*
+### Download
+
+#### SRA Toolkit (fasterq-dump)
+**Purpose**: Fast extraction of sequences from SRA files  
+**Version**: Version information not available  
+**Usage**: Download sequencing data from NCBI Sequence Read Archive  
+**Reference**: National Center for Biotechnology Information. SRA Toolkit: Sequence Read Archive tools and libraries. 2023. URL: https://github.com/ncbi/sra-tools.
+
+
+### Quality Control
+
+#### FastQ Screen
+**Purpose**: Screen sequencing reads against a set of databases  
+**Version**: FastQ Screen v0.16.0  
+**Usage**: Screen reads against multiple reference genomes  
+**Reference**: Steven W. Wingett and Simon Andrews. FastQ Screen: A tool for multi-genome mapping and quality control. F1000Research, 7(1338):1338, 2018. URL: https://f1000research.com/articles/7-1338, doi:10.12688/f1000research.15931.2.
+
+
+#### FastQC
+**Purpose**: Quality control for high-throughput sequencing data  
+**Version**: FastQC v0.12.1  
+**Usage**: Generate quality metrics for sequencing data  
+**Reference**: Simon Andrews. FastQC. 2010. URL: https://www.bioinformatics.babraham.ac.uk/projects/fastqc/.
+
+
+#### Qualimap
+**Purpose**: Quality assessment tool for next-generation sequencing data  
+**Version**: QualiMap v.2.3  
+**Usage**: Compute alignment metrics and coverage statistics  
+**Reference**: Konstantin Okonechnikov, Ana Conesa, and Fernando García-Alcalde. Qualimap 2: advanced multi-sample quality control for high-throughput sequencing data. Bioinformatics, 32(2):292–294, 2016. URL: https://doi.org/10.1093/bioinformatics/btv566, doi:10.1093/bioinformatics/btv566.
+
+
+### Preprocessing
+
+#### Cutadapt
+**Purpose**: Remove adapter sequences from sequencing reads  
+**Version**: 5.1  
+**Usage**: Remove adapter sequences and trim low-quality bases  
+**Reference**: Marcel Martin. Cutadapt removes adapter sequences from high-throughput sequencing reads. EMBnet.journal, 17(1):10–12, 2011. URL: http://journal.embnet.org/index.php/embnetjournal/article/view/200, doi:10.14806/ej.17.1.200.
+
+
+#### FLASH
+**Purpose**: Fast length adjustment of short reads (FLASH) to improve genome assemblies  
+**Version**: FLASH v1.2.11  
+**Usage**: Merge overlapping paired-end reads  
+**Reference**: Tanja Magoč and Steven L. Salzberg. FLASH: fast length adjustment of short reads to improve genome assemblies. Bioinformatics, 27(21):2957–2963, 2011. URL: https://doi.org/10.1093/bioinformatics/btr507, doi:10.1093/bioinformatics/btr507.
+
+
+#### Trim Galore
+**Purpose**: Wrapper around Cutadapt and FastQC for quality and adapter trimming  
+**Version**: 0.6.10  
+**Usage**: Combines Cutadapt with quality control  
+**Reference**: Felix Krueger. Trim Galore, https://www.bioinformatics.babraham.ac.uk/projects/trim_galore/. 2012.
+
+
+#### Trimmomatic
+**Purpose**: Flexible read trimming tool for high-throughput sequencing data  
+**Version**: Version information not available  
+**Usage**: Flexible trimming with sliding window approach  
+**Reference**: Anthony M. Bolger, Marc Lohse, and Bjoern Usadel. Trimmomatic: a flexible trimmer for Illumina sequence data. Bioinformatics, 30(15):2114–2120, 2014. URL: https://doi.org/10.1093/bioinformatics/btu170, doi:10.1093/bioinformatics/btu170.
+
+
+### Alignment
+
+#### Bowtie2
+**Purpose**: Fast and sensitive read mapping to large genomes  
+**Version**: 2.5.4  
+**Usage**: Align reads to reference genomes  
+**Reference**: Ben Langmead and Steven L. Salzberg. Fast gapped-read alignment with Bowtie 2. Nature Methods, 9(4):357–359, 2012. URL: http://www.nature.com/nmeth/journal/v9/n4/full/nmeth.1923.html, doi:10.1038/nmeth.1923.
+
+
+#### minimap2
+**Purpose**: Fast pairwise sequence alignment tool  
+**Version**: 2.30-r1287  
+**Usage**: Fast alignment for long reads (PacBio/Nanopore)  
+**Reference**: Heng Li. Minimap2: pairwise alignment for nucleotide sequences. Bioinformatics, 34(18):3094–3100, 2018. URL: https://doi.org/10.1093/bioinformatics/bty191, doi:10.1093/bioinformatics/bty191.
+
+
+#### Picard
+**Purpose**: Tools for manipulating high-throughput sequencing data and formats  
+**Version**: [0m'--version' is not a valid command. See PicardCommandLine -h for more information.  
+**Usage**: Duplicate marking and BAM processing  
+**Reference**: Picard Toolkit. 2019.
+
+
+#### SAMtools
+**Purpose**: Tools for interacting with SAM/BAM format files  
+**Version**: 1.22.1  
+**Usage**: Sorting, indexing, filtering SAM/BAM files  
+**Reference**: Petr Danecek, James K Bonfield, Jennifer Liddle, John Marshall, Valeriu Ohan, Martin O Pollard, Andrew Whitwham, Thomas Keane, Shane A McCarthy, Robert M Davies, and Heng Li. Twelve years of SAMtools and BCFtools. GigaScience, 10(2):giab008, 2021. URL: https://academic.oup.com/gigascience/article/doi/10.1093/gigascience/giab008/6137722, doi:10.1093/gigascience/giab008.
+
+
+#### STAR
+**Purpose**: Ultrafast universal RNA-seq aligner  
+**Version**: 2.7.11b  
+**Usage**: High-speed splicing-aware RNA-seq alignment  
+**Reference**: Alexander Dobin, Carrie A. Davis, Felix Schlesinger, Jorg Drenkow, Chris Zaleski, Sonali Jha, Philippe Batut, Mark Chaisson, and Thomas R. Gingeras. STAR: ultrafast universal RNA-seq aligner. Bioinformatics, 29(1):15–21, 2013. URL: https://academic.oup.com/bioinformatics/article/29/1/15/272537, doi:10.1093/bioinformatics/bts635.
+
+
+### Analysis
+
+#### BamNado
+**Purpose**: SeqNado BAM file manipulation and analysis tool  
+**Version**: 0.4.4  
+**Usage**: Calculate scaling factors and spike-in normalization  
+**Reference**: Smith, Alastair L. BamNado: BAM file manipulation and analysis tool. 2024. URL: https://pypi.org/project/bamnado/.
+
+
+#### BCFtools
+**Purpose**: Tools for BCF/VCF format variant files  
+**Version**: 1.22  
+**Usage**: Process VCF/BCF variant files  
+**Reference**: Petr Danecek, James K Bonfield, Jennifer Liddle, John Marshall, Valeriu Ohan, Martin O Pollard, Andrew Whitwham, Thomas Keane, Shane A McCarthy, Robert M Davies, and Heng Li. Twelve years of SAMtools and BCFtools. GigaScience, 10(2):giab008, 2021. URL: https://academic.oup.com/gigascience/article/doi/10.1093/gigascience/giab008/6137722, doi:10.1093/gigascience/giab008.
+
+
+#### BEDTools
+**Purpose**: Tools for genomic arithmetic and feature analysis  
+**Version**: bedtools v2.31.1  
+**Usage**: Genomic interval manipulation and analysis  
+**Reference**: Aaron R. Quinlan and Ira M. Hall. BEDTools: a flexible suite of utilities for comparing genomic features. Bioinformatics, 26(6):841–842, 2010. URL: https://academic.oup.com/bioinformatics/article/26/6/841/244688, doi:10.1093/bioinformatics/btq033.
+
+
+#### Cooler
+**Purpose**: Tools for high-resolution interactions and HiC contact matrices  
+**Version**: 0.10.4  
+**Usage**: Handle genomically-labeled arrays and Hi-C data  
+**Reference**: Nezar Abdennur and Leonid A. Mirny. Cooler: scalable storage for Hi-C data and other genomically labeled arrays. Bioinformatics, 36(1):311–316, 2020. URL: https://doi.org/10.1093/bioinformatics/btz540, doi:10.1093/bioinformatics/btz540.
+
+
+#### findPeaks (HOMER)
+**Purpose**: Identify genomic peaks in ChIP-seq or ATAC-seq data (HOMER)  
+**Version**: 4.0)  
+**Usage**: Identify genomic peaks in ChIP-seq or ATAC-seq data  
+**Reference**: Sven Heinz, Christopher Benner, Nathanael Spann, Eric Bertolino, Yin C. Lin, Peter Laslo, Jason X. Cheng, Cornelis Murre, Harinder Singh, and Christopher K. Glass. Simple Combinations of Lineage-Determining Transcription Factors Prime cis-Regulatory Elements Required for Macrophage and B Cell Identities. Molecular Cell, 38(4):576–589, 2010. URL: https://linkinghub.elsevier.com/retrieve/pii/S1097276510003667, doi:10.1016/j.molcel.2010.05.004.
+
+
+#### HOMER
+**Purpose**: Tools for ChIP-seq, DNase-seq, and other genomic analysis  
+**Version**: -freqAdjust : Compute log-odds using frequency, default (0.25)  
+**Usage**: Peak calling, motif discovery, annotation  
+**Reference**: Sven Heinz, Christopher Benner, Nathanael Spann, Eric Bertolino, Yin C. Lin, Peter Laslo, Jason X. Cheng, Cornelis Murre, Harinder Singh, and Christopher K. Glass. Simple Combinations of Lineage-Determining Transcription Factors Prime cis-Regulatory Elements Required for Macrophage and B Cell Identities. Molecular Cell, 38(4):576–589, 2010. URL: https://linkinghub.elsevier.com/retrieve/pii/S1097276510003667, doi:10.1016/j.molcel.2010.05.004.
+
+
+#### LanceOtron
+**Purpose**: Peak caller for high-resolution chromatin analysis  
+**Version**: Version information not available  
+**Usage**: Machine learning-based peak calling  
+**Reference**: Lance D Hentges, Martin J Sergeant, Christopher B Cole, Damien J Downes, Jim R Hughes, and Stephen Taylor. LanceOtron: a deep learning peak caller for genome sequencing experiments. Bioinformatics, pages btac525, 2022. URL: https://doi.org/10.1093/bioinformatics/btac525, doi:10.1093/bioinformatics/btac525.
+
+
+#### LanceOtron (MCC)
+**Purpose**: Peak caller for MCC data (Micro-Capture-C)  
+**Version**: Version information not available  
+**Usage**: Peak calling for Micro-Capture-C data  
+**Reference**: Lance D Hentges, Martin J Sergeant, Christopher B Cole, Damien J Downes, Jim R Hughes, and Stephen Taylor. LanceOtron: a deep learning peak caller for genome sequencing experiments. Bioinformatics, pages btac525, 2022. URL: https://doi.org/10.1093/bioinformatics/btac525, doi:10.1093/bioinformatics/btac525.
+
+
+#### MACS2
+**Purpose**: Model-based analysis of ChIP-Seq data  
+**Version**: Version information not available  
+**Usage**: Peak calling for ChIP-seq and ATAC-seq  
+**Reference**: Yong Zhang, Tao Liu, Clifford A Meyer, Jérôme Eeckhoute, David S Johnson, Bradley E Bernstein, Chad Nusbaum, Richard M Myers, Myles Brown, Wei Li, and X Shirley Liu. Model-based analysis of ChIP-seq (MACS). Genome Biology, 9(9):R137, 2008. URL: https://doi.org/10.1186/gb-2008-9-9-r137, doi:10.1186/gb-2008-9-9-r137.
+
+
+#### MAGeCK
+**Purpose**: Model-based Analysis of Genome-wide CRISPR-Cas9 Knockout data  
+**Version**: Latest via container  
+**Usage**: CRISPR screen analysis for essential gene identification  
+**Reference**: Wei Li, Han Xu, Tengfei Xiao, Le Cong, Michael I Love, Feng Zhang, Rafael A Irizarry, Jun S Liu, Myles Brown, and X Shirley Liu. MAGeCK enables robust identification of essential genes from genome-scale CRISPR/Cas9 knockout screens. Genome Biology, 15(12):554, 2014. URL: https://doi.org/10.1186/s13059-014-0554-4, doi:10.1186/s13059-014-0554-4.
+
+
+#### makeTagDirectory (HOMER)
+**Purpose**: Prepare and organize ChIP-seq tag directories (HOMER)  
+**Version**: -genome <genome version> (To see available genomes, use "-genome list")  
+**Usage**: Prepare and organize ChIP-seq tag directories  
+**Reference**: Sven Heinz, Christopher Benner, Nathanael Spann, Eric Bertolino, Yin C. Lin, Peter Laslo, Jason X. Cheng, Cornelis Murre, Harinder Singh, and Christopher K. Glass. Simple Combinations of Lineage-Determining Transcription Factors Prime cis-Regulatory Elements Required for Macrophage and B Cell Identities. Molecular Cell, 38(4):576–589, 2010. URL: https://linkinghub.elsevier.com/retrieve/pii/S1097276510003667, doi:10.1016/j.molcel.2010.05.004.
+
+
+#### MccNado
+**Purpose**: Micro-Capture-C (MCC) sequencing data processing tool  
+**Version**: 0.1.6  
+**Usage**: Analyze chromatin 3D interactions (Micro-Capture-C)  
+**Reference**: Alastair L. Smith. MccNado: Micro-Capture-C data processing tool. 2024. URL: https://pypi.org/project/mccnado.
+
+
+#### MEME Suite
+**Purpose**: MEME Suite motif discovery and analysis tools  
+**Version**: Latest via container  
+**Usage**: DNA motif discovery and analysis  
+**Reference**: T. L. Bailey, M. Boden, F. A. Buske, M. Frith, C. E. Grant, L. Clementi, J. Ren, W. W. Li, and W. S. Noble. Meme SUITE: tools for motif discovery and searching. Nucleic Acids Research, 37(Web Server):W202–W208, 2009. URL: https://academic.oup.com/nar/article/37/suppl_2/W202/1135652, doi:10.1093/nar/gkp335.
+
+
+#### MethylDackel
+**Purpose**: Tools for analyzing DNA methylation from bisulfite sequencing data  
+**Version**: 0.6.1  
+**Usage**: Extract methylation metrics from bisulfite-seq  
+**Reference**: Devon Ryan. MethylDackel. 2016.
+
+
+#### SEACR
+**Purpose**: Sparse enrichment analysis for CUT&RUN  
+**Version**: Version information not available  
+**Usage**: Peak calling optimized for CUT&Tag/CUT&RUN  
+**Reference**: Michael P. Meers, Dan Tenenbaum, and Steven Henikoff. Peak calling by Sparse Enrichment Analysis for CUT&RUN chromatin profiling. Epigenetics & Chromatin, 12(1):42, 2019. URL: https://doi.org/10.1186/s13072-019-0287-4, doi:10.1186/s13072-019-0287-4.
+
+
+### Visualization
+
+#### deepTools
+**Purpose**: Tools for processing and visualizing deep sequencing data  
+**Version**: 3.5.6  
+**Usage**: BigWig generation, heatmaps, and profile plots  
+**Reference**: Fidel Ramírez, Devon P Ryan, Björn Grüning, Vivek Bhardwaj, Fabian Kilpert, Andreas S Richter, Steffen Heyne, Friederike Dündar, and Thomas Manke. deepTools2: a next generation web server for deep-sequencing data analysis. Nucleic Acids Research, 44(W1):W160–W165, 2016. URL: https://doi.org/10.1093/nar/gkw257, doi:10.1093/nar/gkw257.
+
+
+#### PlotNado
+**Purpose**: SeqNado genome browser visualization and plotting tool  
+**Version**: Latest via container  
+**Usage**: Publication-ready genomic region visualizations  
+**Reference**: Alastair L. Smith. PlotNado: genome browser visualization tool. 2023. URL: https://github.com/alsmith151/plotnado.
+
+
+#### trackhub
+**Purpose**: Python library to work with track hubs  
+**Version**: Version information not available  
+**Usage**: UCSC Genome Browser track hub library  
+**Reference**: Ryan K. Dale, Laura H. Matzat, and Elissa P. Lei. Trackhub: A Library for creating and remotely hosting UCSC Genome Browser track hubs. F1000Research, 10:121, 2021. URL: https://f1000research.com/articles/10-121, doi:10.12688/f1000research.50107.2.
+
+
+#### TrackNado
+**Purpose**: Track hub creation tool for UCSC Genome Browser  
+**Version**: Version information not available  
+**Usage**: Create and host UCSC track hubs  
+**Reference**: Alastair L. Smith. TrackNado: a python library and cli tool to rapidly generate complex ucsc genome browser track hubs. 2024. URL: https://pypi.org/project/tracknado.
+
+
+### Reporting
+
+#### MultiQC
+**Purpose**: Aggregate quality control reports from multiple QC tools  
+**Version**: Latest via container  
+**Usage**: Aggregate QC reports across samples into interactive HTML  
+**Reference**: Philip Ewels, Måns Magnusson, Sverker Lundin, and Max Käller. MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics, 32(19):3047–3048, 2016. URL: https://doi.org/10.1093/bioinformatics/btw354, doi:10.1093/bioinformatics/btw354.
+
+
+#### Quarto
+**Purpose**: Scientific and technical publishing system for reports  
+**Version**: 1.8.25  
+**Usage**: Generate analysis reports with code and narrative  
+**Reference**: Posit Software, PBC. Quarto: An open-source scientific and technical publishing system. 2022. URL: https://quarto.org/.
+
+
+### Quantification
+
+#### featureCounts
+**Purpose**: Count reads overlapping genomic features (genes/exons)  
+**Version**: featureCounts v2.1.1  
+**Usage**: Gene-level read quantification for RNA-seq  
+**Reference**: Yang Liao, Gordon K. Smyth, and Wei Shi. featureCounts: an efficient general purpose program for assigning sequence reads to genomic features. Bioinformatics, 30(7):923–930, 2014. URL: https://academic.oup.com/bioinformatics/article/30/7/923/232889, doi:10.1093/bioinformatics/btt656.
+
+
+#### QuantNado
+**Purpose**: SeqNado multiomics quantification and dataset creation tool  
+**Version**: Latest via container  
+**Usage**: Generate quantified datasets for ML analysis  
+**Reference**: Catherine Chahrour and Alastair L. Smith. QuantNado: multiomics machine learning dataset generation tool. 2024. URL: https://pypi.org/project/QuantNado.
+
+
+#### Salmon
+**Purpose**: Quantification of gene expression from RNA-seq data  
+**Version**: 1.10.3  
+**Usage**: Alignment-free transcript quantification  
+**Reference**: Rob Patro, Geet Duggal, Michael I. Love, Rafael A. Irizarry, and Carl Kingsford. Salmon provides fast and bias-aware quantification of transcript expression. Nature Methods, 14(4):417–419, 2017. URL: https://doi.org/10.1038/nmeth.4197, doi:10.1038/nmeth.4197.
+
+
+#### Subread
+**Purpose**: High-performance read alignment, quantification and mutation discovery  
+**Version**: featureCounts v2.1.1  
+**Usage**: High-performance read alignment and quantification  
+**Reference**: Yang Liao, Gordon K. Smyth, and Wei Shi. The Subread aligner: fast, accurate and scalable read mapping by seed-and-vote. Nucleic Acids Research, 41(10):e108, 2013. URL: https://doi.org/10.1093/nar/gkt214, doi:10.1093/nar/gkt214.
+
+
+### Utilities
+
+#### Apptainer
+**Purpose**: Container runtime for running Singularity/Apptainer images on HPC clusters  
+**Version**: Version information not available  
+**Usage**: Run containerized tools in HPC environments  
+**Reference**: Apptainer Project Contributors. Apptainer. 2023. URL: https://apptainer.org/.
+
+
+#### bedToBigBed
+**Purpose**: Convert BED format files to compressed BigBed format  
+**Version**: Version information not available  
+**Usage**: Convert BED to BigBed format  
+**Reference**: W. James Kent, Charles W. Sugnet, Terrence S. Furey, Krishna M. Roskin, Tom H. Pringle, Alan M. Zahler, and David Haussler. The human genome browser at UCSC. Genome Research, 12(5):996–1006, 2002. URL: https://doi.org/10.1101/gr.229102, doi:10.1101/gr.229102.
+
+
+#### pigz
+**Purpose**: Parallel gzip compression utility  
+**Version**: 2.8  
+**Usage**: Fast parallel compression/decompression  
+**Reference**: Mark Adler. Pigz: Parallel Implementation of GZip. 2015. URL: https://zlib.net/pigz/.
+
+
+#### Snakemake
+**Purpose**: Workflow management system for reproducible and scalable data analysis  
+**Version**: Version information not available  
+**Usage**: Workflow management and execution  
+**Reference**: Felix Mölder, Kim Philipp Jablonski, Brice Letcher, Michael B. Hall, Christopher H. Tomkins-Tinch, Vanessa Sochat, Jan Forster, Soohyun Lee, Sven O. Twardziok, Alexander Kanitz, Andreas Wilm, Manuel Holtgrewe, Sven Rahmann, Sven Nahnsen, and Johannes Köster. Sustainable data analysis with Snakemake. F1000Research, 10:33, 2021. URL: https://f1000research.com/articles/10-33/v3, doi:10.12688/f1000research.29032.3.
+
+
+#### UCSC Tools
+**Purpose**: UCSC genome browser command-line utilities  
+**Version**: Version information not available  
+**Usage**: BigWig creation and genomic format conversion  
+**Reference**: W. James Kent, Charles W. Sugnet, Terrence S. Furey, Krishna M. Roskin, Tom H. Pringle, Alan M. Zahler, and David Haussler. The human genome browser at UCSC. Genome Research, 12(5):996–1006, 2002. URL: https://doi.org/10.1101/gr.229102, doi:10.1101/gr.229102.
+

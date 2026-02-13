@@ -1,5 +1,9 @@
 # SeqNado
 
+![SeqNado logo](https://raw.githubusercontent.com/Milne-Group/SeqNado/main/containers/pipeline/seqnado.png){: style="display: block; margin: 0 auto; width: 300px;"}
+
+*A Snakemake-based bioinformatics toolkit for analyzing sequencing data from ATAC-seq, ChIP-seq, CUT&Tag, RNA-seq, SNP analysis, Methylation, CRISPR screens, and Micro-Capture-C experiments.*
+
 Welcome to SeqNado! SeqNado is a powerful bioinformatics tool designed to simplify the analysis and integration of high-throughput sequencing data. It supports a wide range of sequencing assays and provides advanced features for multiomics data processing.
 
 ## Key Features

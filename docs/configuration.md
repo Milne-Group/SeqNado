@@ -146,8 +146,10 @@ For more details on configuring these tools, refer to the individual tool docume
 
 For configuration command options and usage patterns, see [seqnado config](cli.md#cli-seqnado-config).
 
-## Next Steps
+---
 
-Once you have configured SeqNado, proceed to design your workflows:
+**See Also:**
 
-[Design](design.md)
+- [Design Guide](design.md) - Create experimental design files
+- [Tools Reference](tools.md) - Configure tool-specific options
+- [Troubleshooting](troubleshooting.md#configuration-seqnado-config) - Configuration issues

@@ -1,0 +1,422 @@
+{
+    "updated": "2024-02-13",
+    "tools": {
+        "apptainer": {
+            "display_name": "Apptainer",
+            "usage": "Run containerized tools in HPC environments",
+            "description": "Container runtime for running Singularity/Apptainer images on HPC clusters",
+            "command": "apptainer",
+            "category": "Utilities",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "apptainer"
+            },
+        "bcftools": {
+            "display_name": "BCFtools",
+            "usage": "Process VCF/BCF variant files",
+            "description": "Tools for BCF/VCF format variant files",
+            "command": "bcftools",
+            "category": "Analysis",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "samtools"
+        },
+        "bedtools": {
+            "display_name": "BEDTools",
+            "usage": "Genomic interval manipulation and analysis",
+            "description": "Tools for genomic arithmetic and feature analysis",
+            "command": "bedtools",
+            "category": "Analysis",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "bedtools"
+        },
+        "bedToBigBed": {
+            "display_name": "bedToBigBed",
+            "usage": "Convert BED to BigBed format",
+            "description": "Convert BED format files to compressed BigBed format",
+            "command": "bedToBigBed",
+            "category": "Utilities",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "ucsc-tools"
+        },
+        "bamnado": {
+            "display_name": "BamNado",
+            "usage": "Calculate scaling factors and spike-in normalization",
+            "description": "SeqNado BAM file manipulation and analysis tool",
+            "command": "bamnado",
+            "category": "Analysis",
+            "container": "docker://ghcr.io/alsmith151/bamnado:latest",
+            "subcommands": [
+                "bam-coverage",
+                "multi-bam-coverage",
+                "bigwig-compare",
+                "bigwig-aggregate",
+                "collapse-bedgraph",
+                "split",
+                "split-exogenous",
+                "modify"
+            ],
+            "citation": "bamnado"
+        },
+        "bowtie2": {
+            "display_name": "Bowtie2",
+            "usage": "Align reads to reference genomes",
+            "description": "Fast and sensitive read mapping to large genomes",
+            "command": "bowtie2",
+            "category": "Alignment",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "bowtie2"
+        },
+        "cooler": {
+            "display_name": "Cooler",
+            "usage": "Handle genomically-labeled arrays and Hi-C data",
+            "description": "Tools for high-resolution interactions and HiC contact matrices",
+            "command": "cooler",
+            "category": "Analysis",
+            "container": "docker://ghcr.io/alsmith151/mccnado:latest",
+            "citation": "cooler"
+        },
+        "cutadapt": {
+            "display_name": "Cutadapt",
+            "usage": "Remove adapter sequences and trim low-quality bases",
+            "description": "Remove adapter sequences from sequencing reads",
+            "command": "cutadapt",
+            "category": "Preprocessing",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "cutadapt"
+        },
+        "deeptools": {
+            "display_name": "deepTools",
+            "usage": "BigWig generation, heatmaps, and profile plots",
+            "description": "Tools for processing and visualizing deep sequencing data",
+            "command": "deeptools",
+            "category": "Visualization",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "deeptools",
+            "subcommands": [
+                "bamCoverage",
+                "bamCompare",
+                "bigwigCompare",
+                "computeMatrix",
+                "multiBamSummary",
+                "plotHeatmap",
+                "plotProfile"
+            ]
+        },
+        "fasterq-dump": {
+            "display_name": "SRA Toolkit (fasterq-dump)",
+            "usage": "Download sequencing data from NCBI Sequence Read Archive",
+            "description": "Fast extraction of sequences from SRA files",
+            "command": "fasterq-dump",
+            "category": "Download",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "sra-toolkit"
+        },
+        "fastq-screen": {
+            "display_name": "FastQ Screen",
+            "usage": "Screen reads against multiple reference genomes",
+            "description": "Screen sequencing reads against a set of databases",
+            "command": "fastq_screen",
+            "category": "Quality Control",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "fastq-screen"
+        },
+        "fastqc": {
+            "display_name": "FastQC",
+            "usage": "Generate quality metrics for sequencing data",
+            "description": "Quality control for high-throughput sequencing data",
+            "command": "fastqc",
+            "category": "Quality Control",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "fastqc"
+        },
+        "featureCounts": {
+            "display_name": "featureCounts",
+            "usage": "Gene-level read quantification for RNA-seq",
+            "description": "Count reads overlapping genomic features (genes/exons)",
+            "command": "featureCounts",
+            "category": "Quantification",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "featurecounts"
+        },
+        "findPeaks": {
+            "display_name": "findPeaks (HOMER)",
+            "usage": "Identify genomic peaks in ChIP-seq or ATAC-seq data",
+            "description": "Identify genomic peaks in ChIP-seq or ATAC-seq data (HOMER)",
+            "command": "findPeaks",
+            "category": "Analysis",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "homer"
+        },
+        "flash": {
+            "display_name": "FLASH",
+            "usage": "Merge overlapping paired-end reads",
+            "description": "Fast length adjustment of short reads (FLASH) to improve genome assemblies",
+            "command": "flash",
+            "category": "Preprocessing",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "flash"
+        },
+        "homer": {
+            "display_name": "HOMER",
+            "usage": "Peak calling, motif discovery, annotation",
+            "description": "Tools for ChIP-seq, DNase-seq, and other genomic analysis",
+            "command": "homer",
+            "category": "Analysis",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "homer",
+            "subcommands": [
+                "makeTagDirectory",
+                "findMotifsGenome.pl",
+                "makeBigWig.pl"
+            ]
+        },
+        "lanceotron": {
+            "display_name": "LanceOtron",
+            "usage": "Machine learning-based peak calling",
+            "description": "Peak caller for high-resolution chromatin analysis",
+            "command": "lanceotron",
+            "category": "Analysis",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "lanceotron"
+        },
+        "lanceotron-mcc": {
+            "display_name": "LanceOtron (MCC)",
+            "usage": "Peak calling for Micro-Capture-C data",
+            "description": "Peak caller for MCC data (Micro-Capture-C)",
+            "command": "lanceotron-mcc",
+            "category": "Analysis",
+            "container": "docker://ghcr.io/alsmith151/mccnado:latest",
+            "citation": "lanceotron"
+        },
+        "macs": {
+            "display_name": "MACS2",
+            "usage": "Peak calling for ChIP-seq and ATAC-seq",
+            "description": "Model-based analysis of ChIP-Seq data",
+            "command": "macs",
+            "category": "Analysis",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "macs"
+        },
+        "mccnado": {
+            "display_name": "MccNado",
+            "usage": "Analyze chromatin 3D interactions (Micro-Capture-C)",
+            "description": "Micro-Capture-C (MCC) sequencing data processing tool",
+            "command": "mccnado",
+            "category": "Analysis",
+            "container": "docker://ghcr.io/alsmith151/mccnado:latest",
+            "citation": "mccnado"
+        },
+        "mageck": {
+            "display_name": "MAGeCK",
+            "usage": "CRISPR screen analysis for essential gene identification",
+            "description": "Model-based Analysis of Genome-wide CRISPR-Cas9 Knockout data",
+            "command": "mageck",
+            "category": "Analysis",
+            "container": "docker://quay.io/biocontainers/mageck:0.5.9.5--py310h184ae93_8",
+            "citation": "mageck"
+        },
+        "makeTagDirectory": {
+            "display_name": "makeTagDirectory (HOMER)",
+            "usage": "Prepare and organize ChIP-seq tag directories",
+            "description": "Prepare and organize ChIP-seq tag directories (HOMER)",
+            "command": "makeTagDirectory",
+            "category": "Analysis",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "homer"
+        },
+        "meme": {
+            "display_name": "MEME Suite",
+            "usage": "DNA motif discovery and analysis",
+            "description": "MEME Suite motif discovery and analysis tools",
+            "command": "meme",
+            "category": "Analysis",
+            "container": "docker://quay.io/biocontainers/meme:5.5.9--pl5321h1ca524f_0",
+            "citation": "meme"
+        },
+        "methyldackel": {
+            "display_name": "MethylDackel",
+            "usage": "Extract methylation metrics from bisulfite-seq",
+            "description": "Tools for analyzing DNA methylation from bisulfite sequencing data",
+            "command": "MethylDackel",
+            "category": "Analysis",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "methyldackel"
+        },
+        "minimap2": {
+            "display_name": "minimap2",
+            "usage": "Fast alignment for long reads (PacBio/Nanopore)",
+            "description": "Fast pairwise sequence alignment tool",
+            "command": "minimap2",
+            "category": "Alignment",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "minimap2"
+        },
+        "multiqc": {
+            "display_name": "MultiQC",
+            "usage": "Aggregate QC reports across samples into interactive HTML",
+            "description": "Aggregate quality control reports from multiple QC tools",
+            "command": "multiqc",
+            "category": "Reporting",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "multiqc"
+        },
+        "pigz": {
+            "display_name": "pigz",
+            "usage": "Fast parallel compression/decompression",
+            "description": "Parallel gzip compression utility",
+            "command": "pigz",
+            "category": "Utilities",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "version": "2.8",
+            "citation": "pigz"
+        },
+        "picard": {
+            "display_name": "Picard",
+            "usage": "Duplicate marking and BAM processing",
+            "description": "Tools for manipulating high-throughput sequencing data and formats",
+            "command": "picard",
+            "category": "Alignment",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "version": "3.0.0",
+            "citation": "picard"
+        },
+        "plotnado": {
+            "display_name": "PlotNado",
+            "usage": "Publication-ready genomic region visualizations",
+            "description": "SeqNado genome browser visualization and plotting tool",
+            "command": "plotnado",
+            "category": "Visualization",
+            "container": "library://asmith151/plotnado/plotnado:latest",
+            "version": "0.3.5",
+            "citation": "plotnado"
+        },
+        "qualimap": {
+            "display_name": "Qualimap",
+            "usage": "Compute alignment metrics and coverage statistics",
+            "description": "Quality assessment tool for next-generation sequencing data",
+            "command": "qualimap",
+            "category": "Quality Control",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "version": "2.3",
+            "citation": "qualimap"
+        },
+        "quarto": {
+            "display_name": "Quarto",
+            "usage": "Generate analysis reports with code and narrative",
+            "description": "Scientific and technical publishing system for reports",
+            "command": "quarto",
+            "category": "Reporting",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "version": "1.3.450",
+            "citation": "quarto"
+        },
+        "quantnado": {
+            "display_name": "QuantNado",
+            "usage": "Generate quantified datasets for ML analysis",
+            "description": "SeqNado multiomics quantification and dataset creation tool",
+            "command": "quantnado-make-dataset",
+            "category": "Quantification",
+            "container": "oras://ghcr.io/alsmith151/seqnado_ml_cpu:latest",
+            "version": "0.2.1",
+            "citation": "quantnado"
+        },
+        "salmon": {
+            "display_name": "Salmon",
+            "usage": "Alignment-free transcript quantification",
+            "description": "Quantification of gene expression from RNA-seq data",
+            "command": "salmon",
+            "category": "Quantification",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "salmon"
+        },
+        "samtools": {
+            "display_name": "SAMtools",
+            "usage": "Sorting, indexing, filtering SAM/BAM files",
+            "description": "Tools for interacting with SAM/BAM format files",
+            "command": "samtools",
+            "category": "Alignment",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "samtools"
+        },
+        "seacr": {
+            "display_name": "SEACR",
+            "usage": "Peak calling optimized for CUT&Tag/CUT&RUN",
+            "description": "Sparse enrichment analysis for CUT&RUN",
+            "command": "SEACR",
+            "category": "Analysis",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "seacr"
+        },
+        "snakemake": {
+            "display_name": "Snakemake",
+            "usage": "Workflow management and execution",
+            "description": "Workflow management system for reproducible and scalable data analysis",
+            "command": "snakemake",
+            "category": "Utilities",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "snakemake"
+        },
+        "star": {
+            "display_name": "STAR",
+            "usage": "High-speed splicing-aware RNA-seq alignment",
+            "description": "Ultrafast universal RNA-seq aligner",
+            "command": "STAR",
+            "category": "Alignment",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "star"
+        },
+        "subread": {
+            "display_name": "Subread",
+            "usage": "High-performance read alignment and quantification",
+            "description": "High-performance read alignment, quantification and mutation discovery",
+            "command": "featureCounts",
+            "category": "Quantification",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "subread"
+        },
+        "trackhub": {
+            "display_name": "trackhub",
+            "usage": "UCSC Genome Browser track hub library",
+            "description": "Python library to work with track hubs",
+            "command": "trackhub",
+            "category": "Visualization",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "trackhub"
+        },
+        "tracknado": {
+            "display_name": "TrackNado",
+            "usage": "Create and host UCSC track hubs",
+            "description": "Track hub creation tool for UCSC Genome Browser",
+            "command": "tracknado",
+            "category": "Visualization",
+            "container": "docker://ghcr.io/alsmith151/tracknado:latest",
+            "citation": "tracknado"
+        },
+        "trim-galore": {
+            "display_name": "Trim Galore",
+            "usage": "Combines Cutadapt with quality control",
+            "description": "Wrapper around Cutadapt and FastQC for quality and adapter trimming",
+            "command": "trim_galore",
+            "category": "Preprocessing",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "trimgalore"
+        },
+        "trimmomatic": {
+            "display_name": "Trimmomatic",
+            "usage": "Flexible trimming with sliding window approach",
+            "description": "Flexible read trimming tool for high-throughput sequencing data",
+            "command": "trimmomatic",
+            "category": "Preprocessing",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "trimmomatic"
+        },
+        "ucsc-tools": {
+            "display_name": "UCSC Tools",
+            "usage": "BigWig creation and genomic format conversion",
+            "description": "UCSC genome browser command-line utilities",
+            "command": "bedGraphToBigWig",
+            "category": "Utilities",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "citation": "ucsc-tools"
+        }
+    }
+}

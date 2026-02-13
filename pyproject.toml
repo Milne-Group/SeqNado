@@ -26,6 +26,7 @@ dependencies = [
     "pexpect<=4.9.0",
     "pip",
     "pulp<=3.3.0",
+    "pybtex",
     "pydantic<=2.12.5",
     "pyyaml<=6.0.3",
     "rich<=14.2.0",

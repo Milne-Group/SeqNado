@@ -2,7 +2,20 @@
 
 This page showcases example outputs from SeqNado pipelines to help you understand what to expect from your analyses. All examples are based on real test data processed through the pipeline.
 
-## 📊 SeqNado QC Report
+??? abstract "Table of Contents"
+    - [SeqNado QC Report](#seqnado-qc-report)
+    - [ChIP-seq Example Output](#chip-seq-example-output)
+    - [ATAC-seq Example Output](#atac-seq-example-output)
+    - [Qualimap BAM QC Report](#qualimap-bam-qc-report)
+    - [Example FastQ Screen Results](#example-fastq-screen-results)
+    - [HOMER Tag Directory](#homer-tag-directory)
+    - [BigWig Coverage Tracks](#bigwig-coverage-tracks)
+    - [GEO Submission Files](#geo-submission-files)
+    - [Genome Browser Plots (PlotNado)](#genome-browser-plots-plotnado)
+    - [Tips for Exploring Outputs](#tips-for-exploring-outputs)
+    - [Understanding File Formats](#understanding-file-formats)
+
+## SeqNado QC Report
 
 The main `seqnado_report.html` provides an interactive dashboard with comprehensive quality control metrics.
 
@@ -53,7 +66,7 @@ Preseq estimates and duplication analysis:
 - **Complexity curves**: Saturation projections
 - **Recommended sequencing depth**: Optimal coverage levels
 
-## 🧬 ChIP-seq Example Output
+## ChIP-seq Example Output
 
 ### Directory Structure
 
@@ -138,7 +151,7 @@ chr2    5847291    5847791    peak_3    312    .    6.12    31.24    15.67    25
 | FRiP score | 24.5% | N/A |
 | Library complexity | Good | Moderate |
 
-## 🔬 ATAC-seq Example Output
+## ATAC-seq Example Output
 
 ### Directory Structure
 
@@ -195,7 +208,7 @@ Fragment size    Read count    Percentage
 >600 bp            289,456       5.3%  # Higher-order
 ```
 
-## 🧪 Qualimap BAM QC Report
+## Qualimap BAM QC Report
 
 The Qualimap reports provide detailed alignment quality metrics.
 
@@ -221,7 +234,7 @@ The Qualimap reports provide detailed alignment quality metrics.
 - Higher scores = more confident alignments
 - Helps assess multi-mapping issues
 
-## 📈 Example FastQ Screen Results
+## Example FastQ Screen Results
 
 FastQ Screen checks for contamination across reference genomes:
 
@@ -249,7 +262,7 @@ Mouse (mm10)    32.8%       29.5%        3.3%         ⚠️ WARNING
 E. coli          1.2%        1.1%        0.1%         ⚠️ WARNING
 ```
 
-## 🎯 HOMER Tag Directory
+## HOMER Tag Directory
 
 HOMER creates tag directories for downstream analysis:
 
@@ -279,7 +292,7 @@ tagAdjust=0
 restrictionSite=none
 ```
 
-## 📊 BigWig Coverage Tracks
+## BigWig Coverage Tracks
 
 BigWig files provide genome-wide signal visualization:
 
@@ -301,7 +314,7 @@ Examples:
 3. Tracks display sample signal across genome
 4. Compare multiple samples side-by-side
 
-## 📁 GEO Submission Files
+## GEO Submission Files
 
 Ready-to-submit files for GEO/SRA:
 
@@ -327,7 +340,7 @@ geo_submission/
     └── ...
 ```
 
-## 🎨 Genome Browser Plots (PlotNado)
+## Genome Browser Plots (PlotNado)
 
 Publication-ready visualizations of genomic regions:
 
@@ -362,7 +375,7 @@ genome_browser_plots/
 └── regions.bed
 ```
 
-## 💡 Tips for Exploring Outputs
+## Tips for Exploring Outputs
 
 ### Quick Quality Check
 
@@ -396,7 +409,7 @@ find seqnado_output/ -name "*.bw" -o -name "*.bigWig"
 find seqnado_output/ -name "*.png" | grep qc
 ```
 
-## 📚 Understanding File Formats
+## Understanding File Formats
 
 ### BAM Files
 - **Binary alignment format** (use `samtools view` to inspect)

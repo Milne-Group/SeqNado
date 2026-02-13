@@ -41,6 +41,10 @@ seqnado init
 
 For all flags and details, see the CLI reference: [seqnado init](cli.md#cli-seqnado-init).
 
-## Next Steps
+---
 
-Next: **[Initialisation](initialisation.md)**
+**See Also:**
+
+- [Initialisation Guide](initialisation.md) - Set up your SeqNado environment
+- [Quick Start](quick_start.md) - Complete workflow example
+- [Troubleshooting](troubleshooting.md) - Common installation issues

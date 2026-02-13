@@ -9,7 +9,7 @@ This page covers common errors you may encounter at each stage of the SeqNado wo
 
 ---
 
-## **Installation**
+## Installation
 
 ### Conda/Mamba cannot find the `seqnado` package
 
@@ -52,7 +52,7 @@ pip install seqnado
 
 ---
 
-## **Initialisation** (`seqnado init`)
+## Initialisation (`seqnado init`)
 
 ### `apptainer` / `singularity` not found
 
@@ -96,7 +96,7 @@ Then re-run `seqnado init`.
 
 ---
 
-## **Genome Setup** (`seqnado genomes`)
+## Genome Setup (`seqnado genomes`)
 
 ### No Bowtie2 index files found
 
@@ -147,7 +147,7 @@ seqnado genomes build rna --fasta genome.fa --name hg38 --outdir /path/to/output
 
 ---
 
-## **Configuration** (`seqnado config`)
+## Configuration (`seqnado config`)
 
 ### YAML syntax errors
 
@@ -206,7 +206,7 @@ name: my-chip-experiment-2024
 
 ---
 
-## **Design Files** (`seqnado design`)
+## Design Files (`seqnado design`)
 
 ### Sample ID contains invalid characters
 
@@ -296,7 +296,7 @@ ValueError: Multiple control samples matched ..., but no manual mapping provided
 
 ---
 
-## **Pipeline Execution** (`seqnado pipeline`)
+## Pipeline Execution (`seqnado pipeline`)
 
 ### `snakemake` not found
 
@@ -388,7 +388,7 @@ If jobs are queued but not starting, your cluster partition may be busy. Conside
 
 ---
 
-## **GEO/SRA Downloads** (`seqnado download`)
+## GEO/SRA Downloads (`seqnado download`)
 
 ### Missing required columns in TSV
 
@@ -424,7 +424,7 @@ If downloads consistently fail, check that you have internet access from your co
 
 ---
 
-## **General Tips**
+## General Tips
 
 ### Enable verbose logging
 
@@ -472,7 +472,7 @@ This shows you what steps would be executed and can catch configuration errors e
 
 ---
 
-## **Still stuck?**
+## Still stuck?
 
 1. Check the [FAQ](faq.md) for other common questions
 2. Open an issue on [GitHub](https://github.com/alsmith151/SeqNado/issues) with the error message and your `--verbose --print-cmd` output
