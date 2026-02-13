@@ -1,9 +1,9 @@
 * [Home](index.md)
 * Getting Started
+    * [Quick Start](quick_start.md)
     * [Installation](installation.md)
     * [Initialisation](initialisation.md)
     * [Genome Setup](genomes.md)
-    * [Quick Start](quick_start.md)
 * Usage
     * [Configuration](configuration.md)
     * [Design Guide](design.md)
