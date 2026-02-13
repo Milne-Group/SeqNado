@@ -1,6 +1,6 @@
 # Output Examples
 
-This page showcases example outputs from SeqNado pipelines to help you understand what to expect from your analyses. All examples are based on real test data processed through the pipeline.
+This page showcases example outputs from SeqNado pipelines to help you understand what to expect from your analyses.
 
 ??? abstract "Table of Contents"
     - [SeqNado QC Report](#seqnado-qc-report)
@@ -17,7 +17,7 @@ This page showcases example outputs from SeqNado pipelines to help you understan
 
 ## SeqNado QC Report
 
-The main `seqnado_report.html` provides an interactive dashboard with comprehensive quality control metrics.
+The main `seqnado_report.html` provides an interactive MultiQC dashboard with comprehensive quality control metrics.
 
 ### Report Sections
 
@@ -26,14 +26,14 @@ The main `seqnado_report.html` provides an interactive dashboard with comprehens
 View high-level sample information and key metrics:
 
 - **Total reads**: Raw sequencing depth
-- **Mapped reads**: Alignment success rate  
+- **Mapped reads**: Alignment success rate
 - **Duplication rate**: PCR duplicate percentage
 - **GC content**: Library GC distribution
 - **Insert size**: Fragment size metrics (PE data)
 
 #### 2. FastQC Results
 
-Pre and post-trimming quality metrics:
+Quality metrics on raw reads:
 
 - **Per base sequence quality**: Quality scores across read positions
 - **Per sequence quality scores**: Overall read quality distribution
@@ -43,7 +43,7 @@ Pre and post-trimming quality metrics:
 
 #### 3. Alignment Metrics
 
-Mapping statistics from Bowtie2/HISAT2:
+Mapping statistics from Bowtie2 (DNA assays) or STAR (RNA-seq):
 
 - **Alignment rates**: Percentage uniquely mapped, multimapped, unmapped
 - **Paired-end concordance**: Proper pair percentages
@@ -54,17 +54,16 @@ Mapping statistics from Bowtie2/HISAT2:
 Peak detection results:
 
 - **Number of peaks**: Total peaks called per caller
-- **FRiP scores**: Fraction of Reads in Peaks
-- **Peak widths**: Distribution of peak sizes
-- **Peak caller comparison**: Overlap between MACS2, HOMER, LanceOtron
+- **FRiP scores**: Fraction of Reads in Peaks (if enabled)
+- **Peak caller comparison**: Overlap between MACS2, HOMER, LanceOtron, SEACR
 
 #### 5. Library Complexity
 
-Preseq estimates and duplication analysis:
+Picard duplicate metrics:
 
 - **Unique reads**: Non-duplicate read counts
-- **Complexity curves**: Saturation projections
-- **Recommended sequencing depth**: Optimal coverage levels
+- **Duplication rates**: PCR duplicate percentages
+- **Library complexity estimates**: From Picard MarkDuplicates metrics
 
 ## ChIP-seq Example Output
 
@@ -73,83 +72,72 @@ Preseq estimates and duplication analysis:
 ```
 seqnado_output/chip/
 ├── seqnado_report.html                    # Main QC dashboard
+├── protocol.txt                           # Data processing protocol
 ├── aligned/
-│   ├── chip-rx_MLL.bam                     # 3.9 MB
+│   ├── chip-rx_MLL.bam                    # Final processed BAM
 │   ├── chip-rx_MLL.bam.bai
-│   ├── chip-rx_input.bam                   # 66 KB
+│   ├── chip-rx_input.bam
 │   └── chip-rx_input.bam.bai
 ├── bigwigs/
 │   ├── bamnado/
-│   │   ├── chip-rx_MLL_CPM.bw
-│   │   └── chip-rx_input_CPM.bw
+│   │   └── unscaled/
+│   │       ├── chip-rx_MLL.bigWig
+│   │       └── chip-rx_input.bigWig
 │   ├── deeptools/
+│   │   └── unscaled/
+│   │       ├── chip-rx_MLL.bigWig
+│   │       └── chip-rx_input.bigWig
 │   └── homer/
+│       └── unscaled/
+│           ├── chip-rx_MLL.bigWig
+│           └── chip-rx_input.bigWig
 ├── peaks/
 │   ├── macs2/
-│   │   ├── chip-rx_MLL_peaks.narrowPeak    # 15,234 peaks
-│   │   ├── chip-rx_MLL_summits.bed
-│   │   └── chip-rx_MLL_peaks.xls
-│   ├── macs3/
+│   │   └── chip-rx_MLL.bed               # Simplified 3-column BED
 │   ├── homer/
+│   │   └── chip-rx_MLL.bed
 │   └── lanceotron/
-│       ├── chip-rx_MLL.bed
-│       └── chip-rx_MLL_L-tron.bed
+│       └── chip-rx_MLL.bed
 ├── qc/
 │   ├── fastqc_raw/
 │   │   ├── chip-rx_MLL_1_fastqc.html
 │   │   ├── chip-rx_MLL_2_fastqc.html
 │   │   ├── chip-rx_input_1_fastqc.html
 │   │   └── chip-rx_input_2_fastqc.html
-│   ├── fastq_screen/
+│   ├── fastq_screen/                      # If enabled
 │   │   ├── chip-rx_MLL_1_screen.html
 │   │   └── chip-rx_input_1_screen.html
-│   └── qualimap_bamqc/
-│       ├── chip-rx_MLL/qualimapReport.html
-│       └── chip-rx_input/qualimapReport.html
+│   ├── qualimap_bamqc/
+│   │   ├── chip-rx_MLL/qualimapReport.html
+│   │   └── chip-rx_input/qualimapReport.html
+│   ├── alignment_stats.tsv
+│   └── library_complexity/
+│       ├── chip-rx_MLL.metrics
+│       └── chip-rx_input.metrics
 ├── hub/
-│   ├── seqnado_hub.hub.txt
-│   ├── seqnado_hub.genomes.txt
-│   └── chip/
-│       ├── trackDb.txt
-│       ├── chiprxMLL_bigWig.bigWig          # 593 KB
-│       └── chiprxinput_bigWig.bigWig        # 42 KB
+│   └── seqnado_hub.hub.txt
 └── tag_dirs/
     └── chip-rx_MLL/
 ```
 
 ### Example Peak File Content
 
-**MACS2 NarrowPeak format** (`chip-rx_MLL_peaks.narrowPeak`):
+SeqNado outputs simplified 3-column BED files for all peak callers:
+
+**BED format** (`chip-rx_MLL.bed`):
 
 ```
-chr1    3054728    3055228    peak_1    245    .    4.89    24.51    12.34    250
-chr1    3669834    3670334    peak_2    189    .    3.76    18.93     9.87    250
-chr2    5847291    5847791    peak_3    312    .    6.12    31.24    15.67    250
+chr1    3054728    3055228
+chr1    3669834    3670334
+chr2    5847291    5847791
 ...
 ```
 
 **Columns:**
+
 1. Chromosome
 2. Start position
 3. End position
-4. Peak name
-5. Score (integer)
-6. Strand
-7. Fold enrichment
-8. -log10(pvalue)
-9. -log10(qvalue)
-10. Summit position relative to start
-
-### QC Metrics from Test Data
-
-| Metric | chip-rx_MLL | chip-rx_input |
-|--------|-------------|----------------|
-| Total reads | 125,482 | 8,234 |
-| Mapped reads | 98.4% | 97.2% |
-| Duplicate rate | 8.2% | 12.5% |
-| Peaks called (MACS2) | 15,234 | N/A |
-| FRiP score | 24.5% | N/A |
-| Library complexity | Good | Moderate |
 
 ## ATAC-seq Example Output
 
@@ -158,85 +146,86 @@ chr2    5847291    5847791    peak_3    312    .    6.12    31.24    15.67    25
 ```
 seqnado_output/atac/
 ├── seqnado_report.html
+├── protocol.txt
 ├── aligned/
-│   ├── atac.bam
-│   ├── atac.bam.bai
-│   └── shifted_for_tn5_insertion/
-│       └── atac_shifted.bam
+│   ├── atac_sample.bam                    # Tn5-shifted, filtered BAM
+│   └── atac_sample.bam.bai
 ├── bigwigs/
-│   └── bamnado/
-│       ├── atac_CPM.bw
-│       └── atac_RPGC.bw
+│   ├── bamnado/
+│   │   └── unscaled/
+│   │       └── atac_sample.bigWig
+│   ├── deeptools/
+│   │   └── unscaled/
+│   │       └── atac_sample.bigWig
+│   └── homer/
+│       └── unscaled/
+│           └── atac_sample.bigWig
 ├── peaks/
-│   └── lanceotron/
-│       └── atac.bed                        # 45,678 peaks
+│   └── lanceotron/                        # Default peak caller for ATAC
+│       └── atac_sample.bed
 ├── qc/
 │   ├── fastqc_raw/
-│   ├── fastq_screen/
-│   └── qualimap_bamqc/
-│       └── atac/
-│           ├── qualimapReport.html
-│           └── images_qualimapReport/
-│               ├── genome_coverage_histogram.png
-│               ├── genome_insert_size_histogram.png
-│               └── genome_gc_content_per_window.png
+│   ├── qualimap_bamqc/
+│   │   └── atac_sample/
+│   │       └── qualimapReport.html
+│   ├── alignment_stats.tsv
+│   └── library_complexity/
+│       └── atac_sample.metrics
 └── hub/
-    └── atac/
-        └── seqnado_report.html
+    └── seqnado_hub.hub.txt
 ```
 
-### ATAC-seq Specific Metrics
+!!! note
+    All intermediate BAM processing stages (sorting, blacklist removal, duplicate removal, Tn5 shifting, filtering) are temporary and automatically deleted. Only the final `aligned/{sample}.bam` is retained.
 
-| Metric | Value | Interpretation |
-|--------|-------|----------------|
-| TSS enrichment | 8.4 | ✅ High quality (>7 is good) |
-| Nucleosome periodicity | Clear | ✅ Strong signal in insert sizes |
-| Mitochondrial % | 3.2% | ✅ Low contamination (<10%) |
-| FRiP score | 42% | ✅ Excellent (>30%) |
-| Unique reads | 92% | ✅ Good complexity |
+### ATAC-seq Quality Indicators
+
+Key metrics to check in the MultiQC report:
+
+| Metric | Good Quality | What to Look For |
+|--------|-------------|------------------|
+| Nucleosome periodicity | Clear peaks at ~200bp intervals | Visible in insert size distribution |
+| Mitochondrial % | <10% | Low mitochondrial read contamination |
+| FRiP score | >30% | High fraction of reads in peaks |
+| Unique reads | >80% | Good library complexity |
 
 ### Fragment Size Distribution
 
-ATAC-seq shows characteristic nucleosome-free (~50bp) and mono-nucleosome (~200bp) peaks:
-
-```
-Fragment size    Read count    Percentage
-0-100 bp         2,456,789     45.2%  # Nucleosome-free
-100-200 bp         892,341     16.4%  # Intermediate
-200-400 bp       1,234,567     22.7%  # Mono-nucleosome
-400-600 bp         567,234      10.4% # Di-nucleosome
->600 bp            289,456       5.3%  # Higher-order
-```
+ATAC-seq shows characteristic nucleosome-free (~150bp) and mono-nucleosome (~200bp) peaks, visible in the insert size distribution within the MultiQC report.
 
 ## Qualimap BAM QC Report
 
-The Qualimap reports provide detailed alignment quality metrics.
+The Qualimap reports provide detailed alignment quality metrics. For RNA-seq, `qualimap_rnaseq` is used instead of `qualimap_bamqc`.
 
-### Key Visualizations
+### Key Visualisations
 
 **Coverage Histogram**
+
 - Distribution of genome coverage depths
 - Helps identify over/under-sequenced regions
 - Shows sequencing uniformity
 
 **Insert Size Distribution**
+
 - Fragment size histogram for paired-end data
 - Critical for ATAC-seq quality assessment
 - Reveals nucleosome positioning
 
 **GC Content Distribution**
+
 - AT/GC bias detection
 - Compares observed vs theoretical
 - Identifies contamination or bias
 
 **Mapping Quality**
+
 - Distribution of MAPQ scores
 - Higher scores = more confident alignments
 - Helps assess multi-mapping issues
 
 ## Example FastQ Screen Results
 
-FastQ Screen checks for contamination across reference genomes:
+FastQ Screen checks for contamination across reference genomes (when enabled via `run_fastq_screen`):
 
 ### Typical Clean Sample
 
@@ -244,11 +233,11 @@ FastQ Screen checks for contamination across reference genomes:
 Library: chip-rx_MLL_1
 Genome          %Mapping    %One_hit    %Multi_hit    Status
 --------------------------------------------------------------
-Human (hg38)    98.2%       85.4%       12.8%         ✅ OK
-Mouse (mm10)     0.8%        0.5%        0.3%         ✅ OK
-E. coli          0.0%        0.0%        0.0%         ✅ OK
-Adapters         0.3%        0.3%        0.0%         ✅ OK
-PhiX             0.0%        0.0%        0.0%         ✅ OK
+Human (hg38)    98.2%       85.4%       12.8%         OK
+Mouse (mm10)     0.8%        0.5%        0.3%         OK
+E. coli          0.0%        0.0%        0.0%         OK
+Adapters         0.3%        0.3%        0.0%         OK
+PhiX             0.0%        0.0%        0.0%         OK
 ```
 
 ### Concerning Sample (Contamination)
@@ -257,9 +246,9 @@ PhiX             0.0%        0.0%        0.0%         ✅ OK
 Library: sample_contaminated
 Genome          %Mapping    %One_hit    %Multi_hit    Status
 --------------------------------------------------------------
-Human (hg38)    65.2%       58.4%        6.8%         ⚠️ WARNING
-Mouse (mm10)    32.8%       29.5%        3.3%         ⚠️ WARNING
-E. coli          1.2%        1.1%        0.1%         ⚠️ WARNING
+Human (hg38)    65.2%       58.4%        6.8%         WARNING
+Mouse (mm10)    32.8%       29.5%        3.3%         WARNING
+E. coli          1.2%        1.1%        0.1%         WARNING
 ```
 
 ## HOMER Tag Directory
@@ -277,103 +266,74 @@ tag_dirs/chip-rx_MLL/
 └── ...
 ```
 
-### Example tagInfo.txt
-
-```
-genome=hg38
-cmd=makeTagDirectory
-fragLength=200
-tagTotal=12548200
-avgTagLength=40.0
-avgTagsPerPosition=1.43
-avgTagsPerTSS=4.21
-peakCalling=factor
-tagAdjust=0
-restrictionSite=none
-```
-
 ## BigWig Coverage Tracks
 
-BigWig files provide genome-wide signal visualization:
+BigWig files provide genome-wide signal visualisation.
 
 ### File Naming Convention
 
+BigWig files are organised by tool and scaling method:
+
 ```
-{sample}_{normalization}.bw
+bigwigs/{method}/{scale}/{sample}.bigWig
 
 Examples:
-- chip-rx_MLL_CPM.bw          # Counts per million
-- chip-rx_MLL_RPGC.bw         # RPGC normalized
-- atac_spike_in.bw            # Spike-in normalized
+- bigwigs/deeptools/unscaled/chip-rx_MLL.bigWig
+- bigwigs/bamnado/unscaled/chip-rx_MLL.bigWig
+- bigwigs/homer/unscaled/chip-rx_MLL.bigWig
+- bigwigs/deeptools/csaw/chip-rx_MLL.bigWig
+- bigwigs/deeptools/spikein/orlando/chip-rx_MLL.bigWig
+- bigwigs/deeptools/merged/consensus_group.bigWig
+```
+
+For RNA-seq, stranded tracks include `_plus` and `_minus` suffixes:
+
+```
+- bigwigs/deeptools/unscaled/rna_sample_plus.bigWig
+- bigwigs/deeptools/unscaled/rna_sample_minus.bigWig
 ```
 
 ### Loading in UCSC Genome Browser
 
-1. Upload BigWig to web-accessible location
-2. Or use the auto-generated hub in `hub/seqnado_hub.hub.txt`
+1. Upload BigWig files to a web-accessible location
+2. Or use the auto-generated hub at `hub/seqnado_hub.hub.txt`
 3. Tracks display sample signal across genome
 4. Compare multiple samples side-by-side
 
 ## GEO Submission Files
 
-Ready-to-submit files for GEO/SRA:
+Ready-to-submit files for GEO/SRA (when enabled):
 
 ```
 geo_submission/
-├── metadata.xlsx                   # Sample information table
-│   ├── Sample Name
-│   ├── Organism
-│   ├── Tissue/Cell Type
-│   ├── Treatment
-│   ├── Sequencing Platform
-│   └── ...
-├── processed_files/
-│   ├── bigwigs/
-│   │   ├── sample1_CPM.bw → ../../bigwigs/sample1_CPM.bw
-│   │   └── sample2_CPM.bw → ../../bigwigs/sample2_CPM.bw
-│   └── peaks/
-│       ├── sample1_peaks.bed → ../../peaks/macs2/sample1_peaks.narrowPeak
-│       └── sample2_peaks.bed → ../../peaks/macs2/sample2_peaks.narrowPeak
-└── raw_fastq/
-    ├── sample1_R1.fastq.gz → ../../fastqs/sample1_R1.fastq.gz
-    ├── sample1_R2.fastq.gz → ../../fastqs/sample1_R2.fastq.gz
-    └── ...
+├── samples_table.txt                  # Sample metadata (TSV format)
+├── md5sums.txt                        # Combined checksums
+├── raw_data_checksums.txt            # Checksums for raw FASTQs
+├── processed_data_checksums.txt      # Checksums for processed files
+├── upload_instructions.txt           # GEO upload instructions
+├── chip-rx_MLL_1.fastq.gz           # Symlinks to raw FASTQ R1
+├── chip-rx_MLL_2.fastq.gz           # Symlinks to raw FASTQ R2
+├── chip-rx_MLL_deeptools_unscaled.bigWig  # Renamed processed files
+├── chip-rx_MLL_macs2.bed
+└── chip/                             # Upload directory
 ```
+
+Files are flattened from the nested directory structure into a single directory with descriptive filenames that encode the tool and scaling method.
 
 ## Genome Browser Plots (PlotNado)
 
-Publication-ready visualizations of genomic regions:
-
-### Example Plot Configuration
-
-```yaml
-regions:
-  - chr1:1000000-1005000
-  - chr2:5000000-5010000
-  
-samples:
-  - chip-rx_MLL
-  - chip-rx_input
-  
-tracks:
-  - bigwig: chip-rx_MLL_CPM.bw
-    color: "#2E86AB"
-    label: "MLL ChIP"
-  - bigwig: chip-rx_input_CPM.bw  
-    color: "#A23B72"
-    label: "Input"
-  - genes: hg38_refseq
-```
+Publication-ready visualisations of genomic regions (when plotting coordinates are configured):
 
 ### Output Files
 
 ```
 genome_browser_plots/
-├── chr1_1000000-1005000_MLL_vs_input.pdf
-├── chr1_1000000-1005000_MLL_vs_input.png
-├── chr2_5000000-5010000_MLL_vs_input.pdf
-└── regions.bed
+├── MYC_promoter.svg                   # Named region from BED file
+├── chr1-1000000-1005000.svg          # Unnamed region uses coordinates
+└── template.toml                      # PlotNado configuration template
 ```
+
+Plot filenames are derived from the Name column in the input BED file, or from `{chr}-{start}-{end}` if no name is provided. Output format can be `svg`, `png`, or `pdf` as configured.
 
 ## Tips for Exploring Outputs
 
@@ -383,14 +343,14 @@ genome_browser_plots/
 # Check main report
 firefox seqnado_output/chip/seqnado_report.html
 
-# Count peaks called  
-wc -l seqnado_output/chip/peaks/macs2/*_peaks.narrowPeak
+# Count peaks called
+wc -l seqnado_output/chip/peaks/macs2/*.bed
 
 # View alignment stats
-samtools flagstat seqnado_output/chip/aligned/sample.bam
+samtools flagstat seqnado_output/chip/aligned/chip-rx_MLL.bam
 
 # Check bigwig file
-bigWigInfo seqnado_output/chip/bigwigs/bamnado/sample_CPM.bw
+bigWigInfo seqnado_output/chip/bigwigs/deeptools/unscaled/chip-rx_MLL.bigWig
 ```
 
 ### Finding Specific Results
@@ -400,13 +360,10 @@ bigWigInfo seqnado_output/chip/bigwigs/bamnado/sample_CPM.bw
 find seqnado_output/ -name "*.html"
 
 # All peak files
-find seqnado_output/ -name "*peaks*"
+find seqnado_output/ -name "*.bed"
 
 # All coverage tracks
-find seqnado_output/ -name "*.bw" -o -name "*.bigWig"
-
-# QC images
-find seqnado_output/ -name "*.png" | grep qc
+find seqnado_output/ -name "*.bigWig"
 ```
 
 ## Understanding File Formats
@@ -417,14 +374,14 @@ find seqnado_output/ -name "*.png" | grep qc
 - Includes alignment quality, CIGAR strings, and flags
 
 ### BigWig Files
-- **Binary coverage track format**
-- Efficient genome browser visualization
-- Contains normalized signal values
+- **Binary coverage track format** (`.bigWig` extension)
+- Efficient genome browser visualisation
+- Contains normalised signal values
 
-### BED/NarrowPeak Files
+### BED Files
 - **Tab-delimited genomic coordinates**
-- BED: chr, start, end, name, score, strand
-- NarrowPeak: BED6 + fold-change, pvalue, qvalue, summit
+- SeqNado peak outputs use 3-column BED: chr, start, end
+- Standard BED can include additional columns (name, score, strand)
 
 ### FastQ Files
 - **Raw sequencing reads** (if retained)
@@ -433,4 +390,4 @@ find seqnado_output/ -name "*.png" | grep qc
 
 ---
 
-For more information on interpreting these outputs for your specific experiment, consult the [Pipeline Overview](pipeline.md) or [FAQ](faq.md).
+For more information on interpreting these outputs for your specific experiment, consult the [Pipeline Overview](pipeline.md).
