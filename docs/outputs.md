@@ -223,6 +223,7 @@ motifs/
 ### Genome Browser Plots (`genome_browser_plots/`)
 
 Publication-ready visualisations generated with PlotNado (if configured with plotting coordinates):
+Publication-ready visualisations generated with PlotNado (if configured with plotting coordinates):
 
 ```
 genome_browser_plots/

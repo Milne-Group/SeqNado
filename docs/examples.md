@@ -1,6 +1,6 @@
 # Output Examples
 
-This page showcases example outputs from SeqNado pipelines to help you understand what to expect from your analyses.
+This page showcases example outputs from SeqNado pipelines to help you understand what to expect from your analyses. All examples are based on real test data processed through the pipeline.
 
 ## SeqNado QC Report
 
