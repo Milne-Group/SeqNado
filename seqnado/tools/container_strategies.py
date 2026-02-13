@@ -45,9 +45,8 @@ CONDA_PACKAGE_MAP: Dict[str, str] = {
     "fasterq-dump": "sra-tools",
     "featureCounts": "subread",
     "findPeaks": "homer",
-    "makeTagDirectory": "homer",
     "macs": "macs2",
-    "lanceotron-mcc": "lanceotron",
+    "makeTagDirectory": "homer",
     "ucsc-tools": "ucsc-bedgraphtobigwig",
 }
 
@@ -234,7 +233,7 @@ def get_container_versions(
             if versions:
                 _container_version_cache[container_uri] = versions
                 logger.debug(
-                    f"Retrieved {len(versions)} packages from conda-meta: {container_uri}"
+                    f"Retrieved from conda-meta: {container_uri}"
                 )
                 return versions
 
@@ -243,7 +242,7 @@ def get_container_versions(
             if versions:
                 _container_version_cache[container_uri] = versions
                 logger.debug(
-                    f"Retrieved {len(versions)} packages from pip list: {container_uri}"
+                    f"Retrieved from pip list: {container_uri}"
                 )
                 return versions
 
@@ -252,11 +251,11 @@ def get_container_versions(
             if versions:
                 _container_version_cache[container_uri] = versions
                 logger.debug(
-                    f"Retrieved {len(versions)} packages from version command: {container_uri}"
+                    f"Retrieved from version command: {container_uri}"
                 )
                 return versions
 
-    logger.debug(f"No package metadata found in {container_uri}")
+    logger.debug(f"Retrieved via fallback strategy: {container_uri}")
     _container_version_cache[container_uri] = {}
     return {}
 

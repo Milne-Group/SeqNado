@@ -1712,7 +1712,7 @@ def tools(
             use_container=is_apptainer_available(),
             subcommand=subcommand,
         )
-        _RICH_CONSOLE.print(version_info)
+        _RICH_CONSOLE.print(f"[bold white]Version: {version_info}[/bold white]")
 
         # Get and display help
         _RICH_CONSOLE.print("\n[bold cyan]Help / Usage:[/bold cyan]")

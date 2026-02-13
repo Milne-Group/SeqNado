@@ -12,17 +12,20 @@ def sample_tools(monkeypatch):
             "description": "Alpha tool",
             "command": "alpha",
             "category": "Download",
+            "container": "docker://fake/container:latest",
         },
         "beta": {
             "description": "Beta tool",
             "command": "beta",
             "category": "Quality Control",
+            "container": "docker://fake/container:latest",
         },
         "gamma": {
             "description": "Gamma tool",
             "command": "gamma",
             "category": "Custom",
             "subcommands": ["run", "check"],
+            "container": "docker://fake/container:latest",
         },
     }
     monkeypatch.setattr(tools, "AVAILABLE_TOOLS", fake_tools, raising=False)
@@ -62,7 +65,9 @@ def test_get_tool_version_container_filters_info(monkeypatch, sample_tools):
         tools, "run_command_in_container", fake_run_command_in_container
     )
     version = tools.get_tool_version("beta", use_container=True)
-    assert version == "Beta 2.0"
+    # Version extraction now returns just the version number, not the tool name
+    assert version == "2.0"
+    assert "INFO:" not in version
 
 
 def test_get_tool_help_container_filters_info(monkeypatch, sample_tools):

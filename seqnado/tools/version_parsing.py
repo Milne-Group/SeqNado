@@ -98,3 +98,41 @@ def extract_version_line(output: str) -> Optional[str]:
                 return line
 
     return None
+
+
+def extract_version_number(output: str) -> Optional[str]:
+    """
+    Extract just the version number from command output.
+
+    Removes tool names and other text, returning only the version number.
+
+    Args:
+        output: Command output string (can be full output or a single line)
+
+    Returns:
+        Clean version number string, or None if not found
+
+    Examples:
+        >>> extract_version_number("bamnado 0.4.4")
+        "0.4.4"
+        >>> extract_version_number("FastQC v0.12.1")
+        "0.12.1"
+        >>> extract_version_number("version 2.5.4")
+        "2.5.4"
+    """
+    # First get the line with version info
+    line = extract_version_line(output)
+    if not line:
+        return None
+
+    # Pattern to match version numbers (with or without 'v' prefix)
+    version_pattern = re.compile(
+        r"\b(?:v)?(\d+(?:\.\d+)+(?:[a-z0-9\-]*)?)\b", re.IGNORECASE
+    )
+
+    match = version_pattern.search(line)
+    if match:
+        # Return just the version number (group 1), without 'v' prefix
+        return match.group(1)
+
+    return None

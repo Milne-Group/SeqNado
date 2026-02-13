@@ -179,15 +179,6 @@
             "container": "oras://ghcr.io/alsmith151/seqnado_ml_cpu:latest",
             "citation": "lanceotron"
         },
-        "lanceotron-mcc": {
-            "display_name": "LanceOtron (MCC)",
-            "usage": "Peak calling for Micro-Capture-C data",
-            "description": "Peak caller for MCC data (Micro-Capture-C)",
-            "command": "lanceotron-mcc",
-            "category": "Analysis",
-            "container": "library://asmith151/lanceotron/lanceotron-mcc:latest",
-            "citation": "lanceotron"
-        },
         "macs": {
             "display_name": "MACS2",
             "usage": "Peak calling for ChIP-seq and ATAC-seq",
@@ -198,7 +189,7 @@
             "citation": "macs"
         },
         "mccnado": {
-            "display_name": "MccNado",
+            "display_name": "MCCNado",
             "usage": "Analyze chromatin 3D interactions (Micro-Capture-C)",
             "description": "Micro-Capture-C (MCC) sequencing data processing tool",
             "command": "mccnado",
@@ -285,6 +276,7 @@
             "command": "plotnado",
             "category": "Visualization",
             "container": "library://asmith151/plotnado/plotnado:latest",
+            "version": "0.1.dev101",
             "citation": "plotnado"
         },
         "qualimap": {
@@ -396,15 +388,6 @@
             "category": "Preprocessing",
             "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
             "citation": "trimgalore"
-        },
-        "trimmomatic": {
-            "display_name": "Trimmomatic",
-            "usage": "Flexible trimming with sliding window approach",
-            "description": "Flexible read trimming tool for high-throughput sequencing data",
-            "command": "trimmomatic",
-            "category": "Preprocessing",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
-            "citation": "trimmomatic"
         },
         "ucsc-tools": {
             "display_name": "UCSC Tools",

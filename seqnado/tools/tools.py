@@ -26,6 +26,7 @@ from .container_strategies import (
 )
 from .version_parsing import (
     extract_version_line,
+    extract_version_number,
     filter_apptainer_info,
     split_output_lines,
 )
@@ -296,18 +297,18 @@ def get_tool_version(
                 )
                 output = (stdout + stderr).strip()
                 if output and returncode in [0, 1]:
-                    line = extract_version_line(output)
-                    if line:
-                        return line[:200]
+                    version = extract_version_number(output)
+                    if version:
+                        return version
                 continue
 
             cmd = [command] + flags
             returncode, stdout, stderr = _run_local_command(cmd, timeout=5)
             output = (stdout + stderr).strip()
             if output and returncode in [0, 1]:
-                line = extract_version_line(output)
-                if line:
-                    return line[:200]
+                version = extract_version_number(output)
+                if version:
+                    return version
         except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
             continue
 

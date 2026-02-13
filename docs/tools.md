@@ -98,13 +98,6 @@ Tools are organized by category, matching the structure of the `seqnado tools` C
 **Reference**: Felix Krueger. Trim Galore, https://www.bioinformatics.babraham.ac.uk/projects/trim_galore/. 2012.
 
 
-#### Trimmomatic
-**Purpose**: Flexible read trimming tool for high-throughput sequencing data  
-**Version**: Latest via container  
-**Usage**: Flexible trimming with sliding window approach  
-**Reference**: Anthony M. Bolger, Marc Lohse, and Bjoern Usadel. Trimmomatic: a flexible trimmer for Illumina sequence data. Bioinformatics, 30(15):2114–2120, 2014. URL: https://doi.org/10.1093/bioinformatics/btu170, doi:10.1093/bioinformatics/btu170.
-
-
 ### Alignment
 
 #### Bowtie2
@@ -146,7 +139,7 @@ Tools are organized by category, matching the structure of the `seqnado tools` C
 
 #### BamNado
 **Purpose**: SeqNado BAM file manipulation and analysis tool  
-**Version**: bamnado 0.4.4  
+**Version**: 0.4.4  
 **Usage**: Calculate scaling factors and spike-in normalization  
 **Reference**: Smith, Alastair L. BamNado: BAM file manipulation and analysis tool. 2024. URL: https://pypi.org/project/bamnado/.
 
@@ -193,13 +186,6 @@ Tools are organized by category, matching the structure of the `seqnado tools` C
 **Reference**: Lance D Hentges, Martin J Sergeant, Christopher B Cole, Damien J Downes, Jim R Hughes, and Stephen Taylor. LanceOtron: a deep learning peak caller for genome sequencing experiments. Bioinformatics, pages btac525, 2022. URL: https://doi.org/10.1093/bioinformatics/btac525, doi:10.1093/bioinformatics/btac525.
 
 
-#### LanceOtron (MCC)
-**Purpose**: Peak caller for MCC data (Micro-Capture-C)  
-**Version**: Latest via container  
-**Usage**: Peak calling for Micro-Capture-C data  
-**Reference**: Lance D Hentges, Martin J Sergeant, Christopher B Cole, Damien J Downes, Jim R Hughes, and Stephen Taylor. LanceOtron: a deep learning peak caller for genome sequencing experiments. Bioinformatics, pages btac525, 2022. URL: https://doi.org/10.1093/bioinformatics/btac525, doi:10.1093/bioinformatics/btac525.
-
-
 #### MACS2
 **Purpose**: Model-based analysis of ChIP-Seq data  
 **Version**: 2.2.9.1  
@@ -221,11 +207,11 @@ Tools are organized by category, matching the structure of the `seqnado tools` C
 **Reference**: Sven Heinz, Christopher Benner, Nathanael Spann, Eric Bertolino, Yin C. Lin, Peter Laslo, Jason X. Cheng, Cornelis Murre, Harinder Singh, and Christopher K. Glass. Simple Combinations of Lineage-Determining Transcription Factors Prime cis-Regulatory Elements Required for Macrophage and B Cell Identities. Molecular Cell, 38(4):576–589, 2010. URL: https://linkinghub.elsevier.com/retrieve/pii/S1097276510003667, doi:10.1016/j.molcel.2010.05.004.
 
 
-#### MccNado
+#### MCCNado
 **Purpose**: Micro-Capture-C (MCC) sequencing data processing tool  
 **Version**: 0.1.6  
 **Usage**: Analyze chromatin 3D interactions (Micro-Capture-C)  
-**Reference**: Alastair L. Smith. MccNado: Micro-Capture-C data processing tool. 2024. URL: https://pypi.org/project/mccnado.
+**Reference**: Alastair L. Smith. MCCNado: Micro-Capture-C data processing tool. 2024. URL: https://pypi.org/project/mccnado.
 
 
 #### MEME Suite
@@ -260,7 +246,7 @@ Tools are organized by category, matching the structure of the `seqnado tools` C
 
 #### PlotNado
 **Purpose**: SeqNado genome browser visualization and plotting tool  
-**Version**: Latest via container  
+**Version**: 0.1.dev101  
 **Usage**: Publication-ready genomic region visualizations  
 **Reference**: Alastair L. Smith. PlotNado: genome browser visualization tool. 2023. URL: https://github.com/alsmith151/plotnado.
 
