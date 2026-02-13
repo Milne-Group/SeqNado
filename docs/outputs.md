@@ -7,24 +7,24 @@ All SeqNado analysis results are organized within the `seqnado_output/` director
 ## General Output Structure
 
 ```
-seqnado_output/{assay}/                # Assay-specific directory (atac, chip, rna, cat, snp, meth, mcc, crispr)
-├── seqnado_report.html               # Main interactive QC report (MultiQC)
-├── protocol.txt                       # Auto-generated data processing protocol
-├── aligned/                           # Final BAM alignment files
-├── bigwigs/                           # BigWig coverage tracks
-├── peaks/                             # Peak calling results (ATAC, ChIP, CUT&Tag)
-├── readcounts/                        # Quantification files (RNA, CRISPR)
-├── qc/                                # Quality control metrics
-├── hub/                               # UCSC Genome Browser hub
-├── heatmap/                           # DeepTools heatmap and metaplot PDFs
-├── motifs/                            # Motif analysis results (if enabled)
-├── tag_dirs/                          # HOMER tag directories
-├── resources/                         # Normalisation factors (spike-in)
-├── genome_browser_plots/              # PlotNado visualisations (if configured)
-├── geo_submission/                    # GEO submission-ready files (if enabled)
-├── methylation/                       # Methylation calls (METH only)
-├── variant/                           # VCF files (SNP only)
-└── logs/                              # Process execution logs
+seqnado_output/{assay}/       # Assay-specific directory (atac, chip, rna, cat, snp, meth, mcc, crispr)
+├── seqnado_report.html       # Main interactive QC report (MultiQC)
+├── protocol.txt              # Auto-generated data processing protocol
+├── aligned/                  # Final BAM alignment files
+├── bigwigs/                  # BigWig coverage tracks
+├── peaks/                    # Peak calling results (ATAC, ChIP, CUT&Tag)
+├── readcounts/               # Quantification files (RNA, CRISPR)
+├── qc/                       # Quality control metrics
+├── hub/                      # UCSC Genome Browser hub
+├── heatmap/                  # DeepTools heatmap and metaplot PDFs
+├── motifs/                   # Motif analysis results (if enabled)
+├── tag_dirs/                 # HOMER tag directories
+├── resources/                # Normalisation factors (spike-in)
+├── genome_browser_plots/     # PlotNado visualisations (if configured)
+├── geo_submission/           # GEO submission-ready files (if enabled)
+├── methylation/              # Methylation calls (METH only)
+├── variant/                  # VCF files (SNP only)
+└── logs/                     # Process execution logs
 ```
 
 !!! note
