@@ -6,8 +6,9 @@
             "usage": "Run containerized tools in HPC environments",
             "description": "Container runtime for running Singularity/Apptainer images on HPC clusters",
             "command": "apptainer",
+            "version": "User-managed (see installation docs)",
             "category": "Utilities",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "Environment",
             "citation": "apptainer"
             },
         "bcftools": {
@@ -107,7 +108,7 @@
             "description": "Fast extraction of sequences from SRA files",
             "command": "fasterq-dump",
             "category": "Download",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "docker://quay.io/biocontainers/sra-tools:3.0.10--h9f5acd7_0",
             "citation": "sra-toolkit"
         },
         "fastq-screen": {
@@ -175,7 +176,7 @@
             "description": "Peak caller for high-resolution chromatin analysis",
             "command": "lanceotron",
             "category": "Analysis",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_ml_cpu:latest",
             "citation": "lanceotron"
         },
         "lanceotron-mcc": {
@@ -184,7 +185,7 @@
             "description": "Peak caller for MCC data (Micro-Capture-C)",
             "command": "lanceotron-mcc",
             "category": "Analysis",
-            "container": "docker://ghcr.io/alsmith151/mccnado:latest",
+            "container": "library://asmith151/lanceotron/lanceotron-mcc:latest",
             "citation": "lanceotron"
         },
         "macs": {
@@ -345,8 +346,9 @@
             "usage": "Workflow management and execution",
             "description": "Workflow management system for reproducible and scalable data analysis",
             "command": "snakemake",
+            "version": "≥9.12.0",
             "category": "Utilities",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "Environment",
             "citation": "snakemake"
         },
         "star": {
@@ -381,8 +383,9 @@
             "usage": "Create and host UCSC track hubs",
             "description": "Track hub creation tool for UCSC Genome Browser",
             "command": "tracknado",
+            "version": "≥0.3.1",
             "category": "Visualization",
-            "container": "docker://ghcr.io/alsmith151/tracknado:latest",
+            "container": "Environment",
             "citation": "tracknado"
         },
         "trim-galore": {

@@ -22,7 +22,6 @@ from seqnado.tools import (
     get_categories,
     get_tool_citation,
     get_tool_version,
-    get_tool_version_from_container,
     is_apptainer_available,
 )
 
@@ -38,34 +37,18 @@ TOOL_TEMPLATE = """#### {display_name}
 def _get_tool_version_for_docs(tool_name: str) -> str:
     """Get tool version for documentation.
 
-    Uses ``conda list --json`` from the container (one call per unique
-    container, cached) as the primary source.  Falls back to local
-    detection when apptainer is not available.
+    Uses container metadata as the primary source for clean version numbers.
+    Falls back to local detection if apptainer is unavailable.
     """
-    _NOT_FOUND = "Version information not available"
-
-    # 1. Try conda metadata from container (bulk, cached per container)
     if is_apptainer_available():
-        try:
-            version = get_tool_version_from_container(tool_name)
-            if version:
-                return version
-        except Exception as e:
-            print(
-                f"Warning: Container metadata check failed for '{tool_name}': {e}",
-                file=sys.stderr,
-            )
-
-    # 2. Fall back to local detection
-    try:
-        version = get_tool_version(tool_name, use_container=False)
-        if version and version != _NOT_FOUND:
+        version = get_tool_version(tool_name, use_container=True)
+        if version and version != "Version information not available":
             return version
-    except Exception as e:
-        print(
-            f"Warning: Local version check failed for '{tool_name}': {e}",
-            file=sys.stderr,
-        )
+    else:
+        # Fall back to local detection when apptainer unavailable
+        version = get_tool_version(tool_name, use_container=False)
+        if version and version != "Version information not available":
+            return version
 
     return "Latest via container"
 

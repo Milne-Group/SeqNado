@@ -47,7 +47,7 @@ Tools are organized by category, matching the structure of the `seqnado tools` C
 
 #### SRA Toolkit (fasterq-dump)
 **Purpose**: Fast extraction of sequences from SRA files  
-**Version**: Latest via container  
+**Version**: 3.0.10  
 **Usage**: Download sequencing data from NCBI Sequence Read Archive  
 **Reference**: National Center for Biotechnology Information. SRA Toolkit: Sequence Read Archive tools and libraries. 2023. URL: https://github.com/ncbi/sra-tools.
 
@@ -146,7 +146,7 @@ Tools are organized by category, matching the structure of the `seqnado tools` C
 
 #### BamNado
 **Purpose**: SeqNado BAM file manipulation and analysis tool  
-**Version**: Latest via container  
+**Version**: bamnado 0.4.4  
 **Usage**: Calculate scaling factors and spike-in normalization  
 **Reference**: Smith, Alastair L. BamNado: BAM file manipulation and analysis tool. 2024. URL: https://pypi.org/project/bamnado/.
 
@@ -188,7 +188,7 @@ Tools are organized by category, matching the structure of the `seqnado tools` C
 
 #### LanceOtron
 **Purpose**: Peak caller for high-resolution chromatin analysis  
-**Version**: Latest via container  
+**Version**: 1.2.7  
 **Usage**: Machine learning-based peak calling  
 **Reference**: Lance D Hentges, Martin J Sergeant, Christopher B Cole, Damien J Downes, Jim R Hughes, and Stephen Taylor. LanceOtron: a deep learning peak caller for genome sequencing experiments. Bioinformatics, pages btac525, 2022. URL: https://doi.org/10.1093/bioinformatics/btac525, doi:10.1093/bioinformatics/btac525.
 
@@ -274,7 +274,7 @@ Tools are organized by category, matching the structure of the `seqnado tools` C
 
 #### TrackNado
 **Purpose**: Track hub creation tool for UCSC Genome Browser  
-**Version**: Latest via container  
+**Version**: ≥0.3.1  
 **Usage**: Create and host UCSC track hubs  
 **Reference**: Alastair L. Smith. TrackNado: a python library and cli tool to rapidly generate complex ucsc genome browser track hubs. 2024. URL: https://pypi.org/project/tracknado.
 
@@ -290,7 +290,7 @@ Tools are organized by category, matching the structure of the `seqnado tools` C
 
 #### Quarto
 **Purpose**: Scientific and technical publishing system for reports  
-**Version**: Latest via container  
+**Version**: 1.8.25  
 **Usage**: Generate analysis reports with code and narrative  
 **Reference**: Posit Software, PBC. Quarto: An open-source scientific and technical publishing system. 2022. URL: https://quarto.org/.
 
@@ -329,7 +329,7 @@ Tools are organized by category, matching the structure of the `seqnado tools` C
 
 #### Apptainer
 **Purpose**: Container runtime for running Singularity/Apptainer images on HPC clusters  
-**Version**: apptainer version 1.4.5  
+**Version**: User-managed (see installation docs)  
 **Usage**: Run containerized tools in HPC environments  
 **Reference**: Apptainer Project Contributors. Apptainer. 2023. URL: https://apptainer.org/.
 
@@ -350,7 +350,7 @@ Tools are organized by category, matching the structure of the `seqnado tools` C
 
 #### Snakemake
 **Purpose**: Workflow management system for reproducible and scalable data analysis  
-**Version**: 9.14.5  
+**Version**: ≥9.12.0  
 **Usage**: Workflow management and execution  
 **Reference**: Felix Mölder, Kim Philipp Jablonski, Brice Letcher, Michael B. Hall, Christopher H. Tomkins-Tinch, Vanessa Sochat, Jan Forster, Soohyun Lee, Sven O. Twardziok, Alexander Kanitz, Andreas Wilm, Manuel Holtgrewe, Sven Rahmann, Sven Nahnsen, and Johannes Köster. Sustainable data analysis with Snakemake. F1000Research, 10:33, 2021. URL: https://f1000research.com/articles/10-33/v3, doi:10.12688/f1000research.29032.3.
 

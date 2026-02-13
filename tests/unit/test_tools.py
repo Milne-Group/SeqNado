@@ -48,8 +48,10 @@ def test_resolve_tool_command_with_subcommand(sample_tools):
 
 
 def test_first_non_info_line():
+    from seqnado.tools.version_parsing import first_non_info_line
+
     output = "INFO: cached\nTool v1.2.3\n"
-    assert tools._first_non_info_line(output) == "Tool v1.2.3"
+    assert first_non_info_line(output) == "Tool v1.2.3"
 
 
 def test_get_tool_version_container_filters_info(monkeypatch, sample_tools):

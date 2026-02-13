@@ -17,6 +17,19 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
 
+from .container_strategies import (
+    extract_version_from_container_tag,
+    get_conda_package_candidates,
+)
+from .container_strategies import (
+    get_container_versions as _get_container_versions,
+)
+from .version_parsing import (
+    extract_version_line,
+    filter_apptainer_info,
+    split_output_lines,
+)
+
 
 # Load tools from JSON file at module import time
 def _load_tools() -> Dict[str, Dict[str, Any]]:
@@ -34,267 +47,17 @@ def _load_tools() -> Dict[str, Dict[str, Any]]:
 AVAILABLE_TOOLS = _load_tools()
 
 
-def _split_output_lines(output: str) -> List[str]:
-    return [line for line in output.split("\n") if line.strip()]
-
-
-def _filter_apptainer_info(lines: List[str]) -> List[str]:
-    return [line for line in lines if not line.lstrip().startswith("INFO:")]
-
-
-def _first_non_info_line(output: str) -> Optional[str]:
-    lines = _filter_apptainer_info(_split_output_lines(output))
-    if lines:
-        return lines[0]
-    raw_lines = _split_output_lines(output)
-    return raw_lines[0] if raw_lines else None
-
-
-def _extract_version_line(output: str) -> Optional[str]:
-    lines = _filter_apptainer_info(_split_output_lines(output))
-    if not lines:
-        lines = _split_output_lines(output)
-
-    version_pattern = re.compile(r"\b(?:v)?\d+(?:\.\d+)+(?:[a-z0-9\-]*)\b", re.IGNORECASE)
-    
-    for line in lines:
-        lower_line = line.lower()
-        
-        # Skip lines that are clearly help/usage text
-        if any(skip in lower_line for skip in [
-            "usage:", "usage example", "options:", "arguments:", "-h", "--help",
-            "see ", "try ", "error", "invalid", "not a valid", "unrecognized",
-            "command", "positional", "subcommand", "for more information"
-        ]):
-            continue
-        
-        # Skip lines with angle brackets or too many dashes (likely help syntax)
-        if "<" in line or ">" in line or line.count("-") > 5:
-            continue
-            
-        # Look for version keyword followed by a version number
-        if "version" in lower_line:
-            match = version_pattern.search(line)
-            if match:
-                return line
-        
-        # Or just find a version number pattern on its own line
-        match = version_pattern.search(line)
-        if match:
-            # Make sure it's not embedded in help text
-            if not any(skip in lower_line for skip in ["example", "usage", "type", "default", "options"]):
-                return line
-
-    return None
-
-
-# Mapping from tool name (in tools.json) to conda/pip package name
-# for tools whose package name differs from their tool name.
-_CONDA_PACKAGE_MAP: Dict[str, str] = {
-    "bedToBigBed": "ucsc-bedtobigbed",
-    "fasterq-dump": "sra-tools",
-    "featureCounts": "subread",
-    "findPeaks": "homer",
-    "makeTagDirectory": "homer",
-    "macs": "macs2",
-    "lanceotron-mcc": "lanceotron",
-    "ucsc-tools": "ucsc-bedgraphtobigwig",
-}
-
-# Module-level cache: container URI -> {package_name: version}
-_container_version_cache: Dict[str, Dict[str, str]] = {}
-
-
-def _get_conda_package_candidates(tool_name: str) -> List[str]:
-    """Return candidate conda/pip package names for a tool, in priority order."""
-    if tool_name in _CONDA_PACKAGE_MAP:
-        return [_CONDA_PACKAGE_MAP[tool_name]]
-
-    candidates = [tool_name.lower()]
-    tool_info = get_tool_info(tool_name)
-    if tool_info:
-        cmd = tool_info.get("command", "").lower()
-        if cmd and cmd not in candidates:
-            candidates.append(cmd)
-    return candidates
-
-
-# Conda-meta directories to try (micromamba vs biocontainer layouts)
-_CONDA_META_DIRS = ["/opt/conda/conda-meta", "/usr/local/conda-meta"]
-
-# Pattern for conda-meta filenames: {name}-{version}-{build}.json
-_CONDA_META_RE = re.compile(r"^(.+)-([^-]+)-[^-]+\.json$")
-
-
-# Container-specific version retrieval strategies
-# Maps container identifier to strategy configuration
-_CONTAINER_STRATEGIES: Dict[str, Dict[str, Any]] = {
-    # SeqNado pipeline (micromamba conda)
-    "ghcr.io/alsmith151/seqnado_pipeline": {
-        "strategies": [
-            {"type": "conda-meta", "paths": ["/opt/conda/conda-meta"]},
-            {"type": "pip-list"},
-        ]
-    },
-    # BAM processing container (needs --version)
-    "ghcr.io/alsmith151/bamnado": {
-        "strategies": [
-            {"type": "version-command"},
-            {"type": "pip-list"},
-        ]
-    },
-    # MCC analysis container (pip-only)
-    "ghcr.io/alsmith151/mccnado": {
-        "strategies": [
-            {"type": "pip-list"},
-            {"type": "conda-meta", "paths": ["/opt/conda/conda-meta", "/usr/local/conda-meta"]},
-        ]
-    },
-    # Biocontainers (conda in /usr/local/conda-meta)
-    "quay.io/biocontainers": {
-        "strategies": [
-            {"type": "conda-meta", "paths": ["/usr/local/conda-meta"]},
-            {"type": "pip-list"},
-        ]
-    },
-    # SeqNado ML CPU (pip-only)
-    "ghcr.io/alsmith151/seqnado_ml_cpu": {
-        "strategies": [
-            {"type": "pip-list"},
-        ]
-    },
-    # PlotNado (unknown - try standard fallbacks)
-    "asmith151/plotnado": {
-        "strategies": [
-            {"type": "conda-meta", "paths": ["/opt/conda/conda-meta", "/usr/local/conda-meta"]},
-            {"type": "pip-list"},
-        ]
-    },
-}
-
-
-def _get_container_strategy(container_uri: str) -> List[Dict[str, Any]]:
-    """Get version retrieval strategy for a container.
-    
-    Args:
-        container_uri: Full container URI or image name
-    
-    Returns:
-        List of strategy configurations to try in order
-    """
-    # Try to match against known patterns
-    for pattern, config in _CONTAINER_STRATEGIES.items():
-        if pattern in container_uri:
-            return config.get("strategies", [])
-    
-    # Default fallback strategy
-    return [
-        {"type": "conda-meta", "paths": ["/opt/conda/conda-meta", "/usr/local/conda-meta"]},
-        {"type": "pip-list"},
-    ]
-
-
-def _parse_conda_meta(ls_output: str) -> Dict[str, str]:
-    """Parse ``ls`` output of a conda-meta directory into {name: version}."""
-    versions: Dict[str, str] = {}
-    for filename in ls_output.splitlines():
-        m = _CONDA_META_RE.match(filename.strip())
-        if m:
-            versions[m.group(1).lower()] = m.group(2)
-    return versions
-
-
-def _parse_pip_json(pip_output: str) -> Dict[str, str]:
-    """Parse ``pip list --format=json`` output into {name: version}."""
-    packages = json.loads(pip_output)
-    return {pkg["name"].lower(): pkg["version"] for pkg in packages}
-
-
-def _get_versions_via_conda_meta(
-    apptainer_cmd: str, container_uri: str, paths: List[str]
-) -> Optional[Dict[str, str]]:
-    """Try to get versions from conda-meta directory."""
-    for meta_dir in paths:
-        try:
-            result = subprocess.run(
-                [apptainer_cmd, "exec", container_uri, "ls", meta_dir],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                versions = _parse_conda_meta(result.stdout)
-                if versions:
-                    return versions
-        except (subprocess.TimeoutExpired, Exception):
-            continue
-    return None
-
-
-def _get_versions_via_pip_list(
-    apptainer_cmd: str, container_uri: str
-) -> Optional[Dict[str, str]]:
-    """Try to get versions from pip list."""
-    try:
-        result = subprocess.run(
-            [apptainer_cmd, "exec", container_uri, "pip", "list", "--format=json"],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            versions = _parse_pip_json(result.stdout)
-            if versions:
-                return versions
-    except (subprocess.TimeoutExpired, json.JSONDecodeError, Exception):
-        pass
-    return None
-
-
-def _get_versions_via_version_command(
-    apptainer_cmd: str, container_uri: str, tool_name: str = None
-) -> Optional[Dict[str, str]]:
-    """Try to get version from tool's --version command.
-    
-    This is useful for containers where metadata is not available.
-    Falls back to querying pip or conda if available.
-    """
-    # If no tool specified, try pip list as fallback
-    if tool_name is None:
-        return _get_versions_via_pip_list(apptainer_cmd, container_uri)
-    
-    try:
-        # List available tools in the container by looking at what's in PATH
-        # or try common package managers
-        result = subprocess.run(
-            [apptainer_cmd, "exec", container_uri, "pip", "list", "--format=json"],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            versions = _parse_pip_json(result.stdout)
-            if versions:
-                return versions
-    except (subprocess.TimeoutExpired, json.JSONDecodeError, Exception):
-        pass
-    
-    return None
-
-
 def get_container_versions(container_uri: Optional[str] = None) -> Dict[str, str]:
     """Get all package versions installed in a container.
 
-    Attempts container-specific strategies based on known container types:
-    
-    - **seqnado_pipeline**: conda-meta at /opt/conda/conda-meta, then pip
-    - **bamnado**: pip list (no conda metadata available)
-    - **mccnado**: pip list, then conda-meta fallback
-    - **biocontainers** (mageck, meme): conda-meta at /usr/local/conda-meta, then pip
-    - **seqnado_ml_cpu**: pip list
-    - **other/unknown**: Try conda-meta dirs, then pip list
+    Tries strategies in order from fastest to slowest:
 
-    Results are cached per container URI for the lifetime of the process.
+    1. **conda-meta at /opt/conda/conda-meta**: Fastest, used by SeqNado containers
+    2. **conda-meta at /usr/local/conda-meta**: Fast, used by biocontainers
+    3. **pip list**: Medium speed, works for Python-based containers
+    4. **version-command**: Slowest, runs individual tool commands (rarely used)
+
+    The first successful strategy is used and results are cached per container URI.
 
     Returns:
         Mapping of ``{package_name: version}`` (names lower-cased).
@@ -304,45 +67,11 @@ def get_container_versions(container_uri: Optional[str] = None) -> Dict[str, str
     if not container_uri:
         return {}
 
-    if container_uri in _container_version_cache:
-        return _container_version_cache[container_uri]
-
     apptainer_cmd = get_apptainer_command()
     if not apptainer_cmd:
         return {}
 
-    # Get strategy for this container
-    strategies = _get_container_strategy(container_uri)
-    
-    # Try each strategy in order
-    for strategy in strategies:
-        strategy_type = strategy.get("type")
-        
-        if strategy_type == "conda-meta":
-            paths = strategy.get("paths", ["/opt/conda/conda-meta", "/usr/local/conda-meta"])
-            versions = _get_versions_via_conda_meta(apptainer_cmd, container_uri, paths)
-            if versions:
-                _container_version_cache[container_uri] = versions
-                logger.debug(f"Retrieved {len(versions)} packages from conda-meta: {container_uri}")
-                return versions
-        
-        elif strategy_type == "pip-list":
-            versions = _get_versions_via_pip_list(apptainer_cmd, container_uri)
-            if versions:
-                _container_version_cache[container_uri] = versions
-                logger.debug(f"Retrieved {len(versions)} packages from pip list: {container_uri}")
-                return versions
-        
-        elif strategy_type == "version-command":
-            versions = _get_versions_via_version_command(apptainer_cmd, container_uri)
-            if versions:
-                _container_version_cache[container_uri] = versions
-                logger.debug(f"Retrieved {len(versions)} packages from version command: {container_uri}")
-                return versions
-
-    logger.debug(f"No package metadata found in {container_uri}")
-    _container_version_cache[container_uri] = {}
-    return {}
+    return _get_container_versions(container_uri, apptainer_cmd)
 
 
 def get_tool_version_from_container(tool_name: str) -> Optional[str]:
@@ -351,6 +80,12 @@ def get_tool_version_from_container(tool_name: str) -> Optional[str]:
     Uses :func:`get_container_versions` (cached per container) so that dozens
     of lookups only trigger one ``apptainer exec`` call per unique container.
 
+    Priority order:
+    1. Explicit version field in tools.json
+    2. Container metadata (conda/pip packages)
+    3. Container tag version
+    4. None
+
     Returns:
         Version string, or ``None`` if the package was not found.
     """
@@ -358,17 +93,27 @@ def get_tool_version_from_container(tool_name: str) -> Optional[str]:
     if not tool_info:
         return None
 
+    # Priority 1: Check for explicit version in tools.json
+    if "version" in tool_info and tool_info["version"]:
+        return tool_info["version"]
+
     container_uri = tool_info.get("container") or get_seqnado_container_uri()
-    if not container_uri:
+
+    # Skip container detection if tool runs from environment
+    if not container_uri or container_uri == "Environment":
         return None
 
+    # Priority 2: Try to get version from container metadata (conda/pip)
     versions = get_container_versions(container_uri)
-    if not versions:
-        return None
+    if versions:
+        for candidate in get_conda_package_candidates(tool_name, tool_info):
+            if candidate in versions:
+                return versions[candidate]
 
-    for candidate in _get_conda_package_candidates(tool_name):
-        if candidate in versions:
-            return versions[candidate]
+    # Priority 3: Extract version from container tag
+    tag_version = extract_version_from_container_tag(container_uri)
+    if tag_version:
+        return tag_version
 
     return None
 
@@ -504,12 +249,11 @@ def get_tool_version(
     """
     Get version information for a tool.
 
-    Runs the tool with common version flags (``--version``, ``-v``)
-    either locally or inside the container.
-
-    For bulk version lookups (e.g. doc generation) prefer
-    :func:`get_tool_version_from_container` which queries conda
-    metadata once per container image.
+    Attempts multiple strategies in order:
+    1. If using container, query container metadata first (cleanest version)
+    2. Run the tool with common version flags (``--version``, ``-v``)
+       either locally or inside the container
+    3. Fall back to "Version information not available"
 
     Args:
         tool_name: Name of the tool
@@ -523,6 +267,17 @@ def get_tool_version(
     if not tool_info:
         return f"Tool '{tool_name}' not found"
 
+    # Priority 1: Try container metadata first for clean version numbers
+    if use_container:
+        version = get_tool_version_from_container(tool_name)
+        if version:
+            return version
+
+    # Check if tool runs from environment rather than container
+    container_uri = tool_info.get("container")
+    runs_from_environment = not container_uri or container_uri == "Environment"
+
+    # Priority 2: Try running --version command
     command = _resolve_tool_command(tool_info, subcommand)
 
     version_flags = [
@@ -532,7 +287,8 @@ def get_tool_version(
 
     for flags in version_flags:
         try:
-            if use_container:
+            # Use container only if use_container=True AND tool doesn't run from environment
+            if use_container and not runs_from_environment:
                 returncode, stdout, stderr = run_command_in_container(
                     tool_name,
                     flags,
@@ -540,7 +296,7 @@ def get_tool_version(
                 )
                 output = (stdout + stderr).strip()
                 if output and returncode in [0, 1]:
-                    line = _extract_version_line(output)
+                    line = extract_version_line(output)
                     if line:
                         return line[:200]
                 continue
@@ -549,7 +305,7 @@ def get_tool_version(
             returncode, stdout, stderr = _run_local_command(cmd, timeout=5)
             output = (stdout + stderr).strip()
             if output and returncode in [0, 1]:
-                line = _extract_version_line(output)
+                line = extract_version_line(output)
                 if line:
                     return line[:200]
         except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
@@ -579,13 +335,18 @@ def get_tool_help(
 
     command = _resolve_tool_command(tool_info, subcommand)
 
+    # Check if tool runs from environment rather than container
+    container_uri = tool_info.get("container")
+    runs_from_environment = not container_uri or container_uri == "Environment"
+
     try:
         # Try to get help with common help flags
         help_flags = ["--help", "-h", "-help", "help"]
 
         for flag in help_flags:
             try:
-                if use_container:
+                # Use container only if use_container=True AND tool doesn't run from environment
+                if use_container and not runs_from_environment:
                     returncode, stdout, stderr = run_command_in_container(
                         tool_name,
                         [flag],
@@ -593,8 +354,8 @@ def get_tool_help(
                     )
                     output = (stdout + stderr).strip()
                     if output and returncode in [0, 1]:
-                        lines = _split_output_lines(output)
-                        filtered = _filter_apptainer_info(lines)
+                        lines = split_output_lines(output)
+                        filtered = filter_apptainer_info(lines)
                         return "\n".join(filtered if filtered else lines)
                     continue
 
@@ -851,8 +612,8 @@ def run_tool_help_in_container(
         # Combine stdout and stderr
         output = (stdout + stderr).strip()
         if output and returncode in [0, 1]:  # Some tools return 1 for help
-            lines = _split_output_lines(output)
-            filtered = _filter_apptainer_info(lines)
+            lines = split_output_lines(output)
+            filtered = filter_apptainer_info(lines)
             return "\n".join(filtered if filtered else lines)
 
     subcommands = _get_tool_subcommands(tool_info)
