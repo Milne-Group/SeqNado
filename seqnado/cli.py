@@ -39,26 +39,6 @@ except Exception:
     Text = None  # type: ignore
 
 
-def _patch_tools_category_prompt(argv: list[str]) -> list[str]:
-    if len(argv) < 2 or argv[1] != "tools":
-        return argv
-
-    patched = []
-    i = 0
-    while i < len(argv):
-        token = argv[i]
-        patched.append(token)
-        if token in {"--category", "-c"}:
-            next_token = argv[i + 1] if i + 1 < len(argv) else None
-            if next_token is None or next_token.startswith("-"):
-                patched.append("__PROMPT__")
-        i += 1
-
-    return patched
-
-
-sys.argv = _patch_tools_category_prompt(sys.argv)
-
 if TYPE_CHECKING:
     # Available to type-checkers only; does not execute at runtime.
     import pandas as pd
@@ -1426,12 +1406,146 @@ def config(
 # -------------------------------- tools ------------------------------------ #
 
 
+def _validate_subcommand(
+    tool_name: str,
+    subcommand: str,
+    subcommands: List[str],
+) -> str:
+    """Validate and resolve a subcommand for a tool, exiting on error."""
+    if not subcommands:
+        logger.error(f"Tool '{tool_name}' does not define subcommands.")
+        raise typer.Exit(code=1)
+
+    for cmd in subcommands:
+        if cmd.lower() == subcommand.lower():
+            return cmd
+
+    logger.error(f"Unknown subcommand '{subcommand}' for tool '{tool_name}'.")
+    logger.info(f"Available subcommands: {', '.join(subcommands)}")
+    raise typer.Exit(code=1)
+
+
+def _display_tools_list(
+    tools_list: list,
+    category: Optional[str] = None,
+) -> None:
+    """Display a formatted list of tools grouped by category."""
+    from seqnado.tools import get_categories
+
+    if _RICH_CONSOLE:
+        _RICH_CONSOLE.print(
+            "[bold cyan]Available Tools in SeqNado Pipeline[/bold cyan]\n"
+        )
+    else:
+        typer.echo("Available Tools in SeqNado Pipeline\n")
+
+    if not tools_list:
+        typer.echo(f"No tools found for category '{category}'")
+        raise typer.Exit(code=1)
+
+    tools_by_category: dict = {}
+    for tool_name_item, description, cat in tools_list:
+        if cat not in tools_by_category:
+            tools_by_category[cat] = []
+        tools_by_category[cat].append((tool_name_item, description))
+
+    ordered_categories = get_categories()
+    for idx, cat in enumerate(ordered_categories, 1):
+        if cat not in tools_by_category:
+            continue
+        if _RICH_CONSOLE:
+            _RICH_CONSOLE.print(f"[bold]{idx}. {cat}[/bold]")
+            for tool_name_item, description in tools_by_category[cat]:
+                _RICH_CONSOLE.print(
+                    f"  [cyan]{tool_name_item:<20}[/cyan] {description}"
+                )
+            _RICH_CONSOLE.print()
+        else:
+            typer.echo(f"{idx}. {cat}")
+            for tool_name_item, description in tools_by_category[cat]:
+                typer.echo(f"  {tool_name_item:<20} {description}")
+            typer.echo()
+
+    if _RICH_CONSOLE:
+        _RICH_CONSOLE.print(
+            "Use 'seqnado tools TOOL' to see help for a specific tool."
+        )
+        _RICH_CONSOLE.print(
+            "Use 'seqnado tools TOOL --options' to see tool options from the container."
+        )
+    else:
+        typer.echo("Use 'seqnado tools TOOL' to see help for a specific tool.")
+        typer.echo(
+            "Use 'seqnado tools TOOL --options' to see tool options from the container."
+        )
+
+
+def _resolve_category(category: str) -> str:
+    """Resolve a category selection to a category name.
+
+    Handles three forms:
+      - ``"__PROMPT__"`` – interactive TTY prompt
+      - a digit string – looked up by 1-based index
+      - anything else – returned as-is (assumed to be a category name)
+    """
+    from seqnado.tools import get_categories
+
+    categories = get_categories()
+
+    if category == "__PROMPT__":
+        if not sys.stdin.isatty():
+            logger.error("Interactive category selection requires a TTY.")
+            raise typer.Exit(code=1)
+
+        if _RICH_CONSOLE:
+            _RICH_CONSOLE.print(
+                "[bold cyan]Available Tool Categories:[/bold cyan]"
+            )
+            for i, cat in enumerate(categories, 1):
+                _RICH_CONSOLE.print(f"  {i}. {cat}")
+        else:
+            typer.echo("Available Tool Categories:")
+            for i, cat in enumerate(categories, 1):
+                typer.echo(f"  {i}. {cat}")
+
+        category = typer.prompt("Select category number or name")
+
+    if category.isdigit():
+        idx = int(category) - 1
+        if 0 <= idx < len(categories):
+            return categories[idx]
+        logger.error(f"Invalid category number: {category} (1-{len(categories)})")
+        raise typer.Exit(code=1)
+    return category
+
+
+class _OptionalCategoryCommand(typer.core.TyperCommand):
+    """Allow ``--category``/``-c`` to be used with or without a value.
+
+    When the option appears without a following value (end of argv or next
+    token starts with ``-``), the sentinel ``__PROMPT__`` is injected so that
+    Click sees a valid option-value pair and the command body can trigger an
+    interactive prompt.
+    """
+
+    def parse_args(self, ctx: click.Context, args: list) -> list:
+        patched: list = []
+        i = 0
+        while i < len(args):
+            patched.append(args[i])
+            if args[i] in ("--category", "-c"):
+                next_val = args[i + 1] if i + 1 < len(args) else None
+                if next_val is None or next_val.startswith("-"):
+                    patched.append("__PROMPT__")
+            i += 1
+        return super().parse_args(ctx, patched)
+
+
 @app.command(
+    cls=_OptionalCategoryCommand,
     help="List and explore bioinformatics tools available in the SeqNado pipeline.",
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
 def tools(
-    ctx: typer.Context,
     tool_name: Optional[str] = typer.Argument(
         None,
         metavar="[TOOL]",
@@ -1446,7 +1560,7 @@ def tools(
         "-c",
         help=(
             "Filter tools by category name or number. Use without a value to "
-            "prompt for a category number."
+            "interactively select a category."
         ),
     ),
     show_options: bool = typer.Option(
@@ -1483,7 +1597,6 @@ def tools(
     """
     from seqnado.tools import (
         format_citation,
-        get_categories,
         get_tool_citation,
         get_tool_help,
         get_tool_info,
@@ -1515,24 +1628,10 @@ def tools(
             logger.info("Run 'seqnado tools --list' to see all available tools.")
             raise typer.Exit(code=1)
 
-        subcommands = get_tool_subcommands(tool_name)
         if subcommand:
-            if not subcommands:
-                logger.error(f"Tool '{tool_name}' does not define subcommands.")
-                raise typer.Exit(code=1)
-
-            subcommand_match = None
-            for cmd in subcommands:
-                if cmd.lower() == subcommand.lower():
-                    subcommand_match = cmd
-                    break
-            if not subcommand_match:
-                logger.error(
-                    f"Unknown subcommand '{subcommand}' for tool '{tool_name}'."
-                )
-                logger.info(f"Available subcommands: {', '.join(subcommands)}")
-                raise typer.Exit(code=1)
-            subcommand = subcommand_match
+            subcommand = _validate_subcommand(
+                tool_name, subcommand, get_tool_subcommands(tool_name)
+            )
 
         logger.info(f"Fetching help for '{tool_name}' from SeqNado container...")
         help_output = run_tool_help_in_container(tool_name, subcommand=subcommand)
@@ -1573,226 +1672,86 @@ def tools(
             logger.warning(f"No citation available for '{tool_name}'")
         raise typer.Exit(code=0)
 
-    # Handle category selection (by number or name)
+    # Resolve category (number -> name)
     if category:
-        categories = get_categories()
-        if category == "__PROMPT__":
-            if sys.stdin.isatty():
-                if _RICH_CONSOLE:
-                    _RICH_CONSOLE.print(
-                        "[bold cyan]Available Tool Categories:[/bold cyan]"
-                    )
-                    for i, cat in enumerate(categories, 1):
-                        _RICH_CONSOLE.print(f"  {i}. {cat}")
-                else:
-                    typer.echo("Available Tool Categories:")
-                    for i, cat in enumerate(categories, 1):
-                        typer.echo(f"  {i}. {cat}")
+        category = _resolve_category(category)
 
-                selection = typer.prompt("Select category number")
-                category = selection
-            else:
-                logger.error("Category selection requires a TTY.")
-                raise typer.Exit(code=1)
-
-        # Check if category is a number
-        if category.isdigit():
-            idx = int(category) - 1
-            if 0 <= idx < len(categories):
-                category = categories[idx]
-            else:
-                logger.error(
-                    f"Invalid category number: {category} (1-{len(categories)})"
-                )
-                raise typer.Exit(code=1)
-
-    # List all tools
-    if list_tools or (tool_name is None and not category):
-        if _RICH_CONSOLE:
-            _RICH_CONSOLE.print(
-                "[bold cyan]Available Tools in SeqNado Pipeline[/bold cyan]\n"
-            )
-        else:
-            typer.echo("Available Tools in SeqNado Pipeline\n")
-
+    # List tools (default when no tool specified, or with --list / --category)
+    if list_tools or tool_name is None:
         tools_list = list_all_tools(category=category)
-
-        if not tools_list:
-            typer.echo(f"No tools found for category '{category}'")
-            raise typer.Exit(code=1)
-
-        # Group by category for better readability
-        tools_by_category: dict = {}
-        for tool_name_item, description, cat in tools_list:
-            if cat not in tools_by_category:
-                tools_by_category[cat] = []
-            tools_by_category[cat].append((tool_name_item, description))
-
-        categories = get_categories()
-        for idx, cat in enumerate(categories, 1):
-            if cat not in tools_by_category:
-                continue
-            if _RICH_CONSOLE:
-                _RICH_CONSOLE.print(f"[bold]{idx}. {cat}[/bold]")
-                for tool_name_item, description in tools_by_category[cat]:
-                    _RICH_CONSOLE.print(
-                        f"  [cyan]{tool_name_item:<20}[/cyan] {description}"
-                    )
-                _RICH_CONSOLE.print()
-            else:
-                typer.echo(f"{idx}. {cat}")
-                for tool_name_item, description in tools_by_category[cat]:
-                    typer.echo(f"  {tool_name_item:<20} {description}")
-                typer.echo()
-
-        if _RICH_CONSOLE:
-            _RICH_CONSOLE.print(
-                "Use 'seqnado tools TOOL' to see help for a specific tool."
-            )
-            _RICH_CONSOLE.print(
-                "Use 'seqnado tools TOOL --options' to see tool options from the container."
-            )
-        else:
-            typer.echo("Use 'seqnado tools TOOL' to see help for a specific tool.")
-            typer.echo(
-                "Use 'seqnado tools TOOL --options' to see tool options from the container."
-            )
+        _display_tools_list(tools_list, category=category)
         raise typer.Exit(code=0)
 
     # Show help for specific tool
-    if tool_name:
-        tool_info = get_tool_info(tool_name)
+    tool_info = get_tool_info(tool_name)
 
-        if not tool_info:
-            logger.error(f"Tool '{tool_name}' not found.")
-            logger.info("Run 'seqnado tools --list' to see all available tools.")
-            raise typer.Exit(code=1)
-
-        subcommands = get_tool_subcommands(tool_name)
-        if subcommand:
-            if not subcommands:
-                logger.error(f"Tool '{tool_name}' does not define subcommands.")
-                raise typer.Exit(code=1)
-
-            subcommand_match = None
-            for cmd in subcommands:
-                if cmd.lower() == subcommand.lower():
-                    subcommand_match = cmd
-                    break
-            if not subcommand_match:
-                logger.error(
-                    f"Unknown subcommand '{subcommand}' for tool '{tool_name}'."
-                )
-                logger.info(f"Available subcommands: {', '.join(subcommands)}")
-                raise typer.Exit(code=1)
-            subcommand = subcommand_match
-
-        # Display tool information
-        if _RICH_CONSOLE:
-            _RICH_CONSOLE.print(f"\n[bold cyan]Tool: {tool_name}[/bold cyan]")
-            _RICH_CONSOLE.print(f"[bold]Description:[/bold] {tool_info['description']}")
-            _RICH_CONSOLE.print(f"[bold]Category:[/bold] {tool_info['category']}")
-            _RICH_CONSOLE.print(f"[bold]Command:[/bold] {tool_info['command']}")
-            if subcommands:
-                _RICH_CONSOLE.print(
-                    f"[bold]Subcommands:[/bold] {', '.join(subcommands)}"
-                )
-
-            # Try to get version info
-            _RICH_CONSOLE.print("\n[bold cyan]Version Information:[/bold cyan]")
-            version_info = get_tool_version(
-                tool_name,
-                use_container=is_apptainer_available(),
-                subcommand=subcommand,
-            )
-            _RICH_CONSOLE.print(version_info)
-
-            # Get and display help
-            _RICH_CONSOLE.print("\n[bold cyan]Help / Usage:[/bold cyan]")
-            help_text = get_tool_help(tool_name, subcommand=subcommand)
-            if (
-                help_text.startswith("Help information not available")
-                and is_apptainer_available()
-            ):
-                help_text = run_tool_help_in_container(tool_name, subcommand=subcommand)
-            _RICH_CONSOLE.print(help_text)
-
-            if is_apptainer_available():
-                _RICH_CONSOLE.print(
-                    "\n[dim]Tip: Use 'seqnado tools "
-                    + tool_name
-                    + " --options' to see detailed options from the container.[/dim]"
-                )
-        else:
-            typer.echo(f"\nTool: {tool_name}")
-            typer.echo(f"Description: {tool_info['description']}")
-            typer.echo(f"Category: {tool_info['category']}")
-            typer.echo(f"Command: {tool_info['command']}")
-            subcommands = get_tool_subcommands(tool_name)
-            if subcommands:
-                typer.echo(f"Subcommands: {', '.join(subcommands)}")
-            typer.echo("\nVersion Information:")
-            version_info = get_tool_version(
-                tool_name,
-                use_container=is_apptainer_available(),
-                subcommand=subcommand,
-            )
-            typer.echo(version_info)
-            typer.echo("\nHelp / Usage:")
-            help_text = get_tool_help(tool_name, subcommand=subcommand)
-            if (
-                help_text.startswith("Help information not available")
-                and is_apptainer_available()
-            ):
-                help_text = run_tool_help_in_container(tool_name, subcommand=subcommand)
-            typer.echo(help_text)
-
-        raise typer.Exit(code=0)
-
-    # If nothing specific requested, show tools list
-    if _RICH_CONSOLE:
-        _RICH_CONSOLE.print(
-            "[bold cyan]Available Tools in SeqNado Pipeline[/bold cyan]\n"
-        )
-    else:
-        typer.echo("Available Tools in SeqNado Pipeline\n")
-
-    tools_list = list_all_tools(category=category)
-
-    if not tools_list:
-        typer.echo(f"No tools found for category '{category}'")
+    if not tool_info:
+        logger.error(f"Tool '{tool_name}' not found.")
+        logger.info("Run 'seqnado tools --list' to see all available tools.")
         raise typer.Exit(code=1)
 
-    tools_by_category: dict = {}
-    for tool_name_item, description, cat in tools_list:
-        if cat not in tools_by_category:
-            tools_by_category[cat] = []
-        tools_by_category[cat].append((tool_name_item, description))
+    subcommands = get_tool_subcommands(tool_name)
+    if subcommand:
+        subcommand = _validate_subcommand(tool_name, subcommand, subcommands)
 
-    for cat in sorted(tools_by_category.keys()):
-        if _RICH_CONSOLE:
-            _RICH_CONSOLE.print(f"[bold]{cat}[/bold]")
-            for tool_name_item, description in tools_by_category[cat]:
-                _RICH_CONSOLE.print(
-                    f"  [cyan]{tool_name_item:<20}[/cyan] {description}"
-                )
-            _RICH_CONSOLE.print()
-        else:
-            typer.echo(f"{cat}")
-            for tool_name_item, description in tools_by_category[cat]:
-                typer.echo(f"  {tool_name_item:<20} {description}")
-            typer.echo()
-
+    # Display tool information
     if _RICH_CONSOLE:
-        _RICH_CONSOLE.print("Use 'seqnado tools TOOL' to see help for a specific tool.")
-        _RICH_CONSOLE.print(
-            "Use 'seqnado tools TOOL --options' to see tool options from the container."
+        _RICH_CONSOLE.print(f"\n[bold cyan]Tool: {tool_name}[/bold cyan]")
+        _RICH_CONSOLE.print(f"[bold]Description:[/bold] {tool_info['description']}")
+        _RICH_CONSOLE.print(f"[bold]Category:[/bold] {tool_info['category']}")
+        _RICH_CONSOLE.print(f"[bold]Command:[/bold] {tool_info['command']}")
+        if subcommands:
+            _RICH_CONSOLE.print(
+                f"[bold]Subcommands:[/bold] {', '.join(subcommands)}"
+            )
+
+        # Try to get version info
+        _RICH_CONSOLE.print("\n[bold cyan]Version Information:[/bold cyan]")
+        version_info = get_tool_version(
+            tool_name,
+            use_container=is_apptainer_available(),
+            subcommand=subcommand,
         )
+        _RICH_CONSOLE.print(version_info)
+
+        # Get and display help
+        _RICH_CONSOLE.print("\n[bold cyan]Help / Usage:[/bold cyan]")
+        help_text = get_tool_help(tool_name, subcommand=subcommand)
+        if (
+            help_text.startswith("Help information not available")
+            and is_apptainer_available()
+        ):
+            help_text = run_tool_help_in_container(tool_name, subcommand=subcommand)
+        _RICH_CONSOLE.print(help_text)
+
+        if is_apptainer_available():
+            _RICH_CONSOLE.print(
+                "\n[dim]Tip: Use 'seqnado tools "
+                + tool_name
+                + " --options' to see detailed options from the container.[/dim]"
+            )
     else:
-        typer.echo("Use 'seqnado tools TOOL' to see help for a specific tool.")
-        typer.echo(
-            "Use 'seqnado tools TOOL --options' to see tool options from the container."
+        typer.echo(f"\nTool: {tool_name}")
+        typer.echo(f"Description: {tool_info['description']}")
+        typer.echo(f"Category: {tool_info['category']}")
+        typer.echo(f"Command: {tool_info['command']}")
+        if subcommands:
+            typer.echo(f"Subcommands: {', '.join(subcommands)}")
+        typer.echo("\nVersion Information:")
+        version_info = get_tool_version(
+            tool_name,
+            use_container=is_apptainer_available(),
+            subcommand=subcommand,
         )
+        typer.echo(version_info)
+        typer.echo("\nHelp / Usage:")
+        help_text = get_tool_help(tool_name, subcommand=subcommand)
+        if (
+            help_text.startswith("Help information not available")
+            and is_apptainer_available()
+        ):
+            help_text = run_tool_help_in_container(tool_name, subcommand=subcommand)
+        typer.echo(help_text)
 
 
 # ----------------------------------- download ------------------------------------ #

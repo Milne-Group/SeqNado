@@ -224,7 +224,8 @@ $ seqnado tools [OPTIONS] [TOOL]
 
 * `-l, --list`: List all available tools in the pipeline
 * `-c, --category [TEXT]`: Filter tools by category (name or number). Omit value for interactive selection
-* `-o, --options`: Show tool help/options from container (requires tool argument)
+* `--options`: Show tool help/options from container (requires tool argument and apptainer)
+* `--citation`: Show the BibTeX citation for a tool (requires tool argument)
 * `-s, --subcommand TEXT`: Specify subcommand for tools that have multiple functions
 * `-v, --verbose`: Increase logging verbosity
 * `--help`: Show this message and exit.
@@ -233,15 +234,15 @@ $ seqnado tools [OPTIONS] [TOOL]
 
 Tools are organized into the following categories, matching the pipeline workflow:
 
-1. **Download** - Data acquisition (e.g., `sra-tools`)
-2. **Quality Control** - QC and reporting (e.g., `fastqc`, `multiqc`)
+1. **Download** - Data acquisition (e.g., `fasterq-dump`)
+2. **Quality Control** - QC and reporting (e.g., `fastqc`, `fastq-screen`, `qualimap`)
 3. **Preprocessing** - Read trimming and filtering (e.g., `trim-galore`, `cutadapt`)
-4. **Alignment** - Read mapping (e.g., `bowtie2`, `hisat2`, `STAR`)
-5. **Analysis** - Peak calling, quantification (e.g., `macs2`, `featureCounts`)
-6. **Visualization** - Generating tracks and plots (e.g., `deeptools`, `preseq`)
-7. **Reporting** - Report generation (e.g., `multiqc`)
-8. **Quantification** - Expression quantification (e.g., `salmon`, `kallisto`)
-9. **Utilities** - Helper tools (e.g., `samtools`, `bedtools`, `pigz`)
+4. **Alignment** - Read mapping (e.g., `bowtie2`, `STAR`, `minimap2`)
+5. **Analysis** - Peak calling, variant analysis (e.g., `macs`, `homer`, `bedtools`)
+6. **Visualization** - Generating tracks and plots (e.g., `deeptools`, `plotnado`)
+7. **Reporting** - Report generation (e.g., `multiqc`, `quarto`)
+8. **Quantification** - Expression quantification (e.g., `salmon`, `featureCounts`)
+9. **Utilities** - Helper tools (e.g., `samtools`, `snakemake`, `pigz`)
 
 ### Examples
 
@@ -295,8 +296,8 @@ Shows the tool's description, category, command, and version (detected from cont
 # Get FastQC help
 seqnado tools fastqc --options
 
-# Get help for samtools view subcommand
-seqnado tools samtools --subcommand view --options
+# Get help for a deeptools subcommand
+seqnado tools deeptools --subcommand plotHeatmap --options
 ```
 
 This runs the tool in the SeqNado container and displays its help output, useful for:
@@ -307,17 +308,17 @@ This runs the tool in the SeqNado container and displays its help output, useful
 
 **Tools with subcommands:**
 
-Some tools like `samtools`, `bedtools`, and `deeptools` expose multiple subcommands:
+Some tools like `deeptools`, `bamnado`, and `homer` expose multiple subcommands:
 
 ```bash
-# Get samtools view help
-seqnado tools samtools --subcommand view --options
-
-# Get bedtools intersect help
-seqnado tools bedtools --subcommand intersect --options
-
 # Get deeptools bamCoverage help
 seqnado tools deeptools --subcommand bamCoverage --options
+
+# Get bamnado bam-coverage help
+seqnado tools bamnado --subcommand bam-coverage --options
+
+# Get HOMER makeTagDirectory help
+seqnado tools homer --subcommand makeTagDirectory --options
 ```
 
 ### Version Detection

@@ -12,7 +12,6 @@ Usage:
 
 import argparse
 import re
-import subprocess
 import sys
 from pathlib import Path
 from typing import Dict
@@ -22,6 +21,9 @@ from seqnado.tools import (
     get_available_tools,
     get_categories,
     get_tool_citation,
+    get_tool_version,
+    get_tool_version_from_container,
+    is_apptainer_available,
 )
 
 TOOL_TEMPLATE = """#### {display_name}
@@ -33,66 +35,39 @@ TOOL_TEMPLATE = """#### {display_name}
 """
 
 
-def get_tool_version_from_cli(tool_name: str) -> str:
-    """Get tool version by running 'seqnado tools <tool> --version'"""
+def _get_tool_version_for_docs(tool_name: str) -> str:
+    """Get tool version for documentation.
+
+    Uses ``conda list --json`` from the container (one call per unique
+    container, cached) as the primary source.  Falls back to local
+    detection when apptainer is not available.
+    """
+    _NOT_FOUND = "Version information not available"
+
+    # 1. Try conda metadata from container (bulk, cached per container)
+    if is_apptainer_available():
+        try:
+            version = get_tool_version_from_container(tool_name)
+            if version:
+                return version
+        except Exception as e:
+            print(
+                f"Warning: Container metadata check failed for '{tool_name}': {e}",
+                file=sys.stderr,
+            )
+
+    # 2. Fall back to local detection
     try:
-        result = subprocess.run(
-            ["seqnado", "tools", tool_name, "--version"],
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        output = result.stdout + result.stderr
-
-        # Remove ANSI color codes
-        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
-        output = ansi_escape.sub("", output)
-
-        # Look for "Version Information:" section
-        lines = output.split("\n")
-        for i, line in enumerate(lines):
-            if "Version Information:" in line:
-                if i + 1 < len(lines):
-                    version_line = lines[i + 1].strip()
-
-                    # Skip if line is empty or contains help/usage keywords
-                    if not version_line or any(
-                        skip in version_line.lower()
-                        for skip in [
-                            "usage:",
-                            "command",
-                            "help",
-                            "option",
-                            "--",
-                            "positional",
-                            "arguments",
-                            "subcommand",
-                            "for more information",
-                        ]
-                    ):
-                        return "Latest via container"
-
-                    # Return the full version line (contains the version number and any prefix)
-                    version_match = re.search(
-                        r"(?:v)?\d+(?:\.\d+)+(?:[a-z0-9\-]*)?",
-                        version_line,
-                        re.IGNORECASE,
-                    )
-                    if version_match:
-                        # Return the full line which contains the version
-                        return version_line
-
-                    return "Latest via container"
-
-        return "Latest via container"
-    except subprocess.TimeoutExpired:
-        return "Latest via container"
+        version = get_tool_version(tool_name, use_container=False)
+        if version and version != _NOT_FOUND:
+            return version
     except Exception as e:
         print(
-            f"Warning: Could not get version for tool '{tool_name}': {e}",
+            f"Warning: Local version check failed for '{tool_name}': {e}",
             file=sys.stderr,
         )
-        return "Latest via container"
+
+    return "Latest via container"
 
 
 def generate_tool_entry(tool_name: str, tool_info: Dict) -> str:
@@ -108,8 +83,8 @@ def generate_tool_entry(tool_name: str, tool_info: Dict) -> str:
     # Get usage description from tool info, fallback to description
     usage = tool_info.get("usage", description)
 
-    # Get version by calling seqnado tools command
-    version = get_tool_version_from_cli(tool_name)
+    # Get version via live detection (container or local)
+    version = _get_tool_version_for_docs(tool_name)
 
     # Get citation
     citation_text = "See documentation"
@@ -145,7 +120,7 @@ def generate_tools_section() -> str:
     lines = [
         "## Tools",
         "",
-        "Tools are organized by category, matching the structure of the `seqnado tools` CLI command. For more information about any tool, use `seqnado tools <toolname> --info`.",
+        "Tools are organized by category, matching the structure of the `seqnado tools` CLI command. For more information about any tool, use `seqnado tools <toolname>`.",
         "",
         "<!-- AUTO-GENERATED TOOL SECTIONS - DO NOT EDIT MANUALLY -->",
         "<!-- This section is automatically updated by docs/scripts/generate_tool_citations.py -->",

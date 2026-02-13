@@ -1,5 +1,5 @@
 {
-    "updated": "2024-02-13",
+    "updated": "2026-02-13",
     "tools": {
         "apptainer": {
             "display_name": "Apptainer",
@@ -266,7 +266,6 @@
             "command": "pigz",
             "category": "Utilities",
             "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
-            "version": "2.8",
             "citation": "pigz"
         },
         "picard": {
@@ -276,7 +275,6 @@
             "command": "picard",
             "category": "Alignment",
             "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
-            "version": "3.0.0",
             "citation": "picard"
         },
         "plotnado": {
@@ -286,7 +284,6 @@
             "command": "plotnado",
             "category": "Visualization",
             "container": "library://asmith151/plotnado/plotnado:latest",
-            "version": "0.3.5",
             "citation": "plotnado"
         },
         "qualimap": {
@@ -296,7 +293,6 @@
             "command": "qualimap",
             "category": "Quality Control",
             "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
-            "version": "2.3",
             "citation": "qualimap"
         },
         "quarto": {
@@ -306,7 +302,6 @@
             "command": "quarto",
             "category": "Reporting",
             "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
-            "version": "1.3.450",
             "citation": "quarto"
         },
         "quantnado": {
@@ -316,7 +311,6 @@
             "command": "quantnado-make-dataset",
             "category": "Quantification",
             "container": "oras://ghcr.io/alsmith151/seqnado_ml_cpu:latest",
-            "version": "0.2.1",
             "citation": "quantnado"
         },
         "salmon": {
