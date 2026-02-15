@@ -165,7 +165,9 @@ class GenomeResources(BaseModel):
                     genome_path, ref_url, bt2_dir, prefix=bt2_prefix
                 )
                 if config[key]:
-                    cls._update_fastq_screen_config(genome_path, config[key], db_name)
+                    # Use bt2_prefix as the database name in fastq_screen config
+                    # This ensures the DATABASE entry matches the actual index file prefix
+                    cls._update_fastq_screen_config(genome_path, config[key], bt2_prefix)
             elif key == "star_index":
                 config[key] = cls._ensure_index(genome_path, ref_url, value)
             else:
