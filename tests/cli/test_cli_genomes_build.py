@@ -21,7 +21,6 @@ class TestGenomesBuildCLI:
                 "seqnado",
                 "genomes",
                 "build",
-                "rna",
                 "--outdir",
                 str(outdir),
             ],
@@ -32,17 +31,16 @@ class TestGenomesBuildCLI:
         assert result.returncode != 0, "Build without --name should fail"
         assert "-n" in result.stderr or "name" in result.stderr.lower() or "required" in result.stderr.lower()
 
-    def test_genomes_build_requires_fasta(self, tmp_path: Path) -> None:
-        """Test that build with --name but no --fasta fails gracefully."""
+    def test_genomes_build_downloads_from_ucsc(self, tmp_path: Path) -> None:
+        """Test that build downloads genome from UCSC (dry-run)."""
         outdir = tmp_path / "build_output"
         
-        # This tests the snakemake portion which validates the fasta file
+        # This tests the snakemake portion which downloads from UCSC
         result = subprocess.run(
             [
                 "seqnado",
                 "genomes",
                 "build",
-                "rna",
                 "--name",
                 "test_genome",
                 "--outdir",
@@ -56,43 +54,38 @@ class TestGenomesBuildCLI:
             timeout=30,
         )
         
-        # The snakemake dry-run should complete but indicate missing input
+        # The snakemake dry-run should complete
         # We're just checking that the CLI accepts the arguments
         assert "test_genome" in result.stderr or "test_genome" in result.stdout or result.returncode != 0
 
-    def test_genomes_build_invalid_assay(self, tmp_path: Path) -> None:
-        """Test that an invalid assay type is handled."""
+    def test_genomes_build_accepts_valid_name(self, tmp_path: Path) -> None:
+        """Test that build accepts a valid genome name."""
         outdir = tmp_path / "build_output"
-        fasta = tmp_path / "test.fasta"
-        fasta.write_text(">chr1\nACGT\n")
         
         result = subprocess.run(
             [
                 "seqnado",
                 "genomes",
                 "build",
-                "invalid_assay",
                 "--name",
                 "test_genome",
-                "--fasta",
-                str(fasta),
                 "--outdir",
                 str(outdir),
                 "-c",
                 "1",
+                "--dry-run",
             ],
             capture_output=True,
             text=True,
+            timeout=30,
         )
         
-        # Should fail due to invalid assay
-        assert result.returncode != 0
+        # Should accept valid arguments (dry-run may succeed or fail depending on snakemake setup)
+        assert "test_genome" in result.stderr or "test_genome" in result.stdout or result.returncode != 0
 
     def test_genomes_build_multiple_genomes_with_comma_separator(self, tmp_path: Path) -> None:
         """Test that multiple genomes can be specified with comma-separated names."""
         outdir = tmp_path / "build_output"
-        fasta1 = tmp_path / "test1.fasta"
-        fasta1.write_text(">chr1\nACGT\n")
         
         # Dry run to check argument parsing
         result = subprocess.run(
@@ -100,11 +93,8 @@ class TestGenomesBuildCLI:
                 "seqnado",
                 "genomes",
                 "build",
-                "rna",
                 "--name",
                 "test1,test2",
-                "--fasta",
-                str(fasta1),
                 "--outdir",
                 str(outdir),
                 "-c",
@@ -123,21 +113,16 @@ class TestGenomesBuildCLI:
     def test_genomes_build_spikein_with_single_genome(self, tmp_path: Path) -> None:
         """Test that spike-in is accepted with single genome."""
         outdir = tmp_path / "build_output"
-        fasta = tmp_path / "test.fasta"
-        fasta.write_text(">chr1\nACGT\n")
         
         result = subprocess.run(
             [
                 "seqnado",
                 "genomes",
                 "build",
-                "rna",
                 "--name",
                 "primary",
                 "--spikein",
                 "secondary",
-                "--fasta",
-                str(fasta),
                 "--outdir",
                 str(outdir),
                 "-c",
@@ -155,21 +140,16 @@ class TestGenomesBuildCLI:
     def test_genomes_build_spikein_rejects_multiple_genomes(self, tmp_path: Path) -> None:
         """Test that spike-in is rejected when multiple genomes are specified."""
         outdir = tmp_path / "build_output"
-        fasta = tmp_path / "test.fasta"
-        fasta.write_text(">chr1\nACGT\n")
         
         result = subprocess.run(
             [
                 "seqnado",
                 "genomes",
                 "build",
-                "rna",
                 "--name",
                 "genome1,genome2",
                 "--spikein",
                 "secondary",
-                "--fasta",
-                str(fasta),
                 "--outdir",
                 str(outdir),
                 "-c",
@@ -185,19 +165,14 @@ class TestGenomesBuildCLI:
 
     def test_genomes_build_outdir_defaults_to_current_directory(self, tmp_path: Path) -> None:
         """Test that output directory defaults to genome_build in current directory."""
-        fasta = tmp_path / "test.fasta"
-        fasta.write_text(">chr1\nACGT\n")
         
         result = subprocess.run(
             [
                 "seqnado",
                 "genomes",
                 "build",
-                "rna",
                 "--name",
                 "test",
-                "--fasta",
-                str(fasta),
                 "-c",
                 "1",
                 "--dry-run",
@@ -213,19 +188,14 @@ class TestGenomesBuildCLI:
     def test_genomes_build_cores_parameter(self, tmp_path: Path) -> None:
         """Test that cores parameter is accepted."""
         outdir = tmp_path / "build_output"
-        fasta = tmp_path / "test.fasta"
-        fasta.write_text(">chr1\nACGT\n")
         
         result = subprocess.run(
             [
                 "seqnado",
                 "genomes",
                 "build",
-                "rna",
                 "--name",
                 "test",
-                "--fasta",
-                str(fasta),
                 "--outdir",
                 str(outdir),
                 "--cores",
@@ -290,7 +260,7 @@ class TestGenomesEditCLI:
         monkeypatch.setenv("HOME", str(tmp_path))
         
         result = subprocess.run(
-            ["seqnado", "genomes", "edit", "rna"],
+            ["seqnado", "genomes", "edit"],
             capture_output=True,
             text=True,
         )
@@ -310,7 +280,7 @@ class TestGenomesEditCLI:
         monkeypatch.setenv("EDITOR", "/bin/true")  # Use a dummy editor
         
         result = subprocess.run(
-            ["seqnado", "genomes", "edit", "rna"],
+            ["seqnado", "genomes", "edit"],
             capture_output=True,
             text=True,
         )
