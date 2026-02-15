@@ -118,7 +118,15 @@ class STARIndex(BaseModel):
         if v is None:
             return v
 
-        if not v.exists() or not v.is_dir():
+        try:
+            exists = v.exists()
+            is_dir = v.is_dir()
+        except (OSError, PermissionError):
+            # Path doesn't exist or can't be accessed
+            exists = False
+            is_dir = False
+
+        if not exists or not is_dir:
             raise ValueError(
                 f"The directory {v} does not exist or is not a directory. Please provide a valid path for the STAR index prefix."
             )

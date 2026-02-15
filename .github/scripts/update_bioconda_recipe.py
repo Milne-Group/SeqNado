@@ -77,7 +77,12 @@ def update_meta_yaml(version, sha256, meta_deps_path):
     if not meta_file.exists():
         raise FileNotFoundError(f"{meta_file} not found in {Path.cwd()}")
     
-    if not Path(meta_deps_path).exists():
+    try:
+        meta_deps_exists = Path(meta_deps_path).exists()
+    except (OSError, PermissionError):
+        meta_deps_exists = False
+
+    if not meta_deps_exists:
         raise FileNotFoundError(f"{meta_deps_path} not found")
     
     # Read conda dependencies
