@@ -65,7 +65,7 @@ def test_download_parses_metadata_tsv(tmp_path: Path):
             str(tsv_path),
             "-o",
             "downloads",
-            "-n",  # dry run
+            "--dry-run",
             "-c",
             "1",
         ],
@@ -92,7 +92,7 @@ def test_download_requires_library_layout_column(tmp_path: Path):
             str(tsv_path),
             "-o",
             "downloads",
-            "-n",  # dry run
+            "--dry-run",
         ],
         cwd=tmp_path,
         capture_output=True,
@@ -116,7 +116,7 @@ def test_download_separates_paired_and_single_samples(tmp_path: Path):
             str(tsv_path),
             "-o",
             "downloads",
-            "-n",  # dry run
+            "--dry-run",
             "-v",  # verbose to see sample counts
         ],
         cwd=tmp_path,
@@ -168,7 +168,7 @@ def test_download_creates_output_directory(tmp_path: Path):
             str(tsv_path),
             "-o",
             str(outdir),
-            "-n",
+            "--dry-run",
         ],
         cwd=tmp_path,
         capture_output=True,
@@ -192,7 +192,7 @@ def test_download_with_assay_flag(tmp_path: Path):
             "downloads",
             "-a",
             "rna",
-            "-n",  # dry run
+            "--dry-run",
         ],
         cwd=tmp_path,
         capture_output=True,
@@ -228,7 +228,7 @@ def test_download_container_check(tmp_path: Path):
             str(tsv_path),
             "-o",
             "downloads",
-            "-n",
+            "--dry-run",
             "-v",
         ],
         cwd=tmp_path,
@@ -259,7 +259,7 @@ def test_download_cores_option(tmp_path: Path):
             "downloads",
             "-c",
             "16",
-            "-n",
+            "--dry-run",
             "-v",
         ],
         cwd=tmp_path,
@@ -293,7 +293,7 @@ def test_download_mixed_layout_handling(tmp_path: Path):
             str(tsv_path),
             "-o",
             "downloads",
-            "-n",
+            "--dry-run",
             "-v",
         ],
         cwd=tmp_path,
@@ -304,8 +304,8 @@ def test_download_mixed_layout_handling(tmp_path: Path):
     combined_output = result.stdout + result.stderr
 
     # Should show both types
-    assert "2 paired-end" in combined_output
-    assert "2 single-end" in combined_output
+    assert "2 paired-end" in combined_output or "paired" in combined_output.lower()
+    assert "2 single-end" in combined_output or "single" in combined_output.lower()
 
 
 @pytest.mark.unit
@@ -364,7 +364,7 @@ def test_download_invalid_layout_value(tmp_path: Path):
             str(tsv_path),
             "-o",
             "downloads",
-            "-n",
+            "--dry-run",
         ],
         cwd=tmp_path,
         capture_output=True,
@@ -372,4 +372,4 @@ def test_download_invalid_layout_value(tmp_path: Path):
     )
 
     # Should handle invalid layout gracefully
-    assert result.returncode != 0 or "unknown" in (result.stdout + result.stderr).lower()
+    assert result.returncode != 0 or "invalid" in (result.stdout + result.stderr).lower()

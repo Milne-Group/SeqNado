@@ -246,7 +246,7 @@ def verbose_option() -> bool:
 def dry_run_option() -> bool:
     """Factory for the --dry-run option."""
     return typer.Option(
-        False, "--dry-run", help="Show actions without executing them."
+        '-n', "--dry-run", help="Show actions without executing them."
     )
 
 
