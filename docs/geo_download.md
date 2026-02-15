@@ -73,6 +73,7 @@ seqnado download [OPTIONS] METADATA_TSV
 - `-d, --design-output PATH`: Output path for design CSV
 - `-c, --cores INT`: Number of parallel downloads (default: 4)
 - `--preset TEXT`: Snakemake profile preset (le/lsf/ss) (default: le)
+- `--profile PATH` / `--profiles PATH`: Path to a Snakemake profile directory (overrides --preset)
 - `-n, --dry-run`: Show what would be downloaded without downloading
 - `-v, --verbose`: Increase logging verbosity
 

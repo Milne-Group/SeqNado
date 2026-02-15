@@ -42,6 +42,8 @@ Any additional arguments are passed directly to Snakemake (e.g., `--printshellcm
 
 For the full CLI reference, see [seqnado pipeline](cli.md#cli-seqnado-pipeline).
 
+You can also point to a custom Snakemake profile directory with `--profile` (or `--profiles`), which overrides `--preset`.
+
 ## General Workflow
 
 Regardless of the assay type, all SeqNado runs follow these core stages:

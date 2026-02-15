@@ -79,6 +79,7 @@ On successful completion, the build automatically registers the genome in `~/.co
 | `--outdir`, `-o`    | `./genome_build`| Output directory |
 | `--spikein`, `-sp`  | —               | Spike-in genome name for composite builds |
 | `--preset`          | `le`            | Snakemake profile preset (see below) |
+| `--profile`         | —               | Path to a Snakemake profile directory (overrides --preset) |
 | `--cores`, `-c`     | `4`             | Number of Snakemake cores |
 | `--scale-resources` | `1.0`           | Scale memory/time requests |
 | `--dry-run`         | off             | Preview the Snakemake DAG without executing |

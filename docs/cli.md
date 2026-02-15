@@ -66,25 +66,130 @@ Manage genome configurations (list, edit, build, or generate fastq-screen config
 **Usage**:
 
 ```console
-$ seqnado genomes [OPTIONS] SUBCOMMAND [ASSAY]
+$ seqnado genomes [OPTIONS] COMMAND [ARGS]...
+```
+
+**Commands**:
+
+- **list**: Show packaged and user genome presets
+- **edit**: Open user genome config in $EDITOR
+- **build**: Download genome and build indices via Snakemake
+- **fastqscreen**: Generate FastqScreen configuration file
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+### `seqnado genomes list`
+
+Show packaged and user genome presets.
+
+**Usage**:
+
+```console
+$ seqnado genomes list [OPTIONS] [ASSAY]
 ```
 
 **Arguments**:
 
-- **SUBCOMMAND**: `list` | `edit` | `build` | `fastqscreen` (required)
 - **ASSAY**: `rna` | `atac` | `snp` | `chip` | `cat` | `meth` | `mcc` | `crispr` | `multiomics` (default: `atac`)
 
 **Options**:
 
-* `-f, --fasta PATH`: Input FASTA (required for build)
-* `-n, --name TEXT`: Genome name (prefix) for built genome
-* `-o, --outdir PATH`: Output directory for build
-* `-s, --screen PATH`: Output path for fastqscreen config (fastqscreen subcommand)
-* `-t, --threads INTEGER`: Number of threads for Bowtie2 (fastqscreen subcommand)  [default: 8]
-* `--no-contaminants`: Exclude contaminant databases (fastqscreen subcommand)
-* `--contaminant-path PATH`: Path to contaminant reference files (fastqscreen subcommand)
 * `-v, --verbose`: Increase logging verbosity
 * `--help`: Show this message and exit.
+
+**Example**:
+
+```bash
+seqnado genomes list atac
+seqnado genomes list rna
+```
+
+### `seqnado genomes edit`
+
+Open user genome config in $EDITOR.
+
+**Usage**:
+
+```console
+$ seqnado genomes edit [OPTIONS]
+```
+
+**Options**:
+
+* `-v, --verbose`: Increase logging verbosity
+* `--help`: Show this message and exit.
+
+**Example**:
+
+```bash
+seqnado genomes edit
+```
+
+### `seqnado genomes build`
+
+Download genome and build indices via Snakemake.
+
+**Usage**:
+
+```console
+$ seqnado genomes build [OPTIONS]
+```
+
+**Options**:
+
+* `-n, --name TEXT`: Genome name(s), comma-separated for multiple (e.g., hg38 or hg38,mm39,dm6) **[required]**
+* `-o, --outdir PATH`: Output directory for build  [default: genome_build]
+* `-sp, --spikein TEXT`: Spike-in genome name for composite builds (e.g., mm39)
+* `--preset [lc|le|ls|ss|t]`: Snakemake job profile preset.  [default: le]
+* `--profile PATH` / `--profiles PATH`: Path to a Snakemake profile directory (overrides --preset).
+* `-c, --cores INTEGER`: Number of Snakemake cores.  [default: 4]
+* `--scale-resources FLOAT`: Scale memory/time.  [default: 1.0]
+* `--dry-run`: Preview the Snakemake DAG without executing.
+* `-v, --verbose`: Increase logging verbosity
+* `--help`: Show this message and exit.
+
+**Examples**:
+
+```bash
+# Build single genome
+seqnado genomes build --name hg38 --outdir /path/to/genomes
+
+# Build multiple genomes
+seqnado genomes build --name hg38,mm39,dm6 --outdir /path/to/genomes
+
+# Build with spike-in
+seqnado genomes build --name hg38 --spikein dm6 --outdir /path/to/genomes
+
+# Dry run
+seqnado genomes build --name hg38 --outdir /path/to/genomes --dry-run
+```
+
+### `seqnado genomes fastqscreen`
+
+Generate FastqScreen configuration file.
+
+**Usage**:
+
+```console
+$ seqnado genomes fastqscreen [OPTIONS]
+```
+
+**Options**:
+
+* `-s, --screen PATH`: Output path for fastqscreen config  [default: ~/.config/seqnado/fastq_screen.conf]
+* `-t, --threads INTEGER`: Number of threads for Bowtie2  [default: 8]
+* `--no-contaminants`: Exclude contaminant databases
+* `--contaminant-path PATH`: Path to contaminant reference files
+* `-v, --verbose`: Increase logging verbosity
+* `--help`: Show this message and exit.
+
+**Example**:
+
+```bash
+seqnado genomes fastqscreen --screen /path/to/fastq_screen.conf --threads 16
+```
 
 ## `seqnado config` {#cli-seqnado-config}
 
@@ -137,6 +242,7 @@ $ seqnado download [OPTIONS] METADATA_TSV
 * `-d, --design-output PATH`: Path for generated design file (only with --assay).  [default: metadata_{assay}.csv]
 * `-c, --cores INTEGER`: Number of parallel download jobs.  [default: 4]
 * `--preset [lc|le|ls|ss|t]`: Snakemake execution profile preset.  [default: le]
+* `--profile PATH` / `--profiles PATH`: Path to a Snakemake profile directory (overrides --preset).
 * `-n, --dry-run`: Show what would be run without executing downloads.
 * `-v, --verbose`: Increase logging verbosity.
 * `--help`: Show this message and exit.
@@ -199,6 +305,7 @@ $ seqnado pipeline [OPTIONS] [ASSAY]
 * `--configfile PATH`: Path to a SeqNado config YAML (default: config_<ASSAY>.yaml).
 * `--version`: Print SeqNado version and exit.
 * `--preset [lc|le|ls|ss|t]`: Snakemake job profile preset.  [default: le]
+* `--profile PATH` / `--profiles PATH`: Path to a Snakemake profile directory (overrides --preset).
 * `--clean-symlinks / --no-clean-symlinks`: Remove symlinks created by previous runs.  [default: no-clean-symlinks]
 * `-s, --scale-resources FLOAT`: Scale memory/time (env: SCALE_RESOURCES).  [default: 1.0]
 * `-v, --verbose`: Increase logging verbosity.
