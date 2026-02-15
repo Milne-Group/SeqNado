@@ -22,7 +22,7 @@ class TestGetNCisScalingFactor:
 
     def test_missing_stats_file_returns_one(self):
         """Test that missing stats file returns 1."""
-        wildcards = Mock(sample="sample1", viewpoint_group="vp1")
+        wildcards = Mock(sample="sample1", viewpoint_group="vp1", spec=["sample", "viewpoint_group"])
         output_dir = "/nonexistent/path"
 
         result = get_n_cis_scaling_factor(wildcards, output_dir)
@@ -51,7 +51,7 @@ class TestGetNCisScalingFactor:
     def test_calculates_scaling_factor_for_group(self):
         """Test calculation of scaling factor for sample group."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            wildcards = Mock(group="group1", viewpoint_group="vp1")
+            wildcards = Mock(group="group1", viewpoint_group="vp1", spec=["group", "viewpoint_group"])
             output_dir = tmpdir
 
             # Create resources directory and stats file for group

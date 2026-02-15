@@ -56,5 +56,5 @@ def get_cutadapt_adapter_args(wildcards, CONFIG, OUTPUT_DIR):
 
         return base_options + adapter_args
 
-    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+    except (FileNotFoundError, PermissionError, json.JSONDecodeError, KeyError):
         return base_options

@@ -24,7 +24,11 @@ def get_n_cis_scaling_factor(wc, OUTPUT_DIR):
         stats_file = OUTPUT_DIR + f"/resources/{wc.sample}_ligation_stats.json"
 
     stats_path = Path(stats_file)
-    if not stats_path.exists():
+    try:
+        if not stats_path.exists():
+            return 1.0
+    except (OSError, PermissionError):
+        # File doesn't exist or can't be accessed
         return 1.0
 
     with open(stats_path, "r") as r:

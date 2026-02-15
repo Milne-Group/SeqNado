@@ -23,7 +23,13 @@ class PathValidatorMixin:
             return v
 
         path = Path(v) if isinstance(v, str) else v
-        if not path.exists():
+        try:
+            exists = path.exists()
+        except (OSError, PermissionError):
+            # Path doesn't exist or can't be accessed
+            exists = False
+
+        if not exists:
             raise ValueError(f"{field_name} {v} does not exist.")
 
         return v
