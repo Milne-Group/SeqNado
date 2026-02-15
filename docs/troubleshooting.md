@@ -111,8 +111,7 @@ ValueError: No Bowtie2 index files found for prefix '...'
 ```bash
 seqnado genomes list           # check what's configured
 seqnado genomes edit           # fix paths if wrong
-seqnado genomes build atac \
-  --fasta /path/to/genome.fa \
+seqnado genomes build \
   --name hg38 \
   --outdir /path/to/output     # rebuild if missing
 ```
@@ -125,10 +124,10 @@ ValueError: The directory ... does not exist or is not a directory
 
 **Cause:** The STAR index path in the genome config is incorrect or the index has not been built.
 
-**Fix:** Build the genome with the `rna` assay type, which generates the STAR index:
+**Fix:** Build the genome, which generates both Bowtie2 and STAR indices:
 
 ```bash
-seqnado genomes build rna --fasta /path/to/genome.fa --name hg38 --outdir /path/to/output
+seqnado genomes build --name hg38 --outdir /path/to/output
 ```
 
 Then verify the path with `seqnado genomes edit`.
@@ -142,7 +141,7 @@ Then verify the path with `seqnado genomes edit`.
 ```bash
 srun --mem=40G --cpus-per-task=8 --time=2:00:00 --pty bash
 mamba activate seqnado
-seqnado genomes build rna --fasta genome.fa --name hg38 --outdir /path/to/output --threads 8
+seqnado genomes build --name hg38 --outdir /path/to/output --cores 8
 ```
 
 ---

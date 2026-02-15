@@ -289,3 +289,116 @@ class FileSelector:
             result.append(f)
 
         return result
+
+# ----------------------- CLI Profile & Flag Helpers -----------------------
+
+
+def create_flag_filter(allowed_flags: Tuple[str, ...]):
+    """
+    Factory function to create a flag filtering function.
+    
+    Args:
+        allowed_flags: Tuple of allowed flag names (e.g., ("-n", "--dry-run", ...))
+    
+    Returns:
+        A function that checks if an option matches allowed flags.
+    """
+    def should_pass_flag(opt: str) -> bool:
+        """Check if option matches any of the allowed flags."""
+        for p in allowed_flags:
+            if opt == p or opt.startswith(p + "="):
+                return True
+        return False
+    return should_pass_flag
+
+
+def get_profile_name(fn: Path) -> Optional[str]:
+    """
+    Extract profile shortcode from profile directory name.
+    
+    E.g., "profile_local_conda" -> "lc", "profile_slurm_singularity" -> "ss"
+    
+    Args:
+        fn: Path to profile directory
+    
+    Returns:
+        Profile shortcode or None if not a valid profile name
+    """
+    name = fn.name
+    if not name.startswith("profile_"):
+        return None
+
+    profile_parts = name.split("_")
+    if len(profile_parts) < 2:
+        return None
+    initials = "".join(part[0] for part in profile_parts[1:] if part)
+    return initials
+
+
+def get_preset_profiles() -> Dict[str, str]:
+    """
+    Discover and map all available Snakemake profile presets.
+    
+    Returns:
+        Dict mapping shortcode (e.g., "lc") to profile directory name
+    """
+    from importlib import resources
+    
+    profiles_trav = resources.files("seqnado.workflow.envs.profiles")
+    profiles = [
+        f.name
+        for f in profiles_trav.iterdir()
+        if f.is_dir()
+    ]
+
+    # Map profile shortcuts to directory names
+    # E.g., "profile_local_conda" -> "lc", "profile_slurm_singularity" -> "ss"
+    return {
+        get_profile_name(Path(p)): p 
+        for p in profiles 
+        if p.startswith("profile_") and get_profile_name(Path(p))
+    }
+
+
+def resolve_profile_path(
+    preset: Optional[str],
+    pkg_root_trav=None,  # Optional importlib.resources Traversable
+):
+    """
+    Resolve a profile preset to a path.
+    
+    Checks in order:
+    1. User's ~/.config/snakemake/{profile_dir_name} (editable copy)
+    2. Bundled profile in the package (via pkg_root_trav)
+    
+    Args:
+        preset: Profile preset shortcode (e.g., "lc", "le", "ss", None)
+        pkg_root_trav: Optional package traversable (seqnado package)
+    
+    Returns:
+        Path or Traversable, or None if preset is None or not found
+    """
+    if not preset:
+        return None
+    
+    profiles = get_preset_profiles()
+    profile_dir_name = profiles.get(preset.lower())
+    
+    if not profile_dir_name:
+        return None
+    
+    # First, check user's ~/.config/snakemake/ for editable copies
+    user_profile_path = Path.home() / ".config" / "snakemake" / profile_dir_name
+    if user_profile_path.exists():
+        return user_profile_path
+    
+    # Fall back to bundled profiles if pkg_root_trav is provided
+    if pkg_root_trav:
+        return (
+            pkg_root_trav.joinpath("workflow")
+            .joinpath("envs")
+            .joinpath("profiles")
+            .joinpath(profile_dir_name)
+        )
+    
+    return None

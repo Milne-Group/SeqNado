@@ -61,33 +61,53 @@ The `seqnado genomes` command manages genome configurations, including listing, 
 
 #### Usage
 ```bash
-seqnado genomes [OPTIONS] SUBCOMMAND ASSAY
+seqnado genomes COMMAND [OPTIONS]
 ```
 
-#### Subcommands
-- **list**: List available genome configurations.
-- **edit**: Edit an existing genome configuration.
-- **build**: Build a new genome configuration from a FASTA file.
+#### Commands
+- **list** `[ASSAY]`: List available genome configurations (default assay: `atac`).
+- **edit**: Edit the genome configuration file in your `$EDITOR`.
+- **build**: Build a new genome from UCSC (downloads FASTA/GTF and builds indices).
 - **fastqscreen**: Generate a `fastq-screen` configuration file.
 
-#### Arguments
-- **SUBCOMMAND**: The operation to perform (e.g., `list`, `edit`, `build`, `fastqscreen`).
-- **ASSAY**: Assay type. Options include `rna`, `atac`, `snp`, `chip`, `cat`, `meth`, `mcc`, `crispr` (default: `atac`).
+#### Main Options
 
-#### Options
-- `--fasta, -f`: Input FASTA file (required for `build`).
-- `--name, -n`: Genome name (prefix) for the built genome.
-- `--outdir, -o`: Output directory for genome builds.
-- `--screen, -s`: Output path for `fastq-screen` configuration files (used in the `fastqscreen` subcommand).
+**For `build` command:**
+- `--name, -n`: Genome name(s), comma-separated for multiple (e.g., `hg38` or `hg38,mm39,dm6`) **[required]**
+- `--outdir, -o`: Output directory for genome builds (default: `genome_build`).
+- `--spikein, -sp`: Spike-in genome name for composite builds (e.g., `mm39`).
+- `--cores, -c`: Number of Snakemake cores (default: 4).
+- `--dry-run`: Preview without executing.
+
+**For `fastqscreen` command:**
+- `--screen, -s`: Output path for `fastq-screen` config (default: `~/.config/seqnado/fastq_screen.conf`).
 - `--threads, -t`: Number of threads for Bowtie2 (default: 8).
-- `--no-contaminants`: Exclude contaminant databases in `fastq-screen` configurations.
+- `--no-contaminants`: Exclude contaminant databases.
 - `--contaminant-path`: Path to contaminant reference files.
+
+**Global options:**
 - `--verbose, -v`: Increase logging verbosity.
 
-#### Example
-Build a genome configuration for RNA-seq:
+#### Examples
+
+Build a single genome:
 ```bash
-seqnado genomes build rna --fasta hg38.fasta --name hg38 --outdir /path/to/output
+seqnado genomes build --name hg38 --outdir /path/to/output
+```
+
+Build multiple genomes:
+```bash
+seqnado genomes build --name hg38,mm39,dm6 --outdir /path/to/output
+```
+
+List configured genomes for ATAC-seq:
+```bash
+seqnado genomes list atac
+```
+
+Edit genome configuration:
+```bash
+seqnado genomes edit
 ```
 
 For more details, see [seqnado genomes](cli.md#cli-seqnado-genomes).

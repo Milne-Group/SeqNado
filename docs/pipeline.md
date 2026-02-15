@@ -29,6 +29,8 @@ Presets control where and how jobs are executed. Pick the one that matches your 
 
 For all arguments and presets, see the CLI reference: [seqnado pipeline](cli.md#cli-seqnado-pipeline).
 
+You can also point to a custom Snakemake profile directory with `--profile` (or `--profiles`), which overrides `--preset`.
+
 ## General Workflow
 
 Regardless of the assay type, all SeqNado runs follow these core stages:
