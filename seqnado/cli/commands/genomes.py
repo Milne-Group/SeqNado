@@ -10,14 +10,12 @@ from importlib import resources
 from pathlib import Path
 from typing import List, Optional
 
-import click
 import typer
 from loguru import logger
 
 from seqnado.cli.utils import (
     _configure_logging,
     _pkg_traversable,
-    _read_json,
     require_snakemake,
     TOP_LEVEL_PASS_THROUGH,
     resolve_profile_context,
@@ -26,7 +24,7 @@ from seqnado.cli.utils import (
     dry_run_option,
     cores_option,
 )
-from seqnado.cli.autocomplete import _assay_names, _profile_autocomplete, assay_autocomplete
+from seqnado.cli.autocomplete import _assay_names, assay_autocomplete
 from seqnado.utils import create_flag_filter
 
 
