@@ -9,10 +9,10 @@ from seqnado.outputs.multiomics import get_assay_bigwigs
 
 rule gather_bigwigs:
     input:
-        OUTPUT_DIR + "multiomics_summary.txt",
+        OUTPUT_DIR + "/multiomics_summary.txt",
         bigwigs=MULTIOMICS_OUTPUT.bigwig_files,
     output:
-        bw_dir = directory(OUTPUT_DIR + "multiomics/bigwigs/"),    
+        bw_dir = directory(OUTPUT_DIR + "/multiomics/bigwigs/"),    
     threads: 1
     message: "Gathering bigWigs for multiomics downstream analyses"
     log:
