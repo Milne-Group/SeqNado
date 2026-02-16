@@ -145,6 +145,11 @@ Then point the command at the extracted directory:
 seqnado genomes fastqscreen --contaminant-path ./fastqscreen_reference
 
 Then point the command at the extracted directory:
+
+```bash
+seqnado genomes fastqscreen --contaminant-path ./fastqscreen_reference
+
+Then point the command at the extracted directory:
  
  ```bash
 
