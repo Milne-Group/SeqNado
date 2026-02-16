@@ -62,7 +62,7 @@ def _run_multiomics_pipeline(
         Exit code from subprocess.run()
     """
     logger.info(f"Multiomic mode detected: found {len(config_files)} config files")
-    logger.info(f"Assays: {', '.join([c.stem.replace('config_', '') for c in config_files])}")
+    logger.info(f"Assays: {', '.join([a.value for a in config_files])}")
     
     snake_trav = pkg_root_trav.joinpath("workflow").joinpath("Snakefile_multi")
     profile_ctx, profile_path, is_custom = resolve_profile(preset, profile, pkg_root_trav)

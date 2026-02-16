@@ -161,11 +161,14 @@ def multiomics_configs(
         # Default to all assays if not parametrized
         multiomics = ["atac", "chip", "meth", "rna", "snp"]
     # Set up a run directory for the Multiomic test
-    # Use the same pattern as TestContext.run_directory to handle FileExistsError
     try:
         base_temp = tmp_path_factory.getbasetemp()
     except FileExistsError:
         base_temp = tmp_path_factory._basetemp
+
+    if base_temp is None:
+        base_temp = tmp_path_factory.mktemp("multiomics")
+
     run_dir = base_temp / "multiomics_run"
     run_dir.mkdir(exist_ok=True, parents=True)
     configs = {}
