@@ -28,9 +28,11 @@ from seqnado.cli.utils import (
 
 
 @app.command(
-    help="Download FASTQ files from GEO/SRA using a metadata TSV file and optionally generate a design file."
+    help="Download FASTQ files from GEO/SRA using a metadata TSV file and optionally generate a design file.",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
 def download(
+    ctx: typer.Context,
     metadata_tsv: Path = typer.Argument(
         ...,
         exists=True,
@@ -228,6 +230,10 @@ def download(
 
         # Add profile with logging
         builder.add_profile_with_logging(final_profile_path, preset, is_custom)
+
+        # Add any extra args passed by the user (e.g., --use-conda, --conda-frontend mamba)
+        raw_extra_args = list(ctx.args)  # tokens Typer didn't map to declared params
+        builder.add_pass_through_args(raw_extra_args)
 
         # Build command
         cmd = builder.build()
