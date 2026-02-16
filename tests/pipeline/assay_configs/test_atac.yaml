@@ -2,3 +2,30 @@ assay: ATAC
 project:
   name: default_project
   description: "Test project for ATAC-seq"
+
+assay_config:
+  call_peaks: True
+  create_bigwigs: True
+  plot_with_plotnado: False
+  create_dataset: False
+  create_ucsc_hub: False
+  has_spikein: False
+  create_quantification_files: True
+  bigwigs:
+    pileup_method:
+      - deeptools
+    binsize: 10
+    scale_methods: null
+  plotting: null
+  ucsc_hub: null
+  dataset_for_ml: null
+  tn5_shift: True
+  peak_calling:
+    method:
+      - macs3
+      - lanceotron
+    consensus_counts: True
+    run_motif_analysis: False
+    motif_method:
+      - homer
+  create_heatmaps: True
