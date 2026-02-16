@@ -202,13 +202,16 @@ def build_genomes(
             # Initialize builder
             builder = SnakemakeCommandBuilder(Path(snakefile_path), cores)
             
-            # Add config values (comma-separated genomes and output_dir)
-            builder.add_config(
-                genome=",".join(genomes),
-                output_dir=str(outdir),
-            )
+            # Prepare config values
+            config_values = {
+                "genome": ",".join(genomes),
+                "output_dir": str(outdir),
+            }
             if spikein:
-                builder.add_config(spikein=spikein)
+                config_values["spikein"] = spikein
+            
+            # Add all config values in one call
+            builder.add_config(**config_values)
             
             # Add profile with logging
             builder.add_profile_with_logging(final_profile_path, preset, is_custom)
