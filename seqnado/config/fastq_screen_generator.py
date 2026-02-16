@@ -209,7 +209,11 @@ def load_genome_configs_for_fastqscreen() -> Dict[str, GenomeConfig]:
     for name, config_data in all_configs.items():
         config_data["name"] = name
         # Use bowtie2 index for fastqscreen
-        index = BowtieIndex(prefix=config_data.get("bt2_index"))
+        try:
+            index = BowtieIndex(prefix=config_data.get("bt2_index"))
+        except Exception as e:
+            logger.warning(f"Skipping genome '{name}': {e}")
+            continue
         config_data["index"] = index
         genome_configs[name] = GenomeConfig(**config_data)
 
