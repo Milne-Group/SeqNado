@@ -19,7 +19,7 @@ from seqnado.cli.utils import (
     _pkg_traversable,
     require_snakemake,
     TOP_LEVEL_PASS_THROUGH,
-    resolve_profile_context,
+    resolve_profile,
     verbose_option,
     preset_option,
     dry_run_option,
@@ -183,15 +183,18 @@ def build_genomes(
     pkg_root_trav = _pkg_traversable("seqnado")
     snake_trav = pkg_root_trav.joinpath("workflow").joinpath("Snakefile_genome")
 
-    profile_ctx, profile_is_custom = resolve_profile_context(
+    profile_ctx, profile_path, is_custom = resolve_profile(
         preset, profile, pkg_root_trav, warn_unknown=True
     )
 
     try:
         with (
             resources.as_file(snake_trav) as snakefile_path,
-            profile_ctx as profile_path,
+            profile_ctx as resolved_profile_path,
         ):
+            # Use resolved_profile_path from context if profile_path was None (Traversable case)
+            final_profile_path = profile_path or resolved_profile_path
+            
             if not Path(snakefile_path).exists():
                 logger.error(f"Snakefile_genome not found: {snakefile_path}")
                 raise typer.Exit(code=1)
@@ -207,15 +210,8 @@ def build_genomes(
             if spikein:
                 builder.add_config(spikein=spikein)
             
-            # Add profile if present
-            if profile_path:
-                builder.add_profile_from_path(profile_path)
-                if profile_is_custom:
-                    logger.info(f"Using custom Snakemake profile: {profile_path}")
-                else:
-                    logger.info(
-                        f"Using Snakemake profile preset '{preset}' -> {profile_path}"
-                    )
+            # Add profile with logging
+            builder.add_profile_with_logging(final_profile_path, preset, is_custom)
             
             # Add dry-run flag if requested
             if dry_run:

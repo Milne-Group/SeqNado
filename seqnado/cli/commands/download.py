@@ -10,27 +10,61 @@ from typing import Optional
 import typer
 from loguru import logger
 
+from seqnado.cli.app_instance import app
+from seqnado.cli.autocomplete import assay_autocomplete
 from seqnado.cli.snakemake_builder import SnakemakeCommandBuilder
 from seqnado.cli.utils import (
     _configure_logging,
     _pkg_traversable,
     require_snakemake,
     generate_design_dataframe,
-    resolve_profile_context,
+    resolve_profile,
     execute_snakemake,
+    verbose_option,
+    preset_option,
+    dry_run_option,
+    cores_option,
 )
 
 
+@app.command(
+    help="Download FASTQ files from GEO/SRA using a metadata TSV file and optionally generate a design file."
+)
 def download(
-    metadata_tsv: Path,
-    outdir: Path = Path("fastqs"),
-    assay: Optional[str] = None,
-    design_output: Optional[Path] = None,
-    cores: int = 4,
-    preset: str = "le",
-    profile: Optional[Path] = None,
-    dry_run: bool = False,
-    verbose: bool = False,
+    metadata_tsv: Path = typer.Argument(
+        ...,
+        exists=True,
+        help="TSV file from GEO/ENA with columns: run_accession, sample_title, library_name, and library_layout (PAIRED or SINGLE).",
+    ),
+    outdir: Path = typer.Option(
+        Path("fastqs"),
+        "-o",
+        "--outdir",
+        help="Output directory for downloaded FASTQ files.",
+    ),
+    assay: Optional[str] = typer.Option(
+        None,
+        "-a",
+        "--assay",
+        autocompletion=assay_autocomplete,
+        help="Assay type for generating design file after download. If not provided, only downloads FASTQs.",
+    ),
+    design_output: Optional[Path] = typer.Option(
+        None,
+        "-d",
+        "--design-output",
+        help="Output path for design CSV (default: metadata_{assay}.csv in outdir).",
+    ),
+    cores: int = cores_option(),
+    preset: str = preset_option(),
+    profile: Optional[Path] = typer.Option(
+        None,
+        "--profile",
+        "--profiles",
+        help="Path to a Snakemake profile directory (overrides --preset).",
+    ),
+    dry_run: bool = dry_run_option(),
+    verbose: bool = verbose_option(),
 ) -> None:
     """
     Download FASTQ files from GEO/SRA and optionally generate a design file.
@@ -160,15 +194,18 @@ def download(
         .joinpath("download.smk")
     )
 
-    profile_ctx, profile_is_custom = resolve_profile_context(
+    profile_ctx, profile_path, is_custom = resolve_profile(
         preset, profile, pkg_root_trav, warn_unknown=True
     )
 
     # Build Snakemake command
     with (
         resources.as_file(download_smk_trav) as download_smk,
-        profile_ctx as profile_path,
+        profile_ctx as resolved_profile_path,
     ):
+        # Use resolved_profile_path from context if profile_path was None (Traversable case)
+        final_profile_path = profile_path or resolved_profile_path
+        
         # Initialize builder
         builder = SnakemakeCommandBuilder(Path(download_smk), cores)
         
@@ -185,15 +222,8 @@ def download(
         if dry_run:
             builder.add_dry_run()
 
-        # Add profile if present
-        if profile_path:
-            builder.add_profile_from_path(profile_path)
-            if profile_is_custom:
-                logger.info(f"Using custom Snakemake profile: {profile_path}")
-            else:
-                logger.info(
-                    f"Using Snakemake profile preset '{preset}' -> {profile_path}"
-                )
+        # Add profile with logging
+        builder.add_profile_with_logging(final_profile_path, preset, is_custom)
 
         # Build command
         cmd = builder.build()

@@ -9,16 +9,39 @@ from typing import Optional
 
 from loguru import logger
 
-from seqnado.cli.utils import _configure_logging, _pkg_traversable, validate_assay
+from seqnado.cli.app_instance import app
+from seqnado.cli.autocomplete import _assay_names, assay_autocomplete
+from seqnado.cli.utils import _configure_logging, _pkg_traversable, validate_assay, verbose_option
 
 
+@app.command(
+    help="Build a workflow configuration YAML for the selected ASSAY. If no assay is provided, multiomics mode is used."
+)
 def config(
-    assay: Optional[str] = None,
-    make_dirs: bool = True,
-    render_options: bool = False,
-    output: Optional[Path] = None,
-    verbose: bool = False,
-    interactive: bool = True,
+    assay: Optional[str] = typer.Argument(
+        None,
+        metavar="[ASSAY]",
+        autocompletion=assay_autocomplete,
+        show_choices=True,
+        help=", ".join(_assay_names()) + ". If omitted, multiomics mode is used.",
+    ),
+    make_dirs: bool = typer.Option(
+        True,
+        "--make-dirs/--no-make-dirs",
+        help="Create/don't create the output project directory or fastq subdir.",
+    ),
+    render_options: bool = typer.Option(
+        False, help="Render all options (even if not used by the workflow)."
+    ),
+    output: Optional[Path] = typer.Option(
+        None, "-o", "--output", help="Explicit path for the rendered config file."
+    ),
+    verbose: bool = verbose_option(),
+    interactive: bool = typer.Option(
+        True,
+        "--interactive/--no-interactive",
+        help="Interactively prompt for config values. Non-interactive mode only works for single assay configs (except MCC and multiomics).",
+    ),
 ) -> None:
     """
     Build a workflow configuration YAML for the selected ASSAY.

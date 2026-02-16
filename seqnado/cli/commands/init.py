@@ -10,19 +10,33 @@ from pathlib import Path
 import typer
 from loguru import logger
 
+from seqnado.cli.app_instance import app
 from seqnado.cli.utils import (
     _configure_logging,
     _pkg_traversable,
     _read_json,
     _write_json,
+    dry_run_option,
+    verbose_option,
 )
 from seqnado.utils import get_preset_profiles
 
 
+@app.command(
+    help="""
+Initialize SeqNado user environment.
+
+- Logs the current Conda environment if active (optional).
+- Runs packaged Apptainer/Singularity init (if `apptainer` on PATH).
+- Ensures ~/.config/seqnado/genome_config.json exists (template or preset).
+"""
+)
 def init(
-    preset: bool = False,
-    dry_run: bool = False,
-    verbose: bool = False,
+    preset: bool = typer.Option(
+        False, help="Use packaged preset genomes instead of the editable template."
+    ),
+    dry_run: bool = dry_run_option(),
+    verbose: bool = verbose_option(),
 ) -> None:
     """
     Initialize SeqNado user environment.

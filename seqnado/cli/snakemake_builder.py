@@ -60,51 +60,6 @@ class SnakemakeCommandBuilder:
         self.cmd.extend(["--config"] + config_parts)
         return self
 
-    def add_profile(self, preset: str, pkg_root_trav=None) -> SnakemakeCommandBuilder:
-        """
-        Add Snakemake profile to command. Returns self for chaining.
-        
-        Args:
-            preset: Profile preset name (e.g., "le", "ss")
-            pkg_root_trav: Optional importlib.resources Traversable for package root
-        
-        Returns:
-            self for method chaining
-        """
-        if not preset:
-            return self
-
-        # If pkg_root_trav provided, use resolve_profile_path to locate profile
-        if pkg_root_trav:
-            from importlib import resources
-
-            profile_result = resolve_profile_path(preset, pkg_root_trav)
-            if profile_result:
-                try:
-                    # If it's already a Path (user-installed profile), use it directly
-                    # Otherwise it's a Traversable (bundled profile), use resources.as_file
-                    if isinstance(profile_result, Path):
-                        if profile_result.exists():
-                            self.cmd.extend(["--profile", str(profile_result)])
-                            logger.info(f"Using Snakemake profile preset '{preset}' -> {profile_result}")
-                        else:
-                            logger.warning(f"Profile path does not exist: {profile_result}")
-                    else:
-                        with resources.as_file(profile_result) as profile_path:
-                            if Path(profile_path).exists():
-                                self.cmd.extend(["--profile", str(profile_path)])
-                                logger.info(f"Using Snakemake profile preset '{preset}' -> {profile_path}")
-                            else:
-                                logger.warning(f"Profile path does not exist: {profile_path}")
-                except Exception as e:
-                    logger.warning(f"Could not resolve profile {preset}: {e}")
-            else:
-                profiles = get_preset_profiles()
-                logger.warning(
-                    f"Unknown preset '{preset}'. Available: {list(profiles.keys())}"
-                )
-        return self
-
     def add_profile_from_path(self, profile_path: Path | str) -> SnakemakeCommandBuilder:
         """
         Add a pre-resolved Snakemake profile path to command. Returns self for chaining.
@@ -117,6 +72,33 @@ class SnakemakeCommandBuilder:
         """
         if profile_path:
             self.cmd.extend(["--profile", str(profile_path)])
+        return self
+
+    def add_profile_with_logging(
+        self,
+        profile_path: Optional[Path],
+        preset: str,
+        is_custom: bool,
+    ) -> SnakemakeCommandBuilder:
+        """
+        Add profile path to command and log appropriate message.
+        
+        Args:
+            profile_path: Resolved profile path (may be None)
+            preset: Profile preset name (for logging)
+            is_custom: Whether this is a custom profile path
+        
+        Returns:
+            self for method chaining
+        """
+        if profile_path:
+            self.add_profile_from_path(profile_path)
+            if is_custom:
+                logger.info(f"Using custom Snakemake profile: {profile_path}")
+            else:
+                logger.info(
+                    f"Using Snakemake profile preset '{preset}' -> {profile_path}"
+                )
         return self
 
     def add_unlock(self) -> SnakemakeCommandBuilder:
