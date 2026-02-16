@@ -123,9 +123,14 @@ def resolve_profile_context(
     if not preset:
         return contextlib.nullcontext(None), False
 
-    profile_trav = resolve_profile_path(preset, pkg_root_trav)
-    if profile_trav:
-        return resources.as_file(profile_trav), False
+    profile_result = resolve_profile_path(preset, pkg_root_trav)
+    if profile_result:
+        # If it's already a Path (user-installed profile), use nullcontext
+        # Otherwise it's a Traversable (bundled profile), use resources.as_file
+        if isinstance(profile_result, Path):
+            return contextlib.nullcontext(profile_result), False
+        else:
+            return resources.as_file(profile_result), False
 
     if warn_unknown:
         profiles = get_preset_profiles()
@@ -268,3 +273,15 @@ def preset_option() -> str:
         help="Snakemake job profile preset.",
         case_sensitive=False,
     )
+
+def _resolve_working_dir() -> None:
+    """
+    Corrects a common issue where that prevents apptainer containers from seeing the current working directory.
+
+    This is due to symlinks or bind mounts that cause the container's view of the filesystem to differ from the host's PWD.
+
+    We resolve the current working directory to an absolute path and set PWD to that, which should be visible inside the container regardless of how it's launched.
+    """
+    cwd = str(Path(".").resolve())
+    os.chdir(cwd)
+    os.environ["PWD"] = cwd
