@@ -1022,10 +1022,6 @@ def build_multiomics_config(
         logger.info(f"Selected assays: {', '.join(selected_assays)}")
 
         # Get multiomics-specific settings
-        output_dir = get_user_input(
-            "Base output directory for all assays", default="seqnado_output/"
-        )
-
         create_heatmaps = get_user_input(
             "Generate multiomics heatmaps?", default="yes", is_boolean=True
         )
@@ -1093,7 +1089,6 @@ def build_multiomics_config(
         logger.info(f"Selected assays: {', '.join(selected_assays)}")
 
         # Use defaults for all other settings
-        output_dir = "seqnado_output/"
         create_heatmaps = True
         create_dataset = True
         create_summary = True
@@ -1131,7 +1126,6 @@ def build_multiomics_config(
     # Create MultiomicsConfig
     multiomics_config = MultiomicsConfig(
         assays=selected_assays,
-        output_dir=output_dir,
         create_heatmaps=create_heatmaps,
         create_dataset=create_dataset,
         create_summary=create_summary,

@@ -32,10 +32,6 @@ class MultiomicsConfig(BaseModel):
         description="Dictionary mapping assay names to their SeqnadoConfig dicts (optional)",
     )
 
-    output_dir: str = Field(
-        default="seqnado_output", description="Output directory for multiomics results"
-    )
-
     # Multiomics-specific analysis options
     create_heatmaps: bool = Field(
         default=True, description="Generate heatmaps for multiomics data"

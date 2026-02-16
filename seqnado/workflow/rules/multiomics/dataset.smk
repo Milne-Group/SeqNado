@@ -8,9 +8,9 @@ rule make_dataset_regions:
     input:
         rules.gather_bigwigs.output.bw_dir,
     output:
-        dataset=OUTPUT_DIR + "multiomics/dataset/dataset_regions.h5ad",
+        dataset=OUTPUT_DIR + "/multiomics/dataset/dataset_regions.h5ad",
     params:
-        bigwig_dir=OUTPUT_DIR + "multiomics/bigwigs/",
+        bigwig_dir=OUTPUT_DIR + "/multiomics/bigwigs/",
         chromosome_sizes=lambda wildcards: LOADED_CONFIGS[ASSAYS[0].clean_name]["genome"]["chromosome_sizes"],
         blacklist=lambda wildcards: LOADED_CONFIGS[ASSAYS[0].clean_name]["genome"]["blacklist"],
         regions=lambda wildcards: str(MULTIOMICS_CONFIG.regions_bed) if MULTIOMICS_CONFIG.regions_bed else None,
@@ -19,8 +19,8 @@ rule make_dataset_regions:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=32, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
     container: "oras://ghcr.io/alsmith151/seqnado_ml_cpu:latest",
-    log: OUTPUT_DIR + "multiomics/logs/make_dataset_regions.log",
-    benchmark: OUTPUT_DIR + "multiomics/.benchmark/make_dataset_regions.tsv",
+    log: OUTPUT_DIR + "/multiomics/logs/make_dataset_regions.log",
+    benchmark: OUTPUT_DIR + "/multiomics/.benchmark/make_dataset_regions.tsv",
     message: "Making dataset from regions for machine learning"
     shell: """
     quantnado-make-dataset \
@@ -38,9 +38,9 @@ rule make_dataset_binsize:
     input:
         bigwigs=MULTIOMICS_OUTPUT.bigwig_files,
     output:
-        dataset=OUTPUT_DIR + "multiomics/dataset/dataset_bins.h5ad",
+        dataset=OUTPUT_DIR + "/multiomics/dataset/dataset_bins.h5ad",
     params:
-        bigwig_dir=OUTPUT_DIR + "multiomics/bigwigs/",
+        bigwig_dir=OUTPUT_DIR + "/multiomics/bigwigs/",
         chromosome_sizes=lambda wildcards: LOADED_CONFIGS[ASSAYS[0].clean_name]["genome"]["chromosome_sizes"],
         blacklist=EXAMPLE_CONFIG.genome.blacklist,
         binsize=MULTIOMICS_CONFIG.binsize,
@@ -49,8 +49,8 @@ rule make_dataset_binsize:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=32, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
     container: "oras://ghcr.io/alsmith151/seqnado_ml_cpu:latest",
-    log: OUTPUT_DIR + "multiomics/logs/make_dataset_binsize.log",
-    benchmark: OUTPUT_DIR + "multiomics/.benchmark/make_dataset_binsize.tsv",
+    log: OUTPUT_DIR + "/multiomics/logs/make_dataset_binsize.log",
+    benchmark: OUTPUT_DIR + "/multiomics/.benchmark/make_dataset_binsize.tsv",
     message: "Making dataset from binsize for machine learning"
     shell: """
     # symlink bigwig files to expected directory
