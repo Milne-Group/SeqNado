@@ -614,22 +614,21 @@ class QuantificationFiles(BaseModel):
     @property
     def grouped_counts_files(self) -> list[str]:
         """Return the grouped read counts files."""
-        files = []
-        for group in self.groups.groups:
-            files.extend(
-                expand(
-                    f"{self.prefix}{group}/read_counts.tsv",
-                    group=group,
-                    methods=[m.value for m in self.methods],
-                )
-            )
-        return files
+        return expand(
+            self.prefix + "/{method}/{group}_counts.tsv",
+            method=[m.value for m in self.methods],
+            group=self.groups.group_names,
+        )
 
     @computed_field
     @property
     def files(self) -> list[str]:
         """Return a list of quantification files."""
-        return [*self.combined_counts_file, *self.grouped_counts_files]
+        match self.assay:
+            case Assay.RNA:
+                return [*self.combined_counts_file]
+            case Assay.CHIP | Assay.CAT | Assay.ATAC:
+                return [*self.grouped_counts_files]
 
 
 class GeoSubmissionFiles(BaseModel):

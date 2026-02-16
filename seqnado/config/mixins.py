@@ -140,6 +140,10 @@ class CommonComputedFieldsMixin(BaseModel):
         if info.data.get('assay') == Assay.RNA:
             return True
 
+        elif info.data.get("consensus_counts") is not None:
+            return True
+        
+
        
 
 

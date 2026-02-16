@@ -4,8 +4,8 @@ from seqnado.workflow.helpers.quant import get_bams_to_count
 
 rule feature_counts:
     input:
-        bam=get_bams_to_count(CONFIG=CONFIG, SAMPLE_NAMES=SAMPLE_NAMES, OUTPUT_DIR=OUTPUT_DIR),
-        bai=[bam.replace(".bam", ".bam.bai") for bam in get_bams_to_count(CONFIG=CONFIG, SAMPLE_NAMES=SAMPLE_NAMES, OUTPUT_DIR=OUTPUT_DIR)],
+        bam=get_bams_to_count(config=CONFIG, sample_names=SAMPLE_NAMES, output_dir=OUTPUT_DIR),
+        bai=[bam.replace(".bam", ".bam.bai") for bam in get_bams_to_count(config=CONFIG, sample_names=SAMPLE_NAMES, output_dir=OUTPUT_DIR)],
         annotation=str(CONFIG.genome.gtf),
     output:
         counts=OUTPUT_DIR + "/readcounts/feature_counts/read_counts.tsv",
