@@ -7,7 +7,7 @@ rule multiomics_heatmap_matrix:
     input:
         rules.gather_bigwigs.output.bw_dir,
     output:
-        matrix=OUTPUT_DIR + "multiomics/heatmap/heatmap_matrix.mat.gz",
+        matrix=OUTPUT_DIR + "/multiomics/heatmap/heatmap_matrix.mat.gz",
     params:
         # Use GTF from the first assay config (assuming shared genome)
         gtf=EXAMPLE_CONFIG.genome.gtf,
@@ -20,8 +20,8 @@ rule multiomics_heatmap_matrix:
         runtime=lambda wildcards, attempt: f"{1 * 2**attempt}h",
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=1),
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log: OUTPUT_DIR + "multiomics/logs/heatmap/matrix.log",
-    benchmark: OUTPUT_DIR + "multiomics/.benchmark/heatmap/matrix.tsv",
+    log: OUTPUT_DIR + "/multiomics/logs/heatmap/matrix.log",
+    benchmark: OUTPUT_DIR + "/multiomics/.benchmark/heatmap/matrix.tsv",
     message: "Computing Multiomic heatmap matrix from bigWig files across all assays"
     shell: """
     computeMatrix scale-regions \
@@ -36,16 +36,16 @@ rule multiomics_heatmap_matrix:
 
 rule multiomics_heatmap_plot:
     input:
-        matrix=OUTPUT_DIR + "multiomics/heatmap/heatmap_matrix.mat.gz",
+        matrix=OUTPUT_DIR + "/multiomics/heatmap/heatmap_matrix.mat.gz",
     output:
-        heatmap=OUTPUT_DIR + "multiomics/heatmap/heatmap.pdf",
+        heatmap=OUTPUT_DIR + "/multiomics/heatmap/heatmap.pdf",
     params:
         options=EXAMPLE_CONFIG.third_party_tools.deeptools.plot_heatmap.command_line_arguments,
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=1),
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log: OUTPUT_DIR + "multiomics/logs/heatmap/heatmap.log",
-    benchmark: OUTPUT_DIR + "multiomics/.benchmark/heatmap/heatmap.tsv",
+    log: OUTPUT_DIR + "/multiomics/logs/heatmap/heatmap.log",
+    benchmark: OUTPUT_DIR + "/multiomics/.benchmark/heatmap/heatmap.tsv",
     message: "Generating Multiomic heatmap from matrix"
     shell: """
     plotHeatmap -m {input.matrix} -out {output.heatmap} {params.options}
@@ -54,14 +54,14 @@ rule multiomics_heatmap_plot:
 
 rule multiomics_heatmap_metaplot:
     input:
-        matrix=OUTPUT_DIR + "multiomics/heatmap/heatmap_matrix.mat.gz",
+        matrix=OUTPUT_DIR + "/multiomics/heatmap/heatmap_matrix.mat.gz",
     output:
-        metaplot=OUTPUT_DIR + "multiomics/heatmap/metaplot.pdf",
+        metaplot=OUTPUT_DIR + "/multiomics/heatmap/metaplot.pdf",
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=1),
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log: OUTPUT_DIR + "multiomics/logs/heatmap/metaplot.log",
-    benchmark: OUTPUT_DIR + "multiomics/.benchmark/heatmap/metaplot.tsv",
+    log: OUTPUT_DIR + "/multiomics/logs/heatmap/metaplot.log",
+    benchmark: OUTPUT_DIR + "/multiomics/.benchmark/heatmap/metaplot.tsv",
     message: "Generating Multiomic metaplot from heatmap matrix"
     shell: """
     plotProfile -m {input.matrix} -out {output.metaplot} --perGroup

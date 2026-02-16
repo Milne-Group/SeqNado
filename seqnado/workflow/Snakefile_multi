@@ -44,7 +44,7 @@ else:
     MULTIOMICS_CONFIG = MultiomicsConfig(assays=ASSAYS)
     print("[Multiomic Mode] No multiomics config found, using defaults")
 
-OUTPUT_DIR = MULTIOMICS_CONFIG.output_dir
+OUTPUT_DIR = "seqnado_output"
 
 
 ################################################

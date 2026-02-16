@@ -48,7 +48,6 @@ class TestMultiomicsConfig:
         # create_dataset=False to avoid requiring fasta_index
         config = MultiomicsConfig(create_dataset=False)
 
-        assert config.output_dir == "seqnado_output/"
         assert config.binsize == 1000
         assert config.assays == []
         assert config.assay_configs == {}
@@ -56,11 +55,6 @@ class TestMultiomicsConfig:
         assert config.create_dataset is False
         assert config.create_summary is True
         assert config.regions_bed is None
-
-    def test_custom_output_dir(self):
-        """Test MultiomicsConfig with custom output directory."""
-        config = MultiomicsConfig(output_dir="custom_output/", create_dataset=False)
-        assert config.output_dir == "custom_output/"
 
     def test_custom_binsize(self):
         """Test MultiomicsConfig with custom binsize."""
@@ -101,7 +95,6 @@ class TestMultiomicsConfig:
     def test_model_serialization(self):
         """Test that model can be serialized to dict."""
         config = MultiomicsConfig(
-            output_dir="test_output/",
             binsize=200,
             assays=["atac", "rna"],
             create_dataset=False,
@@ -109,15 +102,12 @@ class TestMultiomicsConfig:
 
         data = config.model_dump()
 
-        assert "output_dir" in data
-        assert data["output_dir"] == "test_output/"
         assert data["binsize"] == 200
         assert data["assays"] == ["atac", "rna"]
 
     def test_model_from_dict(self):
         """Test that model can be created from dict."""
         data = {
-            "output_dir": "custom/",
             "binsize": 200,
             "assays": ["chip"],
             "create_heatmaps": False,
@@ -125,7 +115,6 @@ class TestMultiomicsConfig:
         }
         config = MultiomicsConfig(**data)
 
-        assert config.output_dir == "custom/"
         assert config.binsize == 200
         assert config.assays == ["chip"]
         assert config.create_heatmaps is False

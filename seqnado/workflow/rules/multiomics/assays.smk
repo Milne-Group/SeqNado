@@ -8,7 +8,7 @@ for assay in ASSAYS:
     config_path = ASSAY_CONFIGS[assay]
     with open(config_path, 'r') as f:
         assay_config = yaml.safe_load(f)
-    assay_config["output_dir"] = f"{OUTPUT_DIR}{assay.clean_name}"
+    assay_config["output_dir"] = f"{OUTPUT_DIR}/{assay.clean_name}"
     LOADED_CONFIGS[assay.clean_name] = assay_config
 
 
