@@ -4,9 +4,11 @@ import pytest
 
 from seqnado.config.third_party_tools import (
     CommandLineArguments,
+    ThirdPartyToolsConfig,
     ToolConfig,
     none_str_to_none,
 )
+from seqnado import Assay
 
 
 class TestNoneStrToNone:
@@ -273,3 +275,39 @@ class TestToolConfig:
         # The serialized command_line_arguments should be the filtered string
         assert "--opt1" not in data["command_line_arguments"]
         assert "--opt2" in data["command_line_arguments"]
+
+
+class TestThirdPartyToolsConfig:
+    """Tests for assay-specific third-party tool defaults."""
+
+    def test_atac_bowtie2_defaults_include_max_insert_size(self):
+        """ATAC defaults should include Bowtie2 max insert size constraint."""
+        config = ThirdPartyToolsConfig.for_assay(Assay.ATAC)
+
+        assert config.bowtie2 is not None
+        options = str(config.bowtie2.align.command_line_arguments)
+        assert "--maxins 2000" in options
+
+    def test_atac_bowtie2_max_insert_size_is_not_duplicated(self):
+        """ATAC defaults should not duplicate max insert size when already present."""
+        config = ThirdPartyToolsConfig.for_assay(
+            Assay.ATAC,
+            bowtie2={
+                "align": {
+                    "command_line_arguments": "--very-sensitive --maxins 2000"
+                }
+            },
+        )
+
+        assert config.bowtie2 is not None
+        options = str(config.bowtie2.align.command_line_arguments)
+        assert options.count("--maxins 2000") == 1
+
+    def test_non_atac_bowtie2_defaults_do_not_force_max_insert_size(self):
+        """Non-ATAC defaults should not inject Bowtie2 max insert size by default."""
+        config = ThirdPartyToolsConfig.for_assay(Assay.CHIP)
+
+        assert config.bowtie2 is not None
+        options = str(config.bowtie2.align.command_line_arguments)
+        assert "-X" not in options
+        assert "--maxins" not in options

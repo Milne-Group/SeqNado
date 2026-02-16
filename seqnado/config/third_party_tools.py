@@ -1,5 +1,5 @@
 import shlex
-from typing import Optional, Literal, Annotated
+from typing import Optional, Literal, Annotated, ClassVar
 from enum import Enum
 from pathlib import Path
 
@@ -738,6 +738,16 @@ def get_assay_specific_tools(assay: Assay) -> list[type[BaseModel]]:
 
 class ThirdPartyToolsConfig(BaseModel):
     """Configuration for all third-party bioinformatics tools."""
+
+    ASSAY_TOOL_OPTION_RULES: ClassVar[
+        dict[Assay, dict[str, dict[str, set[str]]]]
+    ] = {
+        Assay.ATAC: {
+            "bowtie2.align": {
+                "include": {"--maxins 2000"},
+            },
+        },
+    }
     
     # Quality control tools
     fastq_screen: Annotated[Optional[FastqScreen], BeforeValidator(none_str_to_none)] = Field(default=None, description="FastqScreen configuration")
@@ -794,6 +804,49 @@ class ThirdPartyToolsConfig(BaseModel):
         return mapping
 
     @classmethod
+    def _resolve_tool_config(
+        cls,
+        defaults: dict[str, BaseModel],
+        path: str,
+    ) -> ToolConfig | None:
+        """Resolve a dot path (e.g. 'bowtie2.align') to a ToolConfig object."""
+        parts = path.split(".")
+        if not parts:
+            return None
+
+        node: object = defaults.get(parts[0])
+        if node is None:
+            return None
+
+        for part in parts[1:]:
+            if not hasattr(node, part):
+                return None
+            node = getattr(node, part)
+
+        return node if isinstance(node, ToolConfig) else None
+
+    @classmethod
+    def _apply_assay_tool_option_rules(
+        cls,
+        assay: Assay,
+        defaults: dict[str, BaseModel],
+    ) -> None:
+        """Apply assay-specific option include/exclude rules across tool paths."""
+        rules_for_assay = cls.ASSAY_TOOL_OPTION_RULES.get(assay, {})
+        for tool_path, directives in rules_for_assay.items():
+            tool_config = cls._resolve_tool_config(defaults, tool_path)
+            if tool_config is None:
+                continue
+
+            include_patterns = directives.get("include", set())
+            exclude_patterns = directives.get("exclude", set())
+
+            if include_patterns:
+                tool_config.command_line_arguments.add_include(*sorted(include_patterns))
+            if exclude_patterns:
+                tool_config.command_line_arguments.add_exclude(*sorted(exclude_patterns))
+
+    @classmethod
     def for_assay(cls, assay: Assay, **overrides) -> "ThirdPartyToolsConfig":
         assay_tools = get_assay_specific_tools(assay)
         if not assay_tools:
@@ -816,6 +869,8 @@ class ThirdPartyToolsConfig(BaseModel):
                     f"No field on {cls.__name__} is annotated for tool class {tool_class.__name__}"
                 )
             defaults[field_name] = tool_class()
+
+        cls._apply_assay_tool_option_rules(assay, defaults)
             
         
         defaults.update(overrides)
