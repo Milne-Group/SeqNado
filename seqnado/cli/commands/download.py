@@ -103,6 +103,10 @@ def download(
 
     require_snakemake()
 
+    # Log assay parameter early if provided
+    if assay:
+        logger.info(f"Assay type: {assay}")
+
     # Read and parse metadata TSV
     logger.info(f"Reading metadata from {metadata_tsv}")
     try:
