@@ -9,14 +9,14 @@ from pathlib import Path
 import pytest
 import yaml
 from helpers import (
-    TestContext,
-    make_test_paths,
-    get_fastq_pattern,
     FastqFiles,
     GenomeResources,
+    TestContext,
     create_config_yaml,
     create_design_file,
+    get_fastq_pattern,
     init_seqnado_project,
+    make_test_paths,
 )
 
 
@@ -29,7 +29,9 @@ def genome_resources(test_context: TestContext) -> dict:
     """
 
     def _get_resources(assay: str) -> dict:
-        return GenomeResources.download_resources(test_context.test_paths.genome, assay).model_dump()
+        return GenomeResources.download_resources(
+            test_context.test_paths.genome, assay
+        ).model_dump()
 
     return _get_resources
 
@@ -258,12 +260,32 @@ def multiomics_configs(
     run_dir_resolved = run_dir.resolve()
 
     # Find and update the test profile configuration
-    seqnado_paths = [p for p in sys.path if "seqnado" in p and "site-packages" in p]
-    if not seqnado_paths:
-        # Fall back to searching site-packages
-        for site_pkg in site.getsitepackages():
+
+    user_profile_config = (
+        run_dir / ".config" / "snakemake" / "profile_test" / "config.v8+.yaml"
+    )
+
+    if user_profile_config.exists():
+        test_profile_config = user_profile_config
+    else:
+        # Fall back to site-packages if the user-installed profile doesn't exist
+        seqnado_paths = [p for p in sys.path if "seqnado" in p and "site-packages" in p]
+        if not seqnado_paths:
+            for site_pkg in site.getsitepackages():
+                test_profile_config = (
+                    Path(site_pkg)
+                    / "seqnado"
+                    / "workflow"
+                    / "envs"
+                    / "profiles"
+                    / "profile_test"
+                    / "config.v8+.yaml"
+                )
+                if test_profile_config.exists():
+                    break
+        else:
             test_profile_config = (
-                Path(site_pkg)
+                Path(seqnado_paths[0])
                 / "seqnado"
                 / "workflow"
                 / "envs"
@@ -271,18 +293,6 @@ def multiomics_configs(
                 / "profile_test"
                 / "config.v8+.yaml"
             )
-            if test_profile_config.exists():
-                break
-    else:
-        test_profile_config = (
-            Path(seqnado_paths[0])
-            / "seqnado"
-            / "workflow"
-            / "envs"
-            / "profiles"
-            / "profile_test"
-            / "config.v8+.yaml"
-        )
 
     # Update the profile config with apptainer-args
     if test_profile_config.exists():

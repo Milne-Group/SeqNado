@@ -2,7 +2,9 @@ import glob
 import json
 import os
 import shutil
+import site
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -212,16 +214,32 @@ def create_config_yaml(
     run_dir_resolved = run_directory.resolve()
 
     # Find and update the test profile configuration
-    import site
-    import sys
 
-    # Try to find the seqnado package location
-    seqnado_paths = [p for p in sys.path if "seqnado" in p and "site-packages" in p]
-    if not seqnado_paths:
-        # Fall back to searching site-packages
-        for site_pkg in site.getsitepackages():
+    user_profile_config = (
+        run_directory / ".config" / "snakemake" / "profile_test" / "config.v8+.yaml"
+    )
+
+    if user_profile_config.exists():
+        test_profile_config = user_profile_config
+    else:
+        # Fall back to site-packages if the user-installed profile doesn't exist
+        seqnado_paths = [p for p in sys.path if "seqnado" in p and "site-packages" in p]
+        if not seqnado_paths:
+            for site_pkg in site.getsitepackages():
+                test_profile_config = (
+                    Path(site_pkg)
+                    / "seqnado"
+                    / "workflow"
+                    / "envs"
+                    / "profiles"
+                    / "profile_test"
+                    / "config.v8+.yaml"
+                )
+                if test_profile_config.exists():
+                    break
+        else:
             test_profile_config = (
-                Path(site_pkg)
+                Path(seqnado_paths[0])
                 / "seqnado"
                 / "workflow"
                 / "envs"
@@ -229,18 +247,6 @@ def create_config_yaml(
                 / "profile_test"
                 / "config.v8+.yaml"
             )
-            if test_profile_config.exists():
-                break
-    else:
-        test_profile_config = (
-            Path(seqnado_paths[0])
-            / "seqnado"
-            / "workflow"
-            / "envs"
-            / "profiles"
-            / "profile_test"
-            / "config.v8+.yaml"
-        )
 
     # Update the profile config with apptainer-args
     if test_profile_config.exists():
