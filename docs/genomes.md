@@ -130,12 +130,19 @@ This reads your genome config (`~/.config/seqnado/genome_config.json`), finds ea
  
 By default, the command prompts for a path to contaminant reference files. If provided, it adds common contaminant screens (E. coli, PhiX, rRNA, adapters, etc.).
 
+By default, the command prompts for a path to contaminant reference files. If provided, it adds common contaminant screens (E. coli, PhiX, rRNA, adapters, etc.).
+
 A pre-built set of contaminant references is available here. Download and extract it:
 
 ```bash
 wget https://userweb.molbiol.ox.ac.uk/public/project/milne_group/seqnado/genomes/fastqscreen_reference.tar.gz
 tar -xzf fastqscreen_reference.tar.gz
 ```
+
+Then point the command at the extracted directory:
+
+```bash
+seqnado genomes fastqscreen --contaminant-path ./fastqscreen_reference
 
 Then point the command at the extracted directory:
  
