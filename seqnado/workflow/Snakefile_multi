@@ -3,7 +3,7 @@ from pathlib import Path
 import glob
 import yaml
 
-from seqnado.cli import config as seqnado_cli_config
+from seqnado.cli.commands.config import config
 from seqnado.outputs import MultiomicsOutputBuilder, SeqnadoOutputFactory
 from seqnado.outputs.multiomics import (find_metadata_paths, find_assay_config_paths, validate_config_and_metadata)
 from seqnado.config import SeqnadoConfig
