@@ -24,6 +24,14 @@ def test_pipeline(
         df = pd.read_csv(design)
         df['condition'] = df['sample_id'].str.split('-').str[1].str.split('_').str[0]
         df.to_csv(design, index=False)
+    elif assay == 'atac':
+        import pandas as pd
+        # For ATAC-seq, we need to add a 'consensus_group' column to the design file for merged peak calling
+        df = pd.read_csv(design)
+        if 'consensus_group' not in df.columns:
+            # Group all samples together for consensus peak calling
+            df['consensus_group'] = 'all'
+            df.to_csv(design, index=False)
 
     res = subprocess.run(
         [
