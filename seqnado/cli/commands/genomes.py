@@ -133,7 +133,7 @@ def build_genomes(
     name: str = typer.Option(
         ...,
         "--name",
-        "-n",
+        "-g",
         help="Genome name(s), comma-separated for multiple (e.g., hg38 or hg38,mm39,dm6)",
     ),
     outdir: Path = typer.Option(
