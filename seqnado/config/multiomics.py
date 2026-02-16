@@ -33,7 +33,7 @@ class MultiomicsConfig(BaseModel):
     )
 
     output_dir: str = Field(
-        default="seqnado_output/", description="Output directory for multiomics results"
+        default="seqnado_output", description="Output directory for multiomics results"
     )
 
     # Multiomics-specific analysis options

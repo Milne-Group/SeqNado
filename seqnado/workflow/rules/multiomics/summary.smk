@@ -7,7 +7,7 @@ rule multiomics_summary:
     input:
         get_assay_all_inputs(ASSAYS=ASSAYS, rules=rules)
     output:
-        OUTPUT_DIR + "multiomics_summary.txt"
+        OUTPUT_DIR + "/multiomics_summary.txt"
     message:
         "Generating multiomics summary report"
     log:
@@ -32,7 +32,7 @@ rule multiomics_summary:
                 f.write(f"  Report:   seqnado_output/{assay}/seqnado_report.html\n")
 
                 # Check for completeness
-                complete_file = OUTPUT_DIR + f"{assay}/seqnado_report.html"
+                complete_file = OUTPUT_DIR + f"/{assay}/seqnado_report.html"
                 if os.path.exists(complete_file):
                     f.write(f"  STATUS:   COMPLETE\n")
                 else:
