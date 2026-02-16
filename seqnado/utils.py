@@ -366,8 +366,10 @@ def resolve_profile_path(
     """
     Resolve a profile preset to a path.
     
+    Prefers profiles installed during `seqnado init` over bundled profiles.
+    
     Checks in order:
-    1. User's ~/.config/snakemake/{profile_dir_name} (editable copy)
+    1. User's ~/.config/snakemake/{profile_dir_name} (installed via `seqnado init`)
     2. Bundled profile in the package (via pkg_root_trav)
     
     Args:
@@ -375,7 +377,7 @@ def resolve_profile_path(
         pkg_root_trav: Optional package traversable (seqnado package)
     
     Returns:
-        Path or Traversable, or None if preset is None or not found
+        Path (for user-installed) or Traversable (for bundled), or None if not found
     """
     if not preset:
         return None
@@ -386,7 +388,7 @@ def resolve_profile_path(
     if not profile_dir_name:
         return None
     
-    # First, check user's ~/.config/snakemake/ for editable copies
+    # First, check user's ~/.config/snakemake/ for profiles installed via `seqnado init`
     user_profile_path = Path.home() / ".config" / "snakemake" / profile_dir_name
     if user_profile_path.exists():
         return user_profile_path

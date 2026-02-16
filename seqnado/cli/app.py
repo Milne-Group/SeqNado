@@ -36,6 +36,7 @@ from seqnado.cli.utils import (
     cores_option,
     _RICH_CONSOLE,
     Text,
+    _resolve_working_dir,
 )
 from seqnado.cli.autocomplete import (
     _assay_names,
@@ -428,4 +429,5 @@ def pipeline(
 
 # -------------------------------- Entrypoint --------------------------------
 if __name__ == "__main__":
+    _resolve_working_dir()
     app()
