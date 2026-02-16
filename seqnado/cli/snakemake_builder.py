@@ -39,6 +39,7 @@ class SnakemakeCommandBuilder:
         ]
         self.cores = cores
         self._add_cores()
+        self.targets = []
 
     def _add_cores(self) -> None:
         """Add cores option to command."""
@@ -167,7 +168,9 @@ class SnakemakeCommandBuilder:
         Returns:
             self for method chaining
         """
-        self.cmd.append(target)
+
+        # Target rules should be added at the end of the command, so we store them separately and append at the end
+        self.targets.append(target)
         return self
 
     def add_directory(self, directory: str = ".") -> SnakemakeCommandBuilder:
@@ -230,8 +233,8 @@ class SnakemakeCommandBuilder:
 
     def build(self) -> List[str]:
         """Return the complete command as a list of strings."""
-        return self.cmd
+        return self.cmd + self.targets
 
     def build_str(self) -> str:
         """Return the complete command as a shell command string."""
-        return " ".join(self.cmd)
+        return " ".join(self.cmd + self.targets)
