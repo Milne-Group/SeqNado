@@ -78,15 +78,24 @@ class SnakemakeCommandBuilder:
         if pkg_root_trav:
             from importlib import resources
 
-            profile_trav = resolve_profile_path(preset, pkg_root_trav)
-            if profile_trav:
+            profile_result = resolve_profile_path(preset, pkg_root_trav)
+            if profile_result:
                 try:
-                    with resources.as_file(profile_trav) as profile_path:
-                        if Path(profile_path).exists():
-                            self.cmd.extend(["--profile", str(profile_path)])
-                            logger.info(f"Using Snakemake profile preset '{preset}' -> {profile_path}")
+                    # If it's already a Path (user-installed profile), use it directly
+                    # Otherwise it's a Traversable (bundled profile), use resources.as_file
+                    if isinstance(profile_result, Path):
+                        if profile_result.exists():
+                            self.cmd.extend(["--profile", str(profile_result)])
+                            logger.info(f"Using Snakemake profile preset '{preset}' -> {profile_result}")
                         else:
-                            logger.warning(f"Profile path does not exist: {profile_path}")
+                            logger.warning(f"Profile path does not exist: {profile_result}")
+                    else:
+                        with resources.as_file(profile_result) as profile_path:
+                            if Path(profile_path).exists():
+                                self.cmd.extend(["--profile", str(profile_path)])
+                                logger.info(f"Using Snakemake profile preset '{preset}' -> {profile_path}")
+                            else:
+                                logger.warning(f"Profile path does not exist: {profile_path}")
                 except Exception as e:
                     logger.warning(f"Could not resolve profile {preset}: {e}")
             else:
@@ -94,6 +103,20 @@ class SnakemakeCommandBuilder:
                 logger.warning(
                     f"Unknown preset '{preset}'. Available: {list(profiles.keys())}"
                 )
+        return self
+
+    def add_profile_from_path(self, profile_path: Path | str) -> SnakemakeCommandBuilder:
+        """
+        Add a pre-resolved Snakemake profile path to command. Returns self for chaining.
+        
+        Args:
+            profile_path: Resolved path to profile directory
+        
+        Returns:
+            self for method chaining
+        """
+        if profile_path:
+            self.cmd.extend(["--profile", str(profile_path)])
         return self
 
     def add_unlock(self) -> SnakemakeCommandBuilder:
@@ -163,6 +186,64 @@ class SnakemakeCommandBuilder:
             self for method chaining
         """
         self.cmd.append(target)
+        return self
+
+    def add_directory(self, directory: str = ".") -> SnakemakeCommandBuilder:
+        """
+        Add --directory flag to run in a specific directory. Returns self for chaining.
+        
+        Args:
+            directory: Target directory (default: ".")
+        
+        Returns:
+            self for method chaining
+        """
+        self.cmd.extend(["--directory", directory])
+        return self
+
+    def add_default_resources(self, **kwargs) -> SnakemakeCommandBuilder:
+        """
+        Add --default-resources flag with key=value pairs. Returns self for chaining.
+        
+        Args:
+            **kwargs: Resource key=value pairs (e.g., slurm_partition="short")
+        
+        Returns:
+            self for method chaining
+        """
+        if kwargs:
+            resource_parts = [f"{k}={v}" for k, v in kwargs.items()]
+            self.cmd.extend(["--default-resources"] + resource_parts)
+        return self
+
+    def add_queue(self, queue: str, preset: str) -> SnakemakeCommandBuilder:
+        """
+        Add queue/partition to default resources (for Slurm presets). Returns self for chaining.
+        
+        Args:
+            queue: Queue name (e.g., "short", "long")
+            preset: Profile preset name to check if it's a Slurm preset
+        
+        Returns:
+            self for method chaining
+        """
+        if queue and preset and preset.startswith("s"):
+            self.cmd.extend(["--default-resources", f"slurm_partition={queue}"])
+        return self
+
+    def add_workflow_args(self, workflow_args: List[str]) -> SnakemakeCommandBuilder:
+        """
+        Add workflow_args config for nested Snakemake runs (multiomics mode). Returns self for chaining.
+        
+        Args:
+            workflow_args: List of arguments to pass to nested Snakemake runs
+        
+        Returns:
+            self for method chaining
+        """
+        if workflow_args:
+            workflow_args_str = " ".join(workflow_args)
+            self.cmd.extend(["--config", f"workflow_args={workflow_args_str}"])
         return self
 
     def build(self) -> List[str]:

@@ -5,11 +5,12 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import subprocess
 import sys
 import tempfile
 from importlib import resources
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import click
 import typer
@@ -285,3 +286,75 @@ def _resolve_working_dir() -> None:
     cwd = str(Path(".").resolve())
     os.chdir(cwd)
     os.environ["PWD"] = cwd
+
+
+def execute_snakemake(
+    cmd: List[str],
+    cwd: str,
+    print_cmd: bool = False,
+) -> int:
+    """
+    Execute a snakemake command and return exit code.
+    
+    Args:
+        cmd: Command as list of strings
+        cwd: Working directory
+        print_cmd: Whether to log the command before execution
+    
+    Returns:
+        Exit code from subprocess.run()
+    """
+    os.chdir(cwd)
+    os.environ["PWD"] = cwd
+    
+    if print_cmd:
+        logger.info("Snakemake command:\n$ " + " ".join(map(str, cmd)))
+    
+    completed = subprocess.run(cmd, cwd=cwd)
+    return completed.returncode
+
+
+def resolve_profile(
+    preset: str,
+    profile: Optional[Path],
+    pkg_root_trav,
+) -> tuple[contextlib.AbstractContextManager, Optional[Path]]:
+    """
+    Resolve a Snakemake profile and return context manager with optional path.
+    
+    Args:
+        preset: Profile preset name
+        profile: Custom profile path (overrides preset)
+        pkg_root_trav: Package root Traversable
+    
+    Returns:
+        Tuple of (context_manager, resolved_profile_path)
+    """
+    if profile:
+        profile_path = Path(profile).expanduser()
+        if not profile_path.exists():
+            logger.error(f"Snakemake profile not found: {profile_path}")
+            raise typer.Exit(code=1)
+        return contextlib.nullcontext(profile_path), profile_path
+    
+    profile_result = resolve_profile_path(preset, pkg_root_trav)
+    if profile_result:
+        if isinstance(profile_result, Path):
+            return contextlib.nullcontext(profile_result), profile_result
+        else:
+            return resources.as_file(profile_result), None  # Path resolved in context
+    
+    return contextlib.nullcontext(None), None
+
+
+def print_logo(pkg_root_trav) -> None:
+    """Print the SeqNado ASCII logo if available."""
+    logo_trav = pkg_root_trav.joinpath("data").joinpath("logo.txt")
+    try:
+        with resources.as_file(logo_trav) as lp:
+            try:
+                print(Path(lp).read_text())
+            except Exception:
+                pass
+    except Exception:
+        pass

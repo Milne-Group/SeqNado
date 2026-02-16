@@ -13,6 +13,7 @@ from typing import List, Optional
 import typer
 from loguru import logger
 
+from seqnado.cli.snakemake_builder import SnakemakeCommandBuilder
 from seqnado.cli.utils import (
     _configure_logging,
     _pkg_traversable,
@@ -23,6 +24,7 @@ from seqnado.cli.utils import (
     preset_option,
     dry_run_option,
     cores_option,
+    execute_snakemake,
 )
 from seqnado.cli.autocomplete import _assay_names, assay_autocomplete
 from seqnado.utils import create_flag_filter
@@ -190,60 +192,58 @@ def build_genomes(
             resources.as_file(snake_trav) as snakefile_path,
             profile_ctx as profile_path,
         ):
-            cmd: List[str] = [
-                "snakemake",
-                "--snakefile",
-                str(snakefile_path),
-                "--show-failed-logs",
-                "-c",
-                str(cores),
-            ]
+            if not Path(snakefile_path).exists():
+                logger.error(f"Snakefile_genome not found: {snakefile_path}")
+                raise typer.Exit(code=1)
 
-            # Pass config values (comma-separated genomes)
-            cmd += [
-                "--config",
-                f"genome={','.join(genomes)}",
-                f"output_dir={outdir}",
-            ]
+            # Initialize builder
+            builder = SnakemakeCommandBuilder(Path(snakefile_path), cores)
+            
+            # Add config values (comma-separated genomes and output_dir)
+            builder.add_config(
+                genome=",".join(genomes),
+                output_dir=str(outdir),
+            )
             if spikein:
-                cmd.append(f"spikein={spikein}")
-
-            # Add profile if requested
+                builder.add_config(spikein=spikein)
+            
+            # Add profile if present
             if profile_path:
-                cmd += ["--profile", str(profile_path)]
+                builder.add_profile_from_path(profile_path)
                 if profile_is_custom:
-                    logger.info(
-                        f"Using custom Snakemake profile: {profile_path}"
-                    )
+                    logger.info(f"Using custom Snakemake profile: {profile_path}")
                 else:
                     logger.info(
                         f"Using Snakemake profile preset '{preset}' -> {profile_path}"
                     )
-
+            
+            # Add dry-run flag if requested
+            if dry_run:
+                builder.add_dry_run()
+            
             # Create flag filter for allowed pass-through flags
             should_pass_to_snakemake = create_flag_filter(TOP_LEVEL_PASS_THROUGH)
-
-            # Add --dry-run if requested as an explicit option
-            if dry_run:
-                cmd.append("--dry-run")
-
+            
             # Pass through validated extra args from ctx
             if ctx and ctx.args:
                 filtered_args = [
                     arg for arg in ctx.args if should_pass_to_snakemake(arg)
                 ]
-                cmd += filtered_args
+                builder.add_pass_through_args(filtered_args)
 
+            # Build command
+            cmd = builder.build()
+            
             genome_label = (
                 f"{genomes[0]}_{spikein}" if spikein else ",".join(genomes)
             )
             logger.info(f"Building genome(s): {genome_label}")
             logger.info(f"Output directory: {outdir}")
-            if verbose:
-                logger.info("Snakemake command:\n$ " + " ".join(map(str, cmd)))
-
-            completed = subprocess.run(cmd)
-            raise typer.Exit(code=completed.returncode)
+            
+            # Execute snakemake
+            cwd = str(Path(".").resolve())
+            exit_code = execute_snakemake(cmd, cwd, verbose)
+            raise typer.Exit(code=exit_code)
 
     except typer.Exit:
         raise
