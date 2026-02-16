@@ -10,12 +10,14 @@ from typing import Optional
 import typer
 from loguru import logger
 
+from seqnado.cli.snakemake_builder import SnakemakeCommandBuilder
 from seqnado.cli.utils import (
     _configure_logging,
     _pkg_traversable,
     require_snakemake,
     generate_design_dataframe,
     resolve_profile_context,
+    execute_snakemake,
 )
 
 
@@ -167,36 +169,25 @@ def download(
         resources.as_file(download_smk_trav) as download_smk,
         profile_ctx as profile_path,
     ):
-        cmd = [
-            "snakemake",
-            "--snakefile",
-            str(download_smk),
-            "--configfile",
-            str(config_file),
-            "--cores",
-            str(cores),
-            "geo_download_all",
-        ]
-
+        # Initialize builder
+        builder = SnakemakeCommandBuilder(Path(download_smk), cores)
+        
+        # Add configfile
+        builder.add_configfile(config_file)
+        
+        # Add target rule
+        builder.add_target("geo_download_all")
+        
         # Add container support for Apptainer/Singularity
-        if shutil.which("apptainer"):
-            cmd.append("--use-apptainer")
-            logger.info("Using Apptainer for SRA tools")
-        elif shutil.which("singularity"):
-            cmd.append("--use-singularity")
-            logger.info("Using Singularity for SRA tools")
-        else:
-            logger.warning(
-                "No container runtime (apptainer/singularity) found. "
-                "Downloads will fail without SRA tools installed."
-            )
+        builder.add_container_support()
 
+        # Add dry-run if requested
         if dry_run:
-            cmd.append("--dry-run")
+            builder.add_dry_run()
 
-        # Add profile if requested
+        # Add profile if present
         if profile_path:
-            cmd += ["--profile", str(profile_path)]
+            builder.add_profile_from_path(profile_path)
             if profile_is_custom:
                 logger.info(f"Using custom Snakemake profile: {profile_path}")
             else:
@@ -204,16 +195,18 @@ def download(
                     f"Using Snakemake profile preset '{preset}' -> {profile_path}"
                 )
 
+        # Build command
+        cmd = builder.build()
+        
         logger.info("Starting GEO download with Snakemake...")
-        if verbose or dry_run:
-            logger.info("Command: " + " ".join(map(str, cmd)))
-
+        
         # Execute Snakemake
-        result = subprocess.run(cmd, cwd=str(Path.cwd()))
+        cwd = str(Path.cwd())
+        exit_code = execute_snakemake(cmd, cwd, verbose or dry_run)
 
-        if result.returncode != 0:
-            logger.error(f"Snakemake failed with exit code {result.returncode}")
-            raise typer.Exit(code=result.returncode)
+        if exit_code != 0:
+            logger.error(f"Snakemake failed with exit code {exit_code}")
+            raise typer.Exit(code=exit_code)
 
         logger.success("GEO download completed!")
 
