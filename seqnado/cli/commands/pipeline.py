@@ -11,6 +11,8 @@ from typing import List, Optional
 import typer
 from loguru import logger
 
+from seqnado.cli.app_instance import app
+from seqnado.cli.autocomplete import assay_autocomplete
 from seqnado.cli.snakemake_builder import SnakemakeCommandBuilder
 from seqnado.cli.utils import (
     _configure_logging,
@@ -20,6 +22,8 @@ from seqnado.cli.utils import (
     execute_snakemake,
     resolve_profile,
     print_logo,
+    verbose_option,
+    preset_option,
 )
 from seqnado.outputs.multiomics import find_assay_config_paths
 from seqnado.utils import (
@@ -61,15 +65,15 @@ def _run_multiomics_pipeline(
     logger.info(f"Assays: {', '.join([c.stem.replace('config_', '') for c in config_files])}")
     
     snake_trav = pkg_root_trav.joinpath("workflow").joinpath("Snakefile_multi")
-    profile_ctx, profile_path = resolve_profile(preset, profile, pkg_root_trav)
+    profile_ctx, profile_path, is_custom = resolve_profile(preset, profile, pkg_root_trav)
     
     try:
         with (
             resources.as_file(snake_trav) as snakefile_path,
             profile_ctx as resolved_profile_path,
         ):
-            if resolved_profile_path is not None:
-                profile_path = resolved_profile_path
+            # Use resolved_profile_path from context if profile_path was None (Traversable case)
+            final_profile_path = profile_path or resolved_profile_path
                 
             if not Path(snakefile_path).exists():
                 logger.error(f"Snakefile_multi not found: {snakefile_path}")
@@ -82,8 +86,8 @@ def _run_multiomics_pipeline(
             workflow_args: List[str] = []
             
             # Nested workflow should get profile and default-resources if applicable
-            if profile_path:
-                workflow_args.append(f"--profile {profile_path}")
+            if final_profile_path:
+                workflow_args.append(f"--profile {final_profile_path}")
             if queue and preset and preset.startswith("s"):
                 workflow_args.append(f"--default-resources slurm_partition={queue}")
             
@@ -141,18 +145,46 @@ def _run_multiomics_pipeline(
         raise typer.Exit(code=1)
 
 
+@app.command(
+    help="Run the data processing pipeline for ASSAY (Snakemake under the hood). Any additional arguments are passed to Snakemake (e.g., `seqnado pipeline rna -n` for dry-run, `--unlock`, etc.).",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
 def pipeline(
     ctx: typer.Context,
-    assay: Optional[str] = None,
-    config_file: Optional[Path] = None,
-    show_version: bool = False,
-    preset: str = "le",
-    profile: Optional[Path] = None,
-    clean_symlinks: bool = False,
-    scale_resources: float = 1.0,
-    verbose: bool = False,
-    queue: Optional[str] = "short",
-    print_cmd: bool = False,
+    assay: Optional[str] = typer.Argument(
+        None,
+        metavar="[ASSAY]",
+        autocompletion=assay_autocomplete,
+        help="Assay type (required for single-assay, optional for Multiomic mode)",
+    ),
+    config_file: Optional[Path] = typer.Option(
+        None,
+        "--configfile",
+        help="Path to a SeqNado config YAML (default: config_<ASSAY>.yaml).",
+    ),
+    show_version: bool = typer.Option(
+        False, "--version", help="Print SeqNado version and exit."
+    ),
+    preset: str = preset_option(),
+    profile: Optional[Path] = typer.Option(
+        None,
+        "--profile",
+        "--profiles",
+        help="Path to a Snakemake profile directory (overrides --preset).",
+    ),
+    clean_symlinks: bool = typer.Option(
+        False, help="Remove symlinks created by previous runs."
+    ),
+    scale_resources: float = typer.Option(
+        1.0, "-s", "--scale-resources", help="Scale memory/time (env: SCALE_RESOURCES)."
+    ),
+    verbose: bool = verbose_option(),
+    queue: Optional[str] = typer.Option(
+        "short", "-q", "--queue", help="Slurm queue/partition for the `ss` preset."
+    ),
+    print_cmd: bool = typer.Option(
+        False, "--print-cmd", help="Print the Snakemake command before running it."
+    ),
 ) -> None:
     """
     Run the data processing pipeline for ASSAY.
@@ -263,15 +295,15 @@ def pipeline(
             )
             raise typer.Exit(code=1)
 
-    profile_ctx, profile_path = resolve_profile(preset, profile, pkg_root_trav)
+    profile_ctx, profile_path, is_custom = resolve_profile(preset, profile, pkg_root_trav)
 
     try:
         with (
             resources.as_file(snake_trav) as snakefile_path,
             profile_ctx as resolved_profile_path,
         ):
-            if resolved_profile_path is not None:
-                profile_path = resolved_profile_path
+            # Use resolved_profile_path from context if profile_path was None (Traversable case)
+            final_profile_path = profile_path or resolved_profile_path
                 
             if not Path(snakefile_path).exists():
                 logger.error(
@@ -285,15 +317,8 @@ def pipeline(
             # Add configfile
             builder.add_configfile(config_file)
             
-            # Add profile if found
-            if profile_path:
-                builder.add_profile_from_path(profile_path)
-                if profile:
-                    logger.info(f"Using custom Snakemake profile: {profile_path}")
-                else:
-                    logger.info(
-                        f"Using Snakemake profile preset '{preset}' -> {profile_path}"
-                    )
+            # Add profile with logging
+            builder.add_profile_with_logging(final_profile_path, preset, is_custom)
             
             # Add queue if applicable
             if queue and preset.startswith("s"):

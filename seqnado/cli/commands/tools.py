@@ -6,17 +6,50 @@ from typing import Optional
 import typer
 from loguru import logger
 
-from seqnado.cli.utils import _configure_logging, _RICH_CONSOLE
+from seqnado.cli.app_instance import app
+from seqnado.cli.tools_helpers import _OptionalCategoryCommand
+from seqnado.cli.utils import _configure_logging, _RICH_CONSOLE, verbose_option
 
 
+@app.command(
+    cls=_OptionalCategoryCommand,
+    help="List and explore bioinformatics tools available in the SeqNado pipeline.",
+)
 def tools(
-    tool_name: Optional[str] = None,
-    list_tools: bool = False,
-    category: Optional[str] = None,
-    show_options: bool = False,
-    show_citation: bool = False,
-    subcommand: Optional[str] = None,
-    verbose: bool = False,
+    tool_name: Optional[str] = typer.Argument(
+        None,
+        metavar="[TOOL]",
+        help="Specific tool name to get help for (e.g., fastqc, deeptools)",
+    ),
+    list_tools: bool = typer.Option(
+        False, "--list", "-l", help="List all available tools with descriptions."
+    ),
+    category: Optional[str] = typer.Option(
+        None,
+        "--category",
+        "-c",
+        help=(
+            "Filter tools by category name or number. Use without a value to "
+            "interactively select a category."
+        ),
+    ),
+    show_options: bool = typer.Option(
+        False,
+        "--options",
+        help="Show tool options/help from the container (requires tool name and apptainer).",
+    ),
+    show_citation: bool = typer.Option(
+        False,
+        "--citation",
+        help="Show the BibTeX citation for a tool (requires tool name).",
+    ),
+    subcommand: Optional[str] = typer.Option(
+        None,
+        "--subcommand",
+        "-s",
+        help="Specify a tool subcommand for help (e.g. plotHeatmap).",
+    ),
+    verbose: bool = verbose_option(),
 ) -> None:
     """
     Explore bioinformatics tools in the SeqNado pipeline.

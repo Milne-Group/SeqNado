@@ -30,6 +30,18 @@ except Exception:
 
 # ==================== Constants ====================
 
+# Exit codes
+class ExitCode:
+    """Standard exit codes for CLI commands."""
+    SUCCESS = 0
+    GENERAL_ERROR = 1
+    INVALID_INPUT = 2
+    OPERATION_FAILED = 3
+    MISSING_DEPENDENCY = 4
+    LAUNCH_FAILED = 5
+    COMMAND_NOT_FOUND = 127
+
+
 TOP_LEVEL_PASS_THROUGH = (
     "-n",
     "--dry-run",
@@ -98,46 +110,117 @@ def _style_name_with_rich(name: str, style: str = "bold cyan") -> str:
         _RICH_CONSOLE.print(Text(name, style=style), end="")
     return cap.get()
 
+
+def cli_print(text: str, style: Optional[str] = None, end: str = "\n") -> None:
+    """
+    Print text with optional Rich styling, falling back to typer.echo if Rich is unavailable.
+    
+    Args:
+        text: Text to print
+        style: Rich style string (e.g., "bold cyan", "red") - ignored if Rich unavailable
+        end: String to append at the end (default: newline)
+    """
+    if _RICH_CONSOLE is not None and Text is not None and style:
+        _RICH_CONSOLE.print(Text(text, style=style), end=end)
+    else:
+        typer.echo(text, nl=(end == "\n"))
+
+
+def cli_print_table(headers: List[str], rows: List[List[str]]) -> None:
+    """
+    Print a table with Rich Table if available, otherwise formatted text.
+    
+    Args:
+        headers: Column headers
+        rows: List of rows (each row is a list of strings)
+    """
+    if _RICH_CONSOLE is not None:
+        try:
+            from rich.table import Table
+            
+            table = Table()
+            for header in headers:
+                table.add_column(header, style="cyan", no_wrap=False)
+            for row in rows:
+                table.add_row(*row)
+            _RICH_CONSOLE.print(table)
+            return
+        except Exception:
+            pass
+    
+    # Fallback: plain text table
+    # Calculate column widths
+    col_widths = [len(h) for h in headers]
+    for row in rows:
+        for i, cell in enumerate(row):
+            if i < len(col_widths):
+                col_widths[i] = max(col_widths[i], len(str(cell)))
+    
+    # Print header
+    header_line = " | ".join(h.ljust(col_widths[i]) for i, h in enumerate(headers))
+    typer.echo(header_line)
+    typer.echo("-" * len(header_line))
+    
+    # Print rows
+    for row in rows:
+        row_line = " | ".join(str(cell).ljust(col_widths[i]) for i, cell in enumerate(row))
+        typer.echo(row_line)
+
+
 # ==================== CLI Helper Functions ====================
 
 
-def resolve_profile_context(
+def resolve_profile(
     preset: Optional[str],
     profile: Optional[Path],
     pkg_root_trav=None,
     *,
     warn_unknown: bool = False,
-) -> Tuple[contextlib.AbstractContextManager, bool]:
+) -> Tuple[contextlib.AbstractContextManager, Optional[Path], bool]:
     """
     Resolve a Snakemake profile preset or custom path into a context manager.
 
-    Returns a context manager that yields a profile path (or None) and a flag
-    indicating whether the profile is custom (True) or preset (False).
+    Args:
+        preset: Profile preset name (e.g., "le", "ss")
+        profile: Custom profile path (overrides preset)
+        pkg_root_trav: Package root Traversable
+        warn_unknown: Whether to warn if preset is unknown
+    
+    Returns:
+        Tuple of (context_manager, resolved_profile_path, is_custom)
+        - context_manager: Context manager that yields the profile path or None
+        - resolved_profile_path: The resolved profile path (or None)
+        - is_custom: True if custom profile, False if preset profile
     """
+    # Custom profile path provided
     if profile:
         profile_path = Path(profile).expanduser()
         if not profile_path.exists():
             logger.error(f"Snakemake profile not found: {profile_path}")
-            raise typer.Exit(code=1)
-        return contextlib.nullcontext(profile_path), True
+            raise typer.Exit(code=ExitCode.GENERAL_ERROR)
+        return contextlib.nullcontext(profile_path), profile_path, True
 
+    # No preset specified
     if not preset:
-        return contextlib.nullcontext(None), False
+        return contextlib.nullcontext(None), None, False
 
+    # Resolve preset
     profile_result = resolve_profile_path(preset, pkg_root_trav)
     if profile_result:
         # If it's already a Path (user-installed profile), use nullcontext
         # Otherwise it's a Traversable (bundled profile), use resources.as_file
         if isinstance(profile_result, Path):
-            return contextlib.nullcontext(profile_result), False
+            return contextlib.nullcontext(profile_result), profile_result, False
         else:
-            return resources.as_file(profile_result), False
+            # For Traversable, the path is resolved when entering the context
+            return resources.as_file(profile_result), None, False
 
+    # Unknown preset
     if warn_unknown:
         profiles = get_preset_profiles()
         logger.warning(f"Unknown preset '{preset}'. Available: {list(profiles.keys())}")
 
-    return contextlib.nullcontext(None), False
+    return contextlib.nullcontext(None), None, False
 
 
 def require_snakemake() -> None:
@@ -149,7 +232,7 @@ def require_snakemake() -> None:
         logger.error(
             "`snakemake` not found on PATH. Install/activate the environment that provides it."
         )
-        raise typer.Exit(code=127)
+        raise typer.Exit(code=ExitCode.COMMAND_NOT_FOUND)
 
 
 def validate_assay(assay: str) -> None:
@@ -167,7 +250,7 @@ def validate_assay(assay: str) -> None:
     if assay not in AssayEnum.all_assay_clean_names():
         allowed = ", ".join(AssayEnum.all_assay_clean_names())
         logger.error(f"Unknown assay '{assay}'. Allowed: {allowed}")
-        raise typer.Exit(code=2)
+        raise typer.Exit(code=ExitCode.INVALID_INPUT)
 
 
 def generate_design_dataframe(
@@ -312,39 +395,6 @@ def execute_snakemake(
     
     completed = subprocess.run(cmd, cwd=cwd)
     return completed.returncode
-
-
-def resolve_profile(
-    preset: str,
-    profile: Optional[Path],
-    pkg_root_trav,
-) -> tuple[contextlib.AbstractContextManager, Optional[Path]]:
-    """
-    Resolve a Snakemake profile and return context manager with optional path.
-    
-    Args:
-        preset: Profile preset name
-        profile: Custom profile path (overrides preset)
-        pkg_root_trav: Package root Traversable
-    
-    Returns:
-        Tuple of (context_manager, resolved_profile_path)
-    """
-    if profile:
-        profile_path = Path(profile).expanduser()
-        if not profile_path.exists():
-            logger.error(f"Snakemake profile not found: {profile_path}")
-            raise typer.Exit(code=1)
-        return contextlib.nullcontext(profile_path), profile_path
-    
-    profile_result = resolve_profile_path(preset, pkg_root_trav)
-    if profile_result:
-        if isinstance(profile_result, Path):
-            return contextlib.nullcontext(profile_result), profile_result
-        else:
-            return resources.as_file(profile_result), None  # Path resolved in context
-    
-    return contextlib.nullcontext(None), None
 
 
 def print_logo(pkg_root_trav) -> None:
