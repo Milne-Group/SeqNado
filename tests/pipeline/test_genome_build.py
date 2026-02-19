@@ -39,6 +39,8 @@ class TestGenomeBuildDryRun:
             cwd=tmp_path,
         )
 
+        print("STDOUT:", result.stdout)
+        print("STDERR:", result.stderr)
         assert result.returncode == 0, (
             f"Dry-run failed (rc={result.returncode}):\n{result.stderr}"
         )
@@ -78,6 +80,8 @@ class TestGenomeBuildDryRun:
             cwd=tmp_path,
         )
 
+        print("STDOUT:", result.stdout)
+        print("STDERR:", result.stderr)
         assert result.returncode == 0, (
             f"Dry-run failed (rc={result.returncode}):\n{result.stderr}"
         )
@@ -110,6 +114,8 @@ class TestGenomeBuildDryRun:
             cwd=tmp_path,
         )
 
+        print("STDOUT:", result.stdout)
+        print("STDERR:", result.stderr)
         assert result.returncode == 0, (
             f"Dry-run failed (rc={result.returncode}):\n{result.stderr}"
         )
@@ -179,6 +185,8 @@ class TestGenomeBuild:
             timeout=600,
         )
 
+        print("STDOUT:", result.stdout)
+        print("STDERR:", result.stderr)
         assert result.returncode == 0, (
             f"Build failed (rc={result.returncode}):\n{result.stderr}"
         )

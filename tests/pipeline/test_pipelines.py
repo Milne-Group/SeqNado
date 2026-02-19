@@ -52,6 +52,9 @@ def test_pipeline(
         text=True,
     )
 
+
+    print("STDOUT:", res.stdout)
+    print("STDERR:", res.stderr)
     assert res.returncode == 0, (
         f"Pipeline failed with return code {res.returncode}. See output above."
     )
@@ -59,3 +62,5 @@ def test_pipeline(
     assert not (test_dir / "seqnado_error.log").exists()
     assert (test_dir / "seqnado_output").exists()
     assert (test_dir / f"seqnado_output/{assay_type}/seqnado_report.html").exists()
+
+

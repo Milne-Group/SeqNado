@@ -77,6 +77,8 @@ def test_multiomics(
         text=True,
     )
 
+    print("STDOUT:", res.stdout)
+    print("STDERR:", res.stderr)
     assert res.returncode == 0, (
         f"Pipeline failed with return code {res.returncode}. See output above."
     )
