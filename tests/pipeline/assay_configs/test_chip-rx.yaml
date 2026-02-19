@@ -3,11 +3,24 @@ project:
   name: default_project
   description: "Test project for ChIP-seq with spike in"
 assay_config:
+  peak_calling:
+    method:
+      - lanceotron
+      - homer
+      - macs2
+      - macs3
+  has_spikein: True
   spikein:
     method: 
     - "orlando"
     - "with_input"
     exogenous_genome: "dm6"
     endogenous_genome: "hg38"
+  bigwigs:
+    pileup_method:
+      - deeptools
+      - bamnado
+      - homer
+    scale_methods:
+      - csaw
   plot_with_plotnado: False
-  has_spikein: True

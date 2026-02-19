@@ -1,8 +1,7 @@
 import re
 from datetime import date as _date
-from enum import Enum
 from pathlib import Path
-from typing import Annotated, Literal, Union
+from typing import Annotated, Literal
 
 from pydantic import (
     BaseModel,
@@ -29,11 +28,7 @@ from seqnado import (
 )
 
 from .mixins import (
-    CommonComputedFieldsMixin,
-    MethylationMixin,
     PathValidatorMixin,
-    PeakCallingMixin,
-    SNPCallingMixin,
 )
 
 
@@ -209,13 +204,13 @@ class GenomeConfig(BaseModel):
                 abs_path = v
                 parent_dir = v.parent
 
-            error_msg = "❌ Genome file not found\n\n"
-            error_msg += f"📁 Looking for: {v.name}\n"
-            error_msg += f"📂 In directory: {parent_dir}\n"
-            error_msg += f"� Full path: {original_path}\n\n"
+            error_msg = "Genome file not found\n\n"
+            error_msg += f"Looking for: {v.name}\n"
+            error_msg += f"In directory: {parent_dir}\n"
+            error_msg += f"Full path: {original_path}\n\n"
 
             if parent_dir.exists():
-                error_msg += "💡 Directory exists, but file is missing\n\n"
+                error_msg += "Directory exists, but file is missing\n\n"
 
                 # Show available files in the directory
                 try:
@@ -238,7 +233,7 @@ class GenomeConfig(BaseModel):
                             error_msg += "\n"
 
                         if other_files and len(all_files) <= 15:
-                            error_msg += "📄 All files in directory:\n"
+                            error_msg += "All files in directory:\n"
                             for file in sorted(other_files)[:10]:
                                 error_msg += f"   • {file}\n"
                             if len(other_files) > 10:
@@ -246,14 +241,16 @@ class GenomeConfig(BaseModel):
                                     f"   ... and {len(other_files) - 10} more files\n"
                                 )
                         elif other_files:
-                            error_msg += f"📄 Directory contains {len(other_files)} other files\n"
+                            error_msg += (
+                                f"Directory contains {len(other_files)} other files\n"
+                            )
                         error_msg += "\n"
                     else:
-                        error_msg += "� Directory is empty\n\n"
+                        error_msg += "Directory is empty\n\n"
                 except Exception:
-                    error_msg += "📄 Could not list directory contents\n\n"
+                    error_msg += "Could not list directory contents\n\n"
             else:
-                error_msg += "💡 Directory does not exist\n\n"
+                error_msg += "Directory does not exist\n\n"
 
             error_msg += "🔧 How to fix:\n"
             error_msg += "   1. Check the file path for typos\n"
@@ -418,18 +415,20 @@ class UCSCHubConfig(BaseModel):
                 )
 
             case Assay.MCC:
-                return cls(supergroup_by=["norm", "file_type"],
-                           color_by=["viewpoint", 'samplename'], 
-                           subgroup_by=["viewpoint"],
-                           overlay_by=["samplename"])
-            
+                return cls(
+                    supergroup_by=["norm", "file_type"],
+                    color_by=["viewpoint", "samplename"],
+                    subgroup_by=["viewpoint"],
+                    overlay_by=["samplename"],
+                )
+
             case Assay.CHIP | Assay.CAT:
                 return cls(
                     supergroup_by=["file_type"],
-                    subgroup_by=["method", "norm", 'antibody'],
+                    subgroup_by=["method", "norm", "antibody"],
                     color_by=["antibody", "samplename"],
                 )
-            
+
             case Assay.ATAC:
                 return cls(
                     supergroup_by=["file_type"],
@@ -456,7 +455,9 @@ class RNAQuantificationConfig(BaseModel, PathValidatorMixin):
     @field_validator("strandedness")
     def validate_strandedness(cls, v: int) -> int:
         if v not in {0, 1, 2}:
-            raise ValueError("strandedness must be 0 (unstranded), 1 (forward), or 2 (reverse).")
+            raise ValueError(
+                "strandedness must be 0 (unstranded), 1 (forward), or 2 (reverse)."
+            )
         return v
 
 
@@ -503,7 +504,9 @@ class MCCConfig(BaseModel, PathValidatorMixin):
 
     viewpoints: Path
     resolutions: list[int] = Field(
-        default_factory=lambda: [100,],
+        default_factory=lambda: [
+            100,
+        ],
         description="List of resolutions (in base pairs) for contact file generation",
     )
     exclusion_zone: int = Field(
@@ -529,10 +532,9 @@ class MCCConfig(BaseModel, PathValidatorMixin):
             raise ValueError("Resolutions list must not be empty.")
         if any(resolution <= 0 for resolution in v):
             raise ValueError("All resolutions must be positive integers.")
-        
+
         v = list(sorted(set(v)))  # Remove duplicates and sort
         return v
-    
 
 
 class MLDatasetConfig(BaseModel, PathValidatorMixin):

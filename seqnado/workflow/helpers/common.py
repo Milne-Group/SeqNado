@@ -49,10 +49,12 @@ def get_group_for_sample(
     """
     from seqnado.inputs import SampleGroups
 
-    scaling_groups = SampleGroups.from_sample_collection(design, include_controls=True)
+    df = design.to_dataframe()
+    scaling_groups = SampleGroups.from_dataframe(df, subset_column="scaling_group")
 
+    sample_name = wildcards.sample.strip(strip)
     try:
-        group = scaling_groups.get_sample_group(wildcards.sample.strip(strip))
+        group = scaling_groups.sample_to_group[sample_name]
         return group
     except KeyError:
         raise KeyError(f"Sample {wildcards.sample} not found in normalisation groups.")

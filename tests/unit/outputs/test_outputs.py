@@ -932,11 +932,11 @@ class TestSeqnadoOutputFilesCore:
         from seqnado.outputs.core import SeqnadoOutputFiles
 
         files = [
-            "output/bigwigs/deeptools/unscaled/atac/sample1.bigWig",
-            "output/bigwigs/deeptools/unscaled/RNA/sample1.bigWig",
-            "output/bigwigs/deeptools/unscaled/chip/sample1.bigWig",
+            "output/bigwigs/deeptools/unscaled/atac_sample1.bigWig",
+            "output/bigwigs/deeptools/unscaled/rna_sample1.bigWig",
+            "output/bigwigs/deeptools/unscaled/chip_sample1.bigWig",
         ]
-        output = SeqnadoOutputFiles(files=files, sample_names=["sample1"])
+        output = SeqnadoOutputFiles(files=files, sample_names=["atac_sample1"])
 
         # Filter for ATAC
         result = output.select_bigwig_subtype(
@@ -954,7 +954,7 @@ class TestSeqnadoOutputFilesCore:
             assay=Assay.RNA,
         )
         assert len(result) == 1
-        assert "RNA" in result[0]
+        assert "rna" in result[0].lower()
 
     def test_bigbed_files_property(self):
         """Test bigbed_files property."""

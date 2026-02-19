@@ -73,7 +73,7 @@ rule deeptools_make_bigwigs:
     """
 
 
-rule bamnado_bam_coverage:
+rule bamnado_make_bigwigs:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -94,7 +94,7 @@ rule bamnado_bam_coverage:
     container:
         "docker://ghcr.io/alsmith151/bamnado:latest"
     log:
-        OUTPUT_DIR + "/logs/pileups/bamnado/{sample}.log",
+        OUTPUT_DIR + "/logs/pileups/bamnado/unscaled/{sample}.log",
     benchmark:
         OUTPUT_DIR + "/.benchmark/bamnado/makebigwigs_{sample}.tsv"
     message:

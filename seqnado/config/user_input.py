@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 from seqnado import (
     Assay,
+    DataScalingTechnique,
     MethylationMethod,
     MotifMethod,
     PeakCallingMethod,
@@ -267,8 +268,23 @@ def get_bigwig_config(assay: Assay) -> Optional[BigwigConfig]:
 
     binsize = get_user_input("Binsize for bigwigs:", default="10", required=False)
 
+    scale_method_choices = [
+        DataScalingTechnique.UNSCALED.value,
+        DataScalingTechnique.CSAW.value,
+    ]
+    scale_methods = get_user_input(
+        "Bigwig scaling method(s) (comma-separated for multiple):",
+        choices=scale_method_choices,
+        default=DataScalingTechnique.UNSCALED.value,
+        multi_select=True,
+    )
+    if isinstance(scale_methods, str):
+        scale_methods = [scale_methods]
+
     return BigwigConfig(
-        pileup_method=[PileupMethod(m) for m in pileup_methods], binsize=binsize
+        pileup_method=[PileupMethod(m) for m in pileup_methods],
+        binsize=binsize,
+        scale_methods=scale_methods,
     )
 
 

@@ -76,7 +76,7 @@ use rule make_bigwigs_mcc_replicates as make_bigwigs_mcc_grouped_raw with:
         bai=OUTPUT_DIR + "/mcc/{group}/{group}.bam.bai",
         excluded_regions=OUTPUT_DIR + "/resources/exclusion_regions.bed",
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/mcc/unscaled/{group}_{viewpoint_group}.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/mcc/{group}_{viewpoint_group}.bigWig",
     params:
         scale_factor=1,
         options=str(
@@ -108,7 +108,7 @@ rule confirm_bigwigs_generated:
             viewpoint_group=VIEWPOINT_TO_GROUPED_VIEWPOINT.values(),
         ),
         unscaled_consensus=expand(
-            OUTPUT_DIR + "/bigwigs/mcc/unscaled/{group}_{viewpoint_group}.bigWig",
+            OUTPUT_DIR + "/bigwigs/mcc/{group}_{viewpoint_group}.bigWig",
             group=SAMPLE_GROUPINGS.get_grouping("consensus").group_names,
             viewpoint_group=VIEWPOINT_TO_GROUPED_VIEWPOINT.values(),
         ),

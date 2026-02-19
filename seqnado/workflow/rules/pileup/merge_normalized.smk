@@ -15,7 +15,7 @@ rule deeptools_make_bigwigs_merged_scale:
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
         scaling_factors=OUTPUT_DIR + "/resources/{group}_scaling_factors.tsv",
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/csaw/merged/{group}.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/csaw/{group}.bigWig",
     params:
         scale=lambda wc: get_scaling_factor_for_merged_group(wc, SAMPLE_GROUPINGS, OUTPUT_DIR),
         options=lambda wc: format_deeptools_options(
@@ -29,8 +29,8 @@ rule deeptools_make_bigwigs_merged_scale:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    log: OUTPUT_DIR + "/logs/pileups/deeptools/csaw/merged/{group}.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/pileups/deeptools/csaw/merged/{group}.tsv",
+    log: OUTPUT_DIR + "/logs/bigwigs/deeptools/merged/csaw/{group}.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/deeptools/merged/csaw/{group}.tsv",
     message: "Making CSAW-scaled merged bigWig with deeptools for group {wildcards.group}"
     wildcard_constraints:
         group="|".join(SAMPLE_GROUPINGS.get_grouping('consensus').group_names),
@@ -46,7 +46,7 @@ rule deeptools_make_bigwigs_merged_spikein:
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
         scaling_factors=OUTPUT_DIR + "/resources/{spikein_method}/normalisation_factors.json",
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/spikein/{spikein_method}/merged/{group}.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/spikein/{spikein_method}/{group}.bigWig",
     params:
         scale=lambda wc: get_norm_factor_spikein_for_merged_group(wc, SAMPLE_GROUPINGS, OUTPUT_DIR, negative=False),
         options=lambda wc: format_deeptools_options(
@@ -60,8 +60,8 @@ rule deeptools_make_bigwigs_merged_spikein:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    log: OUTPUT_DIR + "/logs/pileups/deeptools/spikein/{spikein_method}/merged/{group}.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/pileups/deeptools/spikein/{spikein_method}/merged/{group}.tsv",
+    log: OUTPUT_DIR + "/logs/bigwigs/deeptools/merged/spikein/{spikein_method}/{group}.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/deeptools/merged/spikein/{spikein_method}/{group}.tsv",
     message: "Making spike-in normalized merged bigWig with deeptools for group {wildcards.group} using {wildcards.spikein_method}"
     wildcard_constraints:
         group="|".join(SAMPLE_GROUPINGS.get_grouping('consensus').group_names),
@@ -77,7 +77,7 @@ rule bamnado_make_bigwigs_merged_scale:
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
         scaling_factors=OUTPUT_DIR + "/resources/{group}_scaling_factors.tsv",
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/csaw/merged/{group}.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/csaw/{group}.bigWig",
     params:
         scale=lambda wc: get_scaling_factor_for_merged_group(wc, SAMPLE_GROUPINGS, OUTPUT_DIR),
         options=str(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments),
@@ -86,8 +86,8 @@ rule bamnado_make_bigwigs_merged_scale:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log: OUTPUT_DIR + "/logs/pileups/bamnado/csaw/merged/{group}.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/pileups/bamnado/csaw/merged/{group}.tsv",
+    log: OUTPUT_DIR + "/logs/bigwigs/bamnado/merged/csaw/{group}.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/bamnado/merged/csaw/{group}.tsv",
     message: "Making CSAW-scaled merged bigWig with bamnado for group {wildcards.group}"
     wildcard_constraints:
         group="|".join(SAMPLE_GROUPINGS.get_grouping('consensus').group_names),
@@ -104,7 +104,7 @@ rule bamnado_make_bigwigs_merged_spikein:
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
         scaling_factors=OUTPUT_DIR + "/resources/{spikein_method}/normalisation_factors.json",
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/spikein/{spikein_method}/merged/{group}.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/spikein/{spikein_method}/{group}.bigWig",
     params:
         scale=lambda wc: get_norm_factor_spikein_for_merged_group(wc, SAMPLE_GROUPINGS, OUTPUT_DIR, negative=False),
         options=str(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments),
@@ -113,8 +113,8 @@ rule bamnado_make_bigwigs_merged_spikein:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log: OUTPUT_DIR + "/logs/pileups/bamnado/spikein/{spikein_method}/merged/{group}.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/pileups/bamnado/spikein/{spikein_method}/merged/{group}.tsv",
+    log: OUTPUT_DIR + "/logs/bigwigs/bamnado/merged/spikein/{spikein_method}/{group}.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/bamnado/merged/spikein/{spikein_method}/{group}.tsv",
     message: "Making spike-in normalized merged bigWig with bamnado for group {wildcards.group} using {wildcards.spikein_method}"
     wildcard_constraints:
         group="|".join(SAMPLE_GROUPINGS.get_grouping('consensus').group_names),
@@ -127,23 +127,23 @@ rule bamnado_make_bigwigs_merged_spikein:
 
 rule homer_make_bigwigs_merged_scale:
     input:
-        homer_tag_directory=OUTPUT_DIR + "/tag_dirs/merged/{group}",
+        homer_tag_directory=OUTPUT_DIR + "/tag_dirs/merged/unscaled/{group}",
         scaling_factors=OUTPUT_DIR + "/resources/{group}_scaling_factors.tsv",
     output:
-        homer_bigwig=OUTPUT_DIR + "/bigwigs/homer/csaw/merged/{group}.bigWig",
+        homer_bigwig=OUTPUT_DIR + "/bigwigs/homer/merged/csaw/{group}.bigWig",
     params:
         genome_name=CONFIG.genome.name,
         genome_chrom_sizes=CONFIG.genome.chromosome_sizes,
         options=str(CONFIG.third_party_tools.homer.make_bigwig.command_line_arguments),
-        outdir=OUTPUT_DIR + "/bigwigs/homer/csaw/merged/",
+        outdir=OUTPUT_DIR + "/bigwigs/homer/merged/csaw/",
         scale=lambda wc: get_scaling_factor_for_merged_group(wc, SAMPLE_GROUPINGS, OUTPUT_DIR),
         temp_bw=lambda wc, output: output.homer_bigwig.replace(".bigWig", ".ucsc.bigWig"),
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
-    log: OUTPUT_DIR + "/logs/pileups/homer/csaw/merged/{group}.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/pileups/homer/csaw/merged/{group}.tsv",
+    log: OUTPUT_DIR + "/logs/bigwigs/homer/merged/csaw/{group}.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/homer/merged/csaw/{group}.tsv",
     message: "Making CSAW-scaled merged bigWig with HOMER for group {wildcards.group}"
     wildcard_constraints:
         group="|".join(SAMPLE_GROUPINGS.get_grouping('consensus').group_names),
@@ -156,23 +156,23 @@ rule homer_make_bigwigs_merged_scale:
 
 rule homer_make_bigwigs_merged_spikein:
     input:
-        homer_tag_directory=OUTPUT_DIR + "/tag_dirs/merged/{group}",
+        homer_tag_directory=OUTPUT_DIR + "/tag_dirs/merged/unscaled/{group}",
         scaling_factors=OUTPUT_DIR + "/resources/{spikein_method}/normalisation_factors.json",
     output:
-        homer_bigwig=OUTPUT_DIR + "/bigwigs/homer/spikein/{spikein_method}/merged/{group}.bigWig",
+        homer_bigwig=OUTPUT_DIR + "/bigwigs/homer/merged/spikein/{spikein_method}/{group}.bigWig",
     params:
         genome_name=CONFIG.genome.name,
         genome_chrom_sizes=CONFIG.genome.chromosome_sizes,
         options=str(CONFIG.third_party_tools.homer.make_bigwig.command_line_arguments),
-        outdir=OUTPUT_DIR + "/bigwigs/homer/spikein/{spikein_method}/merged/",
+        outdir=OUTPUT_DIR + "/bigwigs/homer/merged/spikein/{spikein_method}/",
         scale=lambda wc: get_norm_factor_spikein_for_merged_group(wc, SAMPLE_GROUPINGS, OUTPUT_DIR, negative=False),
         temp_bw=lambda wc, output: output.homer_bigwig.replace(".bigWig", ".ucsc.bigWig"),
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
-    log: OUTPUT_DIR + "/logs/pileups/homer/spikein/{spikein_method}/merged/{group}.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/pileups/homer/spikein/{spikein_method}/merged/{group}.tsv",
+    log: OUTPUT_DIR + "/logs/bigwigs/homer/merged/spikein/{spikein_method}/{group}.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/homer/merged/spikein/{spikein_method}/{group}.tsv",
     message: "Making spike-in normalized merged bigWig with HOMER for group {wildcards.group} using {wildcards.spikein_method}"
     wildcard_constraints:
         group="|".join(SAMPLE_GROUPINGS.get_grouping('consensus').group_names),

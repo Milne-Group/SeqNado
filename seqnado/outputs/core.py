@@ -358,16 +358,36 @@ class SeqnadoOutputBuilder:
 
     def add_individual_bigwig_files(self) -> None:
         """Add individual bigwig files to the output collection."""
+        from seqnado.inputs import FastqCollectionForIP
 
-        bigwig_files = BigWigFiles(
-            assay=self.assay,
-            names=self.samples.sample_names,
-            pileup_methods=self.config.assay_config.bigwigs.pileup_method,
-            scale_methods=self.scale_methods,
-            output_dir=self.output_dir,
-        )
+        unscaled_scales = [m for m in self.scale_methods if m == DataScalingTechnique.UNSCALED]
+        normalized_scales = [m for m in self.scale_methods if m != DataScalingTechnique.UNSCALED]
 
-        self.file_collections.append(bigwig_files)
+        # Unscaled bigwigs are generated for all samples (including controls)
+        if unscaled_scales:
+            bigwig_files = BigWigFiles(
+                assay=self.assay,
+                names=self.samples.sample_names,
+                pileup_methods=self.config.assay_config.bigwigs.pileup_method,
+                scale_methods=unscaled_scales,
+                output_dir=self.output_dir,
+            )
+            self.file_collections.append(bigwig_files)
+
+        # Normalized (e.g. CSAW) bigwigs only apply to IP samples, not controls
+        if normalized_scales:
+            if isinstance(self.samples, FastqCollectionForIP):
+                names = self.samples.ip_sample_names
+            else:
+                names = self.samples.sample_names
+            bigwig_files = BigWigFiles(
+                assay=self.assay,
+                names=names,
+                pileup_methods=self.config.assay_config.bigwigs.pileup_method,
+                scale_methods=normalized_scales,
+                output_dir=self.output_dir,
+            )
+            self.file_collections.append(bigwig_files)
 
     def add_spikein_bigwig_files(self) -> None:
         """Add spike-in normalized bigwig files to the output collection."""
@@ -400,8 +420,9 @@ class SeqnadoOutputBuilder:
                     assay=self.assay,
                     names=[group.name],
                     pileup_methods=self.config.assay_config.bigwigs.pileup_method,
-                    scale_methods=[DataScalingTechnique.MERGED],
+                    scale_methods=[DataScalingTechnique.UNSCALED],
                     output_dir=self.output_dir,
+                    is_merged=True,
                 )
                 self.file_collections.append(bigwig_files)
 
@@ -581,7 +602,13 @@ class SeqnadoOutputBuilder:
 
     def add_heatmap_files(self) -> None:
         """Add heatmap files to the output collection."""
-        heatmaps = HeatmapFiles(assay=self.assay, output_dir=self.output_dir)
+        has_spikein = getattr(self.config.assay_config, "has_spikein", False)
+        heatmaps = HeatmapFiles(
+            assay=self.assay,
+            scale_methods=self.scale_methods,
+            has_spikein=has_spikein,
+            output_dir=self.output_dir,
+        )
         self.file_collections.append(heatmaps)
 
     def add_hub_files(self) -> None:

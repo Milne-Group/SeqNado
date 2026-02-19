@@ -73,8 +73,7 @@ Genome-wide signal tracks for visualisation, organised by tool and scaling metho
 ```
 bigwigs/
 ├── {method}/                         # deeptools, homer, or bamnado
-│   ├── unscaled/                     # Default unscaled tracks
-│   │   └── {sample}.bigWig
+│   ├── {sample}.bigWig           # Default unscaled tracks
 │   ├── csaw/                         # CSAW-normalised (if enabled)
 │   │   └── {sample}.bigWig
 │   ├── spikein/                      # Spike-in normalised (if applicable)
@@ -87,8 +86,8 @@ bigwigs/
 For **RNA-seq**, stranded bigwigs are produced with `_plus` and `_minus` suffixes:
 
 ```
-bigwigs/{method}/unscaled/{sample}_plus.bigWig
-bigwigs/{method}/unscaled/{sample}_minus.bigWig
+bigwigs/{method}/{sample}_plus.bigWig
+bigwigs/{method}/{sample}_minus.bigWig
 ```
 
 **Pileup Tools:**
@@ -261,7 +260,7 @@ ATAC-seq includes Tn5 insertion site correction during BAM processing and suppor
 
 - `aligned/{sample}.bam` -- Tn5-shifted, filtered alignments
 - `peaks/lanceotron/{sample}.bed` -- ML-based peak calls (default)
-- `bigwigs/{method}/unscaled/{sample}.bigWig` -- Coverage tracks
+- `bigwigs/{method}/{sample}.bigWig` -- Coverage tracks
 
 **Key Metrics:**
 
@@ -293,7 +292,7 @@ CUT&Tag is a separate assay from ChIP-seq, with SEACR as the default peak caller
 
 - `aligned/{sample}.bam` -- Final alignments (optionally Tn5-shifted)
 - `peaks/seacr/{sample}.bed` -- SEACR peak calls (default)
-- `bigwigs/{method}/unscaled/{sample}.bigWig` -- Coverage tracks
+- `bigwigs/{method}/{sample}.bigWig` -- Coverage tracks
 
 ### RNA-seq
 
@@ -304,8 +303,8 @@ RNA-seq alignment uses STAR, with quantification by featureCounts and/or Salmon:
 - `aligned/{sample}.bam` -- STAR-aligned, processed BAM
 - `readcounts/feature_counts/read_counts.tsv` -- Combined gene-level counts
 - `readcounts/salmon/salmon_counts.csv` -- Salmon quantification (if enabled)
-- `bigwigs/{method}/unscaled/{sample}_plus.bigWig` -- Stranded coverage (plus strand)
-- `bigwigs/{method}/unscaled/{sample}_minus.bigWig` -- Stranded coverage (minus strand)
+- `bigwigs/{method}/{sample}_plus.bigWig` -- Stranded coverage (plus strand)
+- `bigwigs/{method}/{sample}_minus.bigWig` -- Stranded coverage (minus strand)
 - `qc/qualimap_rnaseq/{sample}/qualimapReport.html` -- RNA-specific QC
 
 ### Methylation (METH)

@@ -176,7 +176,6 @@ class BigWigFiles(BaseModel):
 
     def generate_bigwig_paths(self) -> list[str]:
         paths = []
-        name_prefix = "merged/" if self.is_merged else ""
 
         for method in self.pileup_methods:
             for scale in self.scale_methods:
@@ -186,27 +185,39 @@ class BigWigFiles(BaseModel):
                 # For spike-in scaling, iterate over all spikein methods
                 if scale == DataScalingTechnique.SPIKEIN and self.spikein_methods:
                     for spikein_method in self.spikein_methods:
-                        scale_path = f"{scale.value}/{spikein_method.value}"
-                        if self.is_rna and not self.is_merged:
+                        if self.is_merged:
+                            scale_path = f"merged/spikein/{spikein_method.value}"
+                            for name in self.names:
+                                path = f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
+                                paths.append(path)
+                        else:
+                            scale_path = f"{scale.value}/{spikein_method.value}"
+                            if self.is_rna:
+                                for name in self.names:
+                                    for strand in ["plus", "minus"]:
+                                        path = f"{self.prefix}{method.value}/{scale_path}/{name}_{strand}.bigWig"
+                                        paths.append(path)
+                            else:
+                                for name in self.names:
+                                    path = f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
+                                    paths.append(path)
+                else:
+                    if self.is_merged:
+                        scale_path = f"merged/{scale.value}"
+                        for name in self.names:
+                            path = f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
+                            paths.append(path)
+                    else:
+                        scale_path = scale.value
+                        if self.is_rna:
                             for name in self.names:
                                 for strand in ["plus", "minus"]:
                                     path = f"{self.prefix}{method.value}/{scale_path}/{name}_{strand}.bigWig"
                                     paths.append(path)
                         else:
                             for name in self.names:
-                                path = f"{self.prefix}{method.value}/{scale_path}/{name_prefix}{name}.bigWig"
+                                path = f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
                                 paths.append(path)
-                else:
-                    scale_path = scale.value
-                    if self.is_rna and not self.is_merged:
-                        for name in self.names:
-                            for strand in ["plus", "minus"]:
-                                path = f"{self.prefix}{method.value}/{scale_path}/{name}_{strand}.bigWig"
-                                paths.append(path)
-                    else:
-                        for name in self.names:
-                            path = f"{self.prefix}{method.value}/{scale_path}/{name_prefix}{name}.bigWig"
-                            paths.append(path)
 
         return paths
 
@@ -297,6 +308,11 @@ class MotifFiles(BaseModel):
 
 class HeatmapFiles(BaseModel):
     assay: Assay
+    scale_methods: list[DataScalingTechnique] = Field(
+        default_factory=lambda: [DataScalingTechnique.UNSCALED]
+    )
+    has_spikein: bool = False
+    output_dir: str = "seqnado_output"
 
     @field_validator("assay")
     def validate_assay(cls, value):
@@ -304,14 +320,21 @@ class HeatmapFiles(BaseModel):
             raise ValueError(f"Invalid assay for heatmap: {value}")
         return value
 
-    output_dir: str = "seqnado_output"
-
     @property
     def heatmap_files(self) -> list[str]:
-        return [
-            f"{self.output_dir}/heatmap/heatmap.pdf",
-            f"{self.output_dir}/heatmap/metaplot.pdf",
-        ]
+        files = []
+
+        scales = list(self.scale_methods)
+        if self.has_spikein and DataScalingTechnique.SPIKEIN not in scales:
+            scales.append(DataScalingTechnique.SPIKEIN)
+
+        for scale in scales:
+            files.extend([
+                f"{self.output_dir}/heatmap/{scale.value}/heatmap.pdf",
+                f"{self.output_dir}/heatmap/{scale.value}/metaplot.pdf",
+            ])
+
+        return files
 
     @computed_field
     @property

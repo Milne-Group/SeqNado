@@ -9,7 +9,7 @@ rule bamnado_make_bigwigs_merged:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/{group}.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/unscaled/{group}.bigWig",
     params:
         options=str(
             CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments
@@ -37,7 +37,7 @@ rule deeptools_make_bigwigs_merged:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/{group}.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/unscaled/{group}.bigWig",
     params:
        options=lambda wildcards: format_deeptools_options(
            wildcards,
@@ -51,7 +51,7 @@ rule deeptools_make_bigwigs_merged:
     threads:
         CONFIG.third_party_tools.deeptools.bam_coverage.threads,
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log: OUTPUT_DIR + "/logs/bigwigs/{group}.log",
+    log: OUTPUT_DIR + "/logs/bigwigs/deeptools/merged/{group}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/deeptools/merged/{group}.tsv",
     message: "Making bigWig with deeptools for merged sample {wildcards.group}"
     wildcard_constraints:
@@ -66,7 +66,7 @@ rule homer_make_tag_directory_merged:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
     output:
-        homer_tag_directory=directory(OUTPUT_DIR + "/tag_dirs/merged/{group}"),
+        homer_tag_directory=directory(OUTPUT_DIR + "/tag_dirs/merged/unscaled/{group}"),
     params:
         options=str(
             CONFIG.third_party_tools.homer.make_tag_directory.command_line_arguments
@@ -81,9 +81,9 @@ rule homer_make_tag_directory_merged:
     container:
         "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
     log:
-        OUTPUT_DIR + "/logs/homer/maketagdirectory_merged_{group}.log",
+        OUTPUT_DIR + "/logs/homer/maketagdirectory/merged/{group}.log",
     benchmark:
-        OUTPUT_DIR + "/.benchmark/homer/maketagdirectory_merged_{group}.tsv"
+        OUTPUT_DIR + "/.benchmark/homer/maketagdirectory/merged/{group}.tsv"
     message:
         "Making tag directory with HOMER for merged sample {wildcards.group}"
     wildcard_constraints:
@@ -96,14 +96,14 @@ rule homer_make_tag_directory_merged:
 
 rule homer_make_bigwigs_merged:
     input:
-        homer_tag_directory=OUTPUT_DIR + "/tag_dirs/merged/{group}",
+        homer_tag_directory=OUTPUT_DIR + "/tag_dirs/merged/unscaled/{group}",
     output:
-        homer_bigwig=OUTPUT_DIR + "/bigwigs/homer/merged/{group}.bigWig",
+        homer_bigwig=OUTPUT_DIR + "/bigwigs/homer/merged/unscaled/{group}.bigWig",
     params:
         genome_name=CONFIG.genome.name,
         genome_chrom_sizes=CONFIG.genome.chromosome_sizes,
         options=str(CONFIG.third_party_tools.homer.make_bigwig.command_line_arguments),
-        outdir=OUTPUT_DIR + "/bigwigs/homer/merged/",
+        outdir=OUTPUT_DIR + "/bigwigs/homer/merged/unscaled/",
         temp_bw=lambda wc, output: output.homer_bigwig.replace(
             ".bigWig", ".ucsc.bigWig"
         ),
@@ -117,9 +117,9 @@ rule homer_make_bigwigs_merged:
             initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
         ),
     log:
-        OUTPUT_DIR + "/logs/homer/makebigwigs_merged_{group}.log",
+        OUTPUT_DIR + "/logs/homer/makebigwigs/merged/{group}.log",
     benchmark:
-        OUTPUT_DIR + "/.benchmark/homer/makebigwigs_merged_{group}.tsv"
+        OUTPUT_DIR + "/.benchmark/homer/makebigwigs/merged/{group}.tsv"
     message:
         "Making bigWig with HOMER for merged sample {wildcards.group}"
     wildcard_constraints:

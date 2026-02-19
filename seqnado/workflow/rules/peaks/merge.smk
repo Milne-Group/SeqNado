@@ -3,7 +3,7 @@
 
 rule lanceotron_no_input_consensus:
     input:
-        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/{group}.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/unscaled/{group}.bigWig",
     output:
         peaks=OUTPUT_DIR + "/peaks/lanceotron/merged/{group}.bed",
         ltron_peaks=temp(OUTPUT_DIR + "/peaks/lanceotron/merged/{group}_L-tron.bed"),
@@ -53,7 +53,7 @@ use rule macs3_no_input as macs3_no_input_consensus with:
 
 use rule homer_no_input as homer_no_input_consensus with:
     input:
-        treatment = OUTPUT_DIR + "/tag_dirs/merged/{group}",
+        treatment = OUTPUT_DIR + "/tag_dirs/merged/unscaled/{group}",
     output:
         peaks = OUTPUT_DIR + "/peaks/homer/merged/{group}.bed",
     log: OUTPUT_DIR + "/logs/homer/merged/{group}.log",
@@ -65,7 +65,7 @@ use rule homer_no_input as homer_no_input_consensus with:
 
 rule seacr_consensus:
     input:
-        treatment=OUTPUT_DIR + "/bigwigs/deeptools/merged/{group}.bigWig",
+        treatment=OUTPUT_DIR + "/bigwigs/deeptools/merged/unscaled/{group}.bigWig",
     output:
         peaks=OUTPUT_DIR + "/peaks/seacr/merged/{group}.bed",
         temp_peaks=temp(OUTPUT_DIR + "/peaks/seacr/merged/{group}.stringent.bed"),

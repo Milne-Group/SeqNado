@@ -11,7 +11,7 @@ rule make_dataset_regions:
     output:
         dataset=OUTPUT_DIR + "/dataset/dataset_regions.h5ad",
     params:
-        bigwig_dir=OUTPUT_DIR + "/bigwigs/deeptools/unscaled/",
+        bigwig_dir=OUTPUT_DIR + "/bigwigs/deeptools/",
         chromosome_sizes=CONFIG.genome.chromosome_sizes,
         blacklist=CONFIG.genome.blacklist,
         regions=CONFIG.assay_config.dataset_for_ml.regions_bed,
@@ -44,7 +44,7 @@ rule make_dataset_binsize:
     output:
         dataset=OUTPUT_DIR + "/dataset/dataset_bins.h5ad",
     params:
-        bigwig_dir=OUTPUT_DIR + "/bigwigs/deeptools/unscaled/",
+        bigwig_dir=OUTPUT_DIR + "/bigwigs/deeptools/",
         chromosome_sizes=CONFIG.genome.chromosome_sizes,
         blacklist=CONFIG.genome.blacklist,
         binsize=CONFIG.assay_config.dataset_for_ml.binsize,
