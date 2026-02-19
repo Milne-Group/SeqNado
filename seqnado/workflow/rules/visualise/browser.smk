@@ -77,7 +77,7 @@ use rule plotnado_deeptools as plotnado_deeptools_spikein_orlando with:
 
 
 # ─── deeptools · individual · spikein · with_input ───────────────────────────
-use rule plotnado_deeptools as plotnado_spikein_withinput with:
+use rule plotnado_deeptools as plotnado_deeptools_spikein_withinput with:
     input:
         data=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
