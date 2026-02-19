@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotnado.api as pn
+import pybedtools
 import pyranges as pr
 import seaborn as sns
 from loguru import logger
@@ -154,6 +155,13 @@ def create_color_palette(names: list) -> dict:
     return dict(zip(names, sns.color_palette("tab20", n_colors=len(names))))
 
 
+def prepare_bed_for_tabix(bed_path: Path) -> str:
+    """Sort, bgzip, and tabix-index a BED file. Returns path to the .gz file."""
+    bt = pybedtools.BedTool(str(bed_path))
+    bt_tabix = bt.sort().tabix(force=True)
+    return bt_tabix.fn
+
+
 def build_figure(df: pd.DataFrame, assay: str, genes_file: str = None) -> pn.Figure:
     """
     Build a Plotnado figure with all tracks.
@@ -190,9 +198,15 @@ def build_figure(df: pd.DataFrame, assay: str, genes_file: str = None) -> pn.Fig
     for track in df.itertuples():
         track_type, style, autoscaling_group = get_track_config(track, assay)
 
+        file_path = (
+            prepare_bed_for_tabix(track.path)
+            if track.type == ".bed"
+            else str(track.path)
+        )
+
         t = pn.TrackWrapper(
             track_type,
-            str(track.path),
+            file_path,
             name=track.track_name,
             title=track.track_name,
             color=colors_dict[track.name],
