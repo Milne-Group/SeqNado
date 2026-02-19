@@ -405,6 +405,55 @@ class SeqnadoOutputBuilder:
                 )
                 self.file_collections.append(bigwig_files)
 
+    def add_grouped_normalized_bigwig_files(self) -> None:
+        """Add CSAW-scaled merged bigwig files to the output collection."""
+
+        normalized_scales = [
+            s for s in self.scale_methods
+            if s == DataScalingTechnique.CSAW
+        ]
+        if not normalized_scales:
+            return
+
+        consensus_groups = self.sample_groupings.groupings.get("consensus")
+        if not consensus_groups:
+            return
+
+        for group in consensus_groups.groups:
+            bigwig_files = BigWigFiles(
+                assay=self.assay,
+                names=[group.name],
+                pileup_methods=self.config.assay_config.bigwigs.pileup_method,
+                scale_methods=normalized_scales,
+                output_dir=self.output_dir,
+                is_merged=True,
+            )
+            self.file_collections.append(bigwig_files)
+
+    def add_grouped_spikein_bigwig_files(self) -> None:
+        """Add spike-in normalized merged bigwig files to the output collection."""
+
+        spikein_config = getattr(self.config.assay_config, "spikein", None)
+        spikein_methods = spikein_config.method if spikein_config else []
+        if not spikein_methods:
+            return
+
+        consensus_groups = self.sample_groupings.groupings.get("consensus")
+        if not consensus_groups:
+            return
+
+        for group in consensus_groups.groups:
+            bigwig_files = BigWigFiles(
+                assay=self.assay,
+                names=[group.name],
+                pileup_methods=self.config.assay_config.bigwigs.pileup_method,
+                scale_methods=[DataScalingTechnique.SPIKEIN],
+                spikein_methods=spikein_methods,
+                output_dir=self.output_dir,
+                is_merged=True,
+            )
+            self.file_collections.append(bigwig_files)
+
     def add_mcc_sentinel_pileup_files(self) -> None:
         """Add MCC sentinel files to the output collection.
         The issue with MCC bigwig files is that they are generated per viewpoint group.
@@ -817,6 +866,7 @@ class SeqnadoOutputFactory:
                 builder.add_individual_bigwig_files()
                 if self.sample_groupings:
                     builder.add_grouped_bigwig_files()
+                    builder.add_grouped_normalized_bigwig_files()
             else:
                 builder.add_mcc_sentinel_pileup_files()
 
@@ -857,6 +907,8 @@ class SeqnadoOutputFactory:
             builder.add_spikein_files()
             if self.assay_config.create_bigwigs:
                 builder.add_spikein_bigwig_files()
+                if self.sample_groupings:
+                    builder.add_grouped_spikein_bigwig_files()
 
         if getattr(self.assay_config, "create_quantification_files", False):
             builder.add_quantification_files()

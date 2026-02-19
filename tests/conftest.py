@@ -88,6 +88,15 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=2,
         help="Number of CPU cores to allocate to pipeline tests (default: 2)",
     )
+    group.addoption(
+        "--preset",
+        action="store",
+        default="t",
+        help=(
+            "Snakemake profile preset for pipeline tests "
+            "(e.g. t, tc, lc, ls, le, ld). Default: t"
+        ),
+    )
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]):
@@ -123,8 +132,11 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
                 )
 
         # If a test requires Apptainer and it's not available, skip it
+        # unless the chosen preset doesn't use Apptainer (tc, le)
         if any(m.name == "requires_apptainer" for m in item.iter_markers()):
-            if not apptainer_available:
+            preset = config.getoption("--preset", default="t")
+            presets_without_apptainer = {"tc", "le"}
+            if not apptainer_available and preset not in presets_without_apptainer:
                 item.add_marker(
                     pytest.mark.skip(reason="Apptainer/Singularity not found in PATH")
                 )

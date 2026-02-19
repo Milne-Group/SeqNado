@@ -1,0 +1,64 @@
+# SeqNado Docker Compose — for running the pipeline and tests on macOS
+#
+# Apptainer does not run natively on macOS, so these services spin up a Linux
+# container (with Apptainer installed).  Privileged mode is required for
+# Apptainer to work inside Docker.
+#
+# Run the pipeline:
+#   SEQNADO_WORKDIR=/path/to/analysis docker compose run --rm seqnado seqnado pipeline run --profile ld
+#
+# Run pipeline tests (toy data, Apptainer available inside Docker):
+#   docker compose run --rm tests
+#   ASSAYS=chip,atac CORES=4 docker compose run --rm tests
+
+x-base: &base
+  build:
+    context: ..
+    dockerfile: .devcontainer/Dockerfile
+    platforms:
+      - linux/amd64
+  privileged: true  # Required for Apptainer to work inside Docker
+  environment:
+    - APPTAINER_CACHEDIR=/apptainer-cache
+    - APPTAINER_TMPDIR=/apptainer-cache/tmp
+    - SINGULARITY_CACHEDIR=/apptainer-cache
+    - SINGULARITY_TMPDIR=/apptainer-cache/tmp
+
+services:
+  seqnado:
+    <<: *base
+    volumes:
+      # Mount your analysis directory — defaults to the current directory
+      - ${SEQNADO_WORKDIR:-.}:/workspace
+      - apptainer-cache:/apptainer-cache
+    working_dir: /workspace
+
+  tests:
+    <<: *base
+    volumes:
+      # Mount the entire repo so test data, source, and tmp dirs are consistent
+      - ..:/workspace
+      - apptainer-cache:/apptainer-cache
+    working_dir: /workspace
+    environment:
+      - APPTAINER_CACHEDIR=/apptainer-cache
+      - APPTAINER_TMPDIR=/apptainer-cache/tmp
+      - SINGULARITY_CACHEDIR=/apptainer-cache
+      - SINGULARITY_TMPDIR=/apptainer-cache/tmp
+      - ASSAYS=${ASSAYS:-chip}
+      - CORES=${CORES:-2}
+      - PRESET=${PRESET:-t}
+    command: >
+      bash -c "
+        uv venv /opt/venv &&
+        . /opt/venv/bin/activate &&
+        uv pip install -e . &&
+        pytest --run-pipeline
+          --preset=$$PRESET
+          --assays=$$ASSAYS
+          --cores=$$CORES
+          tests/pipeline/test_pipelines.py
+      "
+
+volumes:
+  apptainer-cache:

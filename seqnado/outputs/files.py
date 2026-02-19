@@ -138,6 +138,7 @@ class BigWigFiles(BaseModel):
     scale_methods: list[DataScalingTechnique] = [DataScalingTechnique.UNSCALED]
     spikein_methods: list[SpikeInMethod] = Field(default_factory=list)
     output_dir: str = "seqnado_output"
+    is_merged: bool = False
 
     @property
     def prefix(self) -> str:
@@ -149,6 +150,9 @@ class BigWigFiles(BaseModel):
 
     @property
     def incompatible_methods(self) -> dict[PileupMethod, list[DataScalingTechnique]]:
+        if self.is_merged:
+            # All pileup methods support --scale-factor for merged groups
+            return {PileupMethod.DEEPTOOLS: [Assay.MCC]}
         return {
             PileupMethod.HOMER: [
                 DataScalingTechnique.CSAW,
@@ -172,6 +176,7 @@ class BigWigFiles(BaseModel):
 
     def generate_bigwig_paths(self) -> list[str]:
         paths = []
+        name_prefix = "merged/" if self.is_merged else ""
 
         for method in self.pileup_methods:
             for scale in self.scale_methods:
@@ -182,27 +187,25 @@ class BigWigFiles(BaseModel):
                 if scale == DataScalingTechnique.SPIKEIN and self.spikein_methods:
                     for spikein_method in self.spikein_methods:
                         scale_path = f"{scale.value}/{spikein_method.value}"
-                        if self.is_rna:
+                        if self.is_rna and not self.is_merged:
                             for name in self.names:
                                 for strand in ["plus", "minus"]:
                                     path = f"{self.prefix}{method.value}/{scale_path}/{name}_{strand}.bigWig"
                                     paths.append(path)
                         else:
                             for name in self.names:
-                                path = f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
+                                path = f"{self.prefix}{method.value}/{scale_path}/{name_prefix}{name}.bigWig"
                                 paths.append(path)
                 else:
                     scale_path = scale.value
-                    if self.is_rna:
+                    if self.is_rna and not self.is_merged:
                         for name in self.names:
                             for strand in ["plus", "minus"]:
                                 path = f"{self.prefix}{method.value}/{scale_path}/{name}_{strand}.bigWig"
                                 paths.append(path)
                     else:
                         for name in self.names:
-                            path = (
-                                f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
-                            )
+                            path = f"{self.prefix}{method.value}/{scale_path}/{name_prefix}{name}.bigWig"
                             paths.append(path)
 
         return paths

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -276,8 +277,9 @@ class TestGenomesEditCLI:
         cfg_file = cfg_dir / "genome_config.json"
         cfg_file.write_text(json.dumps({"test": {}}))
         
+        true_path = shutil.which("true")
         monkeypatch.setenv("HOME", str(tmp_path))
-        monkeypatch.setenv("EDITOR", "/bin/true")  # Use a dummy editor
+        monkeypatch.setenv("EDITOR", true_path)  # Use a dummy editor
         
         result = subprocess.run(
             ["seqnado", "genomes", "edit"],

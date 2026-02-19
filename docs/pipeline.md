@@ -16,13 +16,14 @@ seqnado pipeline atac --cores 16 --preset ss
 
 Presets control where and how jobs are executed. Pick the one that matches your setup:
 
-| Preset | Full name | What it does |
-|--------|-----------|--------------|
-| `le`   | Local Environment   | Runs locally using your conda environment (default) |
-| `lc`   | Local Conda         | Runs locally, auto-creates conda envs per rule |
-| `ls`   | Local Singularity   | Runs locally using Singularity/Apptainer containers |
-| `ss`   | SLURM Singularity   | Submits jobs to a SLURM cluster using containers |
-| `t`    | Test                | For testing and development |
+| Preset | Profile                | Description |
+|--------|------------------------|-------------|
+| `le`   | `local_environment`    | Local execution, no containers (default) |
+| `ls`   | `local_singularity`    | Local execution with Apptainer/Singularity |
+| `lc`   | `local_conda`          | Local execution with Conda + Apptainer |
+| `ld`   | `local_docker`         | Local execution with Conda + Docker |
+| `ss`   | `slurm_singularity`    | SLURM cluster with Apptainer |
+| `t`    | Test                   | For testing and development |
 
 !!! tip
     **Not sure which to pick?** Use `le` if you're running on your own machine or a login node. Use `ss` if you're on an HPC cluster with SLURM. See the [HPC Clusters](cluster_config.md) guide for cluster setup.

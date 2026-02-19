@@ -14,9 +14,11 @@ def test_pipeline(
     config_yaml_for_testing: Path,
     design: Path,
     test_profile_path: Path,
+    pytestconfig,
 ):
     assay_type = test_context.assay_type(assay)
     cores = test_context.cores
+    preset = pytestconfig.getoption("--preset", default="t")
 
     if assay == 'mcc':
         import pandas as pd
@@ -43,7 +45,7 @@ def test_pipeline(
             "--configfile",
             str(config_yaml_for_testing),
             "--preset",
-            "t"
+            preset
         ],
         cwd=config_yaml_for_testing.parent,
         capture_output=False,

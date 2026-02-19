@@ -1,16 +1,13 @@
 executor: local
 jobs: 100
 
-
-use-conda: "True"
-software-deployment-method: null
+use-conda: "False"
+software-deployment-method: "apptainer"
 use-apptainer: "True"
 
 show-failed-logs: "True"
 printshellcmds: "True"
 
-
-default-resources: 
-    slurm_partition: "short"
+default-resources:
     runtime: "1h"
     mem: "3G"

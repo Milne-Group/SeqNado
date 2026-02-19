@@ -224,11 +224,16 @@ seqnado pipeline [OPTIONS] [ASSAY]
 #### Options
 - `--configfile`: Path to a SeqNado configuration YAML file (default: `config_<ASSAY>.yaml`).
 - `--preset`: Snakemake job profile preset. Options include:
-  - `lc`: Local cluster
-  - `le`: Local execution (default)
-  - `ls`: Local Singularity
-  - `ss`: SLURM scheduler
-  - `t`: Test mode
+
+| Preset | Profile                | Description |
+|--------|------------------------|-------------|
+| `le`   | `local_environment`    | Local execution, no containers (default) |
+| `ls`   | `local_singularity`    | Local execution with Apptainer/Singularity |
+| `lc`   | `local_conda`          | Local execution with Conda + Apptainer |
+| `ld`   | `local_docker`         | Local execution with Conda + Docker |
+| `ss`   | `slurm_singularity`    | SLURM cluster with Apptainer |
+| `t`    | Test                   | For testing and development |
+
 - `--clean-symlinks, --no-clean-symlinks`: Remove symlinks created by previous runs (default: disabled).
 - `--scale-resources, -s`: Scale memory and time resources (default: 1.0).
 - `--verbose, -v`: Increase logging verbosity.

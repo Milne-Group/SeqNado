@@ -94,7 +94,9 @@ Presets select a Snakemake execution profile:
 | `le`   | `local_environment`    | Local execution, no containers (default) |
 | `ls`   | `local_singularity`    | Local execution with Apptainer/Singularity |
 | `lc`   | `local_conda`          | Local execution with Conda + Apptainer |
+| `ld`   | `local_docker`         | Local execution with Conda + Docker |
 | `ss`   | `slurm_singularity`    | SLURM cluster with Apptainer |
+| `t`    | Test                   | For testing and development |
 
 ## Listing Genomes
 

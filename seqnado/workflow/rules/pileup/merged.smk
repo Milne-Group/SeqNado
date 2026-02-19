@@ -4,7 +4,7 @@ from seqnado.workflow.helpers.common import define_time_requested, define_memory
 # Pileup for grouped sample
 
 
-rule bamnado_bam_coverage_consensus:
+rule bamnado_make_bigwigs_merged:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -32,7 +32,37 @@ rule bamnado_bam_coverage_consensus:
         """
 
 
-rule homer_make_tag_directory_consensus:
+rule deeptools_make_bigwigs_merged:
+    input:
+        bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
+        bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
+    output:
+        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/{group}.bigWig",
+    params:
+       options=lambda wildcards: format_deeptools_options(
+           wildcards,
+           str(CONFIG.third_party_tools.deeptools.bam_coverage.command_line_arguments),
+           INPUT_FILES,
+           SAMPLE_GROUPINGS,
+       ),
+    resources:
+        mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
+        runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
+    threads:
+        CONFIG.third_party_tools.deeptools.bam_coverage.threads,
+    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    log: OUTPUT_DIR + "/logs/bigwigs/{group}.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/deeptools/merged/{group}.tsv",
+    message: "Making bigWig with deeptools for merged sample {wildcards.group}"
+    wildcard_constraints:
+        group="|".join(SAMPLE_GROUPINGS.get_grouping('consensus').group_names),
+    shell:
+        """
+        bamCoverage {params.options} -p {threads} -b {input.bam} -o {output.bigwig} > {log} 2>&1
+        """
+        
+
+rule homer_make_tag_directory_merged:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
     output:
@@ -64,7 +94,7 @@ rule homer_make_tag_directory_consensus:
         """
 
 
-rule homer_make_bigwigs_consensus:
+rule homer_make_bigwigs_merged:
     input:
         homer_tag_directory=OUTPUT_DIR + "/tag_dirs/merged/{group}",
     output:
@@ -98,34 +128,4 @@ rule homer_make_bigwigs_consensus:
         """
         makeBigWig.pl {input.homer_tag_directory} {params.genome_name} -chromSizes {params.genome_chrom_sizes} -url INSERT_URL -webdir {params.outdir} {params.options} > {log} 2>&1 &&
         mv {params.temp_bw} {output.homer_bigwig}
-        """
-
-
-rule deeptools_make_bigwigs_consensus:
-    input:
-        bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
-        bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
-    output:
-        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/{group}.bigWig",
-    params:
-       options=lambda wildcards: format_deeptools_options(
-           wildcards,
-           str(CONFIG.third_party_tools.deeptools.bam_coverage.command_line_arguments),
-           INPUT_FILES,
-           SAMPLE_GROUPINGS,
-       ),
-    resources:
-        mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-        runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    threads:
-        CONFIG.third_party_tools.deeptools.bam_coverage.threads,
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log: OUTPUT_DIR + "/logs/bigwigs/{group}.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/deeptools/merged/{group}.tsv",
-    message: "Making bigWig with deeptools for merged sample {wildcards.group}"
-    wildcard_constraints:
-        group="|".join(SAMPLE_GROUPINGS.get_grouping('consensus').group_names),
-    shell:
-        """
-        bamCoverage {params.options} -p {threads} -b {input.bam} -o {output.bigwig} > {log} 2>&1
         """

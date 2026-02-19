@@ -142,7 +142,7 @@ $ seqnado genomes build [OPTIONS]
 * `-n, --name TEXT`: Genome name(s), comma-separated for multiple (e.g., hg38 or hg38,mm39,dm6) **[required]**
 * `-o, --outdir PATH`: Output directory for build  [default: genome_build]
 * `-sp, --spikein TEXT`: Spike-in genome name for composite builds (e.g., mm39)
-* `--preset [lc|le|ls|ss|t]`: Snakemake job profile preset.  [default: le]
+* `--preset [lc|le|ls|ld|ss|t]`: Snakemake job profile preset.  [default: le]
 * `--profile PATH` / `--profiles PATH`: Path to a Snakemake profile directory (overrides --preset).
 * `-c, --cores INTEGER`: Number of Snakemake cores.  [default: 4]
 * `--scale-resources FLOAT`: Scale memory/time.  [default: 1.0]
@@ -241,7 +241,7 @@ $ seqnado download [OPTIONS] METADATA_TSV
 * `-a, --assay [rna|atac|chip|cat|snp|meth|mcc|crispr]`: Assay type for auto-generating design file after download.
 * `-d, --design-output PATH`: Path for generated design file (only with --assay).  [default: metadata_{assay}.csv]
 * `-c, --cores INTEGER`: Number of parallel download jobs.  [default: 4]
-* `--preset [lc|le|ls|ss|t]`: Snakemake execution profile preset.  [default: le]
+* `--preset [lc|le|ls|ld|ss|t]`: Snakemake job profile preset.  [default: le]
 * `--profile PATH` / `--profiles PATH`: Path to a Snakemake profile directory (overrides --preset).
 * `-n, --dry-run`: Show what would be run without executing downloads.
 * `-v, --verbose`: Increase logging verbosity.
@@ -304,7 +304,7 @@ $ seqnado pipeline [OPTIONS] [ASSAY]
 
 * `--configfile PATH`: Path to a SeqNado config YAML (default: config_<ASSAY>.yaml).
 * `--version`: Print SeqNado version and exit.
-* `--preset [lc|le|ls|ss|t]`: Snakemake job profile preset.  [default: le]
+* `--preset [lc|le|ls|ld|ss|t]`: Snakemake job profile preset.  [default: le]
 * `--profile PATH` / `--profiles PATH`: Path to a Snakemake profile directory (overrides --preset).
 * `--clean-symlinks / --no-clean-symlinks`: Remove symlinks created by previous runs.  [default: no-clean-symlinks]
 * `-s, --scale-resources FLOAT`: Scale memory/time (env: SCALE_RESOURCES).  [default: 1.0]
