@@ -1,6 +1,6 @@
 include: 'common.smk'
 
-rule deeptools_make_bigwigs_rna_plus:
+rule make_bigwigs_deeptools_rna_plus:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -21,7 +21,7 @@ rule deeptools_make_bigwigs_rna_plus:
     """
 
 
-rule deeptools_make_bigwigs_rna_minus:
+rule make_bigwigs_deeptools_rna_minus:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -41,7 +41,7 @@ rule deeptools_make_bigwigs_rna_minus:
     bamCoverage {params.options} -p {threads} -b {input.bam} -o {output.bigwig} --filterRNAstrand reverse --scaleFactor -1 > {log} 2>&1
     """
 
-rule homer_make_bigwigs_rna:
+rule make_bigwigs_homer_rna:
     input:
         homer_tag_directory=OUTPUT_DIR + "/tag_dirs/{sample}",
     output:
@@ -124,4 +124,4 @@ rule bamnado_bam_coverage_rna_minus:
     """
 
 
-ruleorder: deeptools_make_bigwigs_rna_plus > deeptools_make_bigwigs_rna_minus
+ruleorder: make_bigwigs_deeptools_rna_plus > make_bigwigs_deeptools_rna_minus

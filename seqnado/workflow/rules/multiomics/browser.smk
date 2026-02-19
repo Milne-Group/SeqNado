@@ -4,7 +4,7 @@
 plot_files=OUTPUT.genome_browser_plots
 
 
-rule generate_plotnado_visualisation:
+rule plotnado_multiomics_deeptools:
     input:
         rules.gather_bigwigs.output.bw_dir,
     output:

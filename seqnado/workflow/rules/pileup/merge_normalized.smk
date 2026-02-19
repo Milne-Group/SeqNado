@@ -9,7 +9,7 @@ from seqnado.workflow.helpers.normalization import (
 )
 
 
-rule deeptools_make_bigwigs_merged_scale:
+rule make_bigwigs_deeptools_merged_scale:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -40,7 +40,7 @@ rule deeptools_make_bigwigs_merged_scale:
         """
 
 
-rule deeptools_make_bigwigs_merged_spikein:
+rule make_bigwigs_deeptools_merged_spikein:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -71,7 +71,7 @@ rule deeptools_make_bigwigs_merged_spikein:
         """
 
 
-rule bamnado_make_bigwigs_merged_scale:
+rule make_bigwigs_bamnado_merged_scale:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -98,7 +98,7 @@ rule bamnado_make_bigwigs_merged_scale:
         """
 
 
-rule bamnado_make_bigwigs_merged_spikein:
+rule make_bigwigs_bamnado_merged_spikein:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",

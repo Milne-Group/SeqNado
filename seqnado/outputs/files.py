@@ -317,6 +317,7 @@ class HeatmapFiles(BaseModel):
     scale_methods: list[DataScalingTechnique] = Field(
         default_factory=lambda: [DataScalingTechnique.UNSCALED]
     )
+    spikein_methods: list[SpikeInMethod] = Field(default_factory=list)
     output_dir: str = "seqnado_output"
     is_merged: bool = False
     method: PileupMethod = PileupMethod.DEEPTOOLS
@@ -330,11 +331,21 @@ class HeatmapFiles(BaseModel):
     @property
     def heatmap_files(self) -> list[str]:
         prefix = "merged/" if self.is_merged else ""
-        return [
-            f"{self.output_dir}/heatmap/{prefix}{self.method.value}/{scale.value}/{name}.pdf"
-            for scale in self.scale_methods
-            for name in ("heatmap", "metaplot")
-        ]
+        files = []
+        for scale in self.scale_methods:
+            if scale == DataScalingTechnique.SPIKEIN and self.spikein_methods:
+                for sm in self.spikein_methods:
+                    scale_path = f"spikein/{sm.value}"
+                    for name in ("heatmap", "metaplot"):
+                        files.append(
+                            f"{self.output_dir}/heatmap/{prefix}{self.method.value}/{scale_path}/{name}.pdf"
+                        )
+            else:
+                for name in ("heatmap", "metaplot"):
+                    files.append(
+                        f"{self.output_dir}/heatmap/{prefix}{self.method.value}/{scale.value}/{name}.pdf"
+                    )
+        return files
 
     @computed_field
     @property
@@ -388,6 +399,7 @@ class PlotFiles(BaseModel):
     scale: str = "unscaled"
     is_merged: bool = False
     method: str = "deeptools"
+    spikein_method: str | None = None
 
     @property
     def plot_names(self):
@@ -404,7 +416,11 @@ class PlotFiles(BaseModel):
             coords_df.columns = bed_columns[: len(coords_df.columns)]
 
             prefix = "merged/" if self.is_merged else ""
-            outdir = Path(f"{self.output_dir}/genome_browser_plots/{prefix}{self.method}/{self.scale}/")
+            if self.scale == "spikein" and self.spikein_method:
+                scale_dir = f"spikein/{self.spikein_method}"
+            else:
+                scale_dir = self.scale
+            outdir = Path(f"{self.output_dir}/genome_browser_plots/{prefix}{self.method}/{scale_dir}/")
             for region in coords_df.itertuples():
                 fig_name = (
                     f"{region.Chromosome}-{region.Start}-{region.End}"

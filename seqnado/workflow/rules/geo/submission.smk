@@ -2,7 +2,7 @@ from pathlib import Path
 from seqnado.workflow.helpers.geo import get_files_for_symlink, get_symlinked_files
 
 
-rule samples_table:
+rule geo_samples_table:
     input:
         OUTPUT_DIR + "/protocol.txt",
     output:
@@ -99,7 +99,7 @@ rule geo_symlink:
         Path(output.flag).touch()
 
 
-rule md5sum:
+rule geo_md5sum:
     input:
         flag=OUTPUT_DIR + "/geo_submission/.symlinks_created",
     output:
@@ -159,7 +159,7 @@ rule geo_md5_table:
             df_sub.rename(columns={"file": "file name", "md5sum": "file checksum"}).to_csv(outfile, index=False, sep="\t")
 
 
-rule move_to_upload:
+rule geo_move_to_upload:
     input:
         flag=OUTPUT_DIR + "/geo_submission/.symlinks_created",
         validated=OUTPUT_DIR + "/geo_submission/.validated",
@@ -187,7 +187,7 @@ rule move_to_upload:
             shutil.copy2(f, output.outdir)
 
 
-rule remove_headers_for_security:
+rule geo_remove_headers_for_security:
     input:
         flag=OUTPUT_DIR + "/geo_submission/.symlinks_created",
     output:
@@ -230,7 +230,7 @@ rule remove_headers_for_security:
 localrules:
     geo_symlink,
     geo_md5_table,
-    samples_table,
+    geo_samples_table,
     geo_upload_instructions,
-    move_to_upload,
-    remove_headers_for_security
+    geo_move_to_upload,
+    geo_remove_headers_for_security

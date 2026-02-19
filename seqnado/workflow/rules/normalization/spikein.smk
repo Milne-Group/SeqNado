@@ -4,7 +4,7 @@ from seqnado import SpikeInMethod
 rule calculate_normalisation_factors_orlando:
     input:
         lambda wc: expand(
-            rules.split_bam.output.stats,
+            rules.bam_split.output.stats,
             sample=SAMPLE_NAMES,
         ),
     output:
@@ -20,7 +20,7 @@ rule calculate_normalisation_factors_orlando:
 rule calculate_normalisation_factors_input:
     input:
         lambda wc: expand(
-            rules.split_bam.output.stats,
+            rules.bam_split.output.stats,
             sample=SAMPLE_NAMES,
         ),
         design=OUTPUT_DIR + "/metadata.csv",

@@ -2,7 +2,7 @@ from seqnado.workflow.helpers.common import define_time_requested, define_memory
 from seqnado import PCRDuplicateTool
 
 if CONFIG.pcr_duplicates.tool == PCRDuplicateTool.PICARD:
-    rule remove_duplicates_using_picard:
+    rule bam_remove_duplicates_using_picard:
         input:
             bam=OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam.bai",
@@ -28,7 +28,7 @@ if CONFIG.pcr_duplicates.tool == PCRDuplicateTool.PICARD:
         """
 
 elif CONFIG.pcr_duplicates.tool == PCRDuplicateTool.SAMTOOLS:
-    rule remove_duplicates_using_samtools:
+    rule bam_remove_duplicates_using_samtools:
         input:
             bam=OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam.bai",
@@ -50,7 +50,7 @@ elif CONFIG.pcr_duplicates.tool == PCRDuplicateTool.SAMTOOLS:
         echo -e "duplicate removal\t$(samtools view -c {output.bam})" >> {output.read_log} 2>&1 | tee -a {log}
         """
 else:
-    rule ignore_duplicates:
+    rule bam_ignore_duplicates:
         input:
             bam=OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam.bai",

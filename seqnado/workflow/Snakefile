@@ -174,21 +174,21 @@ if CONFIG.assay_config.has_spikein:
     match ASSAY:
         case Assay.RNA:
             ruleorder: rename_aligned_spikein > align_paired_spikein_rna > align_single_spikein_rna
-            ruleorder: move_ref_bam > rename_aligned > align_paired_spikein_rna > align_paired > align_single_spikein_rna > align_single
-            ruleorder: deeptools_make_bigwigs_rna_spikein_plus > deeptools_make_bigwigs_rna_plus
-            ruleorder: deeptools_make_bigwigs_rna_spikein_minus > deeptools_make_bigwigs_rna_minus
+            ruleorder: bam_move_ref > rename_aligned > align_paired_spikein_rna > align_paired > align_single_spikein_rna > align_single
+            ruleorder: make_bigwigs_deeptools_rna_spikein_plus > make_bigwigs_deeptools_rna_plus
+            ruleorder: make_bigwigs_deeptools_rna_spikein_minus > make_bigwigs_deeptools_rna_minus
         case _:
             ruleorder: align_paired_spikein > align_single_spikein
-            ruleorder: move_ref_bam > align_paired > align_single
-            ruleorder: deeptools_make_bigwigs_spikein > deeptools_make_bigwigs
+            ruleorder: bam_move_ref > align_paired > align_single
+            ruleorder: make_bigwigs_deeptools_spikein > make_bigwigs_deeptools
 else:
     match ASSAY:
         case Assay.RNA:
             ruleorder: rename_aligned > align_paired > align_single
         case ASSAY.ATAC | ASSAY.CAT | ASSAY.CHIP:
             ruleorder: align_paired > align_single
-            ruleorder: lanceotron_no_input_consensus > lanceotron_no_input 
-            ruleorder: macs2_no_input_consensus > macs2_no_input
+            ruleorder: call_peaks_lanceotron_no_input_consensus > call_peaks_lanceotron_no_input 
+            ruleorder: call_peaks_macs2_no_input_consensus > call_peaks_macs2_no_input
 
 
 ################################

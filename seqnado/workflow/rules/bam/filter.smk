@@ -1,7 +1,7 @@
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
 
 
-rule filter_bam:
+rule bam_filter:
     input:
         bam=OUTPUT_DIR + "/aligned/shifted_for_tn5_insertion/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/shifted_for_tn5_insertion/{sample}.bam.bai",

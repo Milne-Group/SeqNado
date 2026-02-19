@@ -33,7 +33,7 @@ rule merge_mcc_bams:
     """
 
 
-use rule index_bam as index_bam_merged with:
+use rule bam_index as bam_index_merged with:
     input:
         bam=OUTPUT_DIR + "/mcc/{group}/{group}.bam",
     output:
@@ -41,8 +41,8 @@ use rule index_bam as index_bam_merged with:
     wildcard_constraints:
         group="|".join(SAMPLE_GROUPINGS.get_grouping("consensus").group_names),
     log:
-        OUTPUT_DIR + "/logs/index_bam_merged/{group}.log",
+        OUTPUT_DIR + "/logs/bam_index_merged/{group}.log",
     benchmark:
-        OUTPUT_DIR + "/.benchmark/index_bam_merged/{group}.tsv",
+        OUTPUT_DIR + "/.benchmark/bam_index_merged/{group}.tsv",
     message:
         "Indexing merged BAM for group {wildcards.group}"

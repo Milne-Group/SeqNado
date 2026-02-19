@@ -1,11 +1,11 @@
 from seqnado.workflow.helpers.common import define_memory_requested, define_time_requested
-from seqnado.workflow.helpers.bam import get_split_bam
+from seqnado.workflow.helpers.bam import get_bam_split
 
 REF_GENOME=CONFIG.assay_config.methylation.reference_genome if CONFIG.assay_config.methylation and CONFIG.assay_config.methylation.reference_genome else CONFIG.genome.name
 SPIKEIN_GENOMES=CONFIG.assay_config.methylation.spikein_genomes if CONFIG.assay_config.methylation and CONFIG.assay_config.methylation.spikein_genomes else []
 GENOMES=[REF_GENOME]+SPIKEIN_GENOMES
 
-checkpoint methylation_split_bams:
+checkpoint methylation_bam_splits:
     input:
         OUTPUT_DIR + "/aligned/{sample}.bam"
     output:
@@ -16,8 +16,8 @@ checkpoint methylation_split_bams:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    log: OUTPUT_DIR + "/logs/methylation/split_bams/{sample}_{genome}.log"
-    benchmark: OUTPUT_DIR + "/.benchmark/methylation_split_bams/{sample}_{genome}.tsv"
+    log: OUTPUT_DIR + "/logs/methylation/bam_splits/{sample}_{genome}.log"
+    benchmark: OUTPUT_DIR + "/.benchmark/methylation_bam_splits/{sample}_{genome}.tsv"
     message: "Splitting BAM for sample {wildcards.sample} into genome {wildcards.genome}"
     shell: """
     if [[ "{wildcards.genome}" == "{params.ref_genome}" ]]; then
@@ -31,7 +31,7 @@ checkpoint methylation_split_bams:
 
 rule methyldackel_bias:
     input:
-        bam=lambda wc: get_split_bam(wc, checkpoints)
+        bam=lambda wc: get_bam_split(wc, checkpoints)
     output:
         bias=OUTPUT_DIR + "/methylation/methyldackel/bias/{sample}_{genome}.txt",
     params:
@@ -68,7 +68,7 @@ rule calculate_conversion:
 
 rule methyldackel_extract:
     input:
-        bam=rules.methylation_split_bams.output.bam
+        bam=rules.methylation_bam_splits.output.bam
     output:
         bdg=OUTPUT_DIR + "/methylation/methyldackel/{sample}_{genome}_CpG.bedGraph"
     params:

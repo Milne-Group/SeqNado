@@ -17,4 +17,5 @@ assay_config:
       - homer
     binsize: 100
     scale_methods:
+      - unscaled
       - csaw

@@ -12,7 +12,7 @@ VIEWPOINT_OLIGOS = extract_viewpoints(CONFIG.assay_config.mcc.viewpoints)
 VIEWPOINT_TO_GROUPED_VIEWPOINT = viewpoint_to_grouped_viewpoint(VIEWPOINT_OLIGOS)
 GROUPED_VIEWPOINT_OLIGOS = list(set(VIEWPOINT_TO_GROUPED_VIEWPOINT.values()))
 
-use rule sort_bam_by_qname as sort_mcc_annotated_bam with:
+use rule bam_sort_by_qname as sort_mcc_annotated_bam with:
     input:
         bam=OUTPUT_DIR + "/mcc/{group}/{group}.bam",
     output:

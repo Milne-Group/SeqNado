@@ -1,6 +1,6 @@
 """Helper functions for Snakemake workflow rules."""
 
-from .bam import get_bam_files_for_consensus, get_split_bam
+from .bam import get_bam_files_for_consensus, get_bam_split
 from .common import (
     define_memory_requested,
     define_time_requested,
@@ -63,7 +63,7 @@ __all__ = [
     "get_scaling_factor",
     # BAM
     "get_bam_files_for_consensus",
-    "get_split_bam",
+    "get_bam_split",
     # Multiomics
     "get_assay_all_inputs",
     # Quant

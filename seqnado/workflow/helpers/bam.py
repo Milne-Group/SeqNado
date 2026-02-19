@@ -19,7 +19,7 @@ def get_bam_files_for_consensus(wildcards, SAMPLE_GROUPINGS, OUTPUT_DIR):
     return bam_files
 
 
-def get_split_bam(wildcards, checkpoints):
+def get_bam_split(wildcards, checkpoints):
     """
     Get split BAM file from methylation checkpoint.
 
@@ -30,7 +30,7 @@ def get_split_bam(wildcards, checkpoints):
     Returns:
         Path to the split BAM file.
     """
-    checkpoint_output = checkpoints.methylation_split_bams.get(
+    checkpoint_output = checkpoints.methylation_bam_splits.get(
         sample=wildcards.sample, genome=wildcards.genome
     ).output
     return checkpoint_output.bam

@@ -1,7 +1,7 @@
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
 
 
-rule sort_bam:
+rule bam_sort:
     input:
         bam=OUTPUT_DIR + "/aligned/raw/{sample}.bam",
     output:
@@ -22,7 +22,7 @@ rule sort_bam:
         echo -e "sort\t$(samtools view -c {output.bam})" >> {output.read_log} 2>&1 | tee -a {log}
     """
 
-rule sort_bam_by_qname:
+rule bam_sort_by_qname:
     input:
         bam=OUTPUT_DIR + "/aligned/sorted/{sample}.bam",
     output:
@@ -44,7 +44,7 @@ rule sort_bam_by_qname:
     """
 
 
-rule index_bam:
+rule bam_index:
     input:
         bam=OUTPUT_DIR + "/aligned/sorted/{sample}.bam",
     output:
@@ -60,7 +60,7 @@ rule index_bam:
     shell: "samtools index -@ {threads} -b {input.bam}"
 
 
-rule move_bam_to_final_location:
+rule bam_move_to_final_location:
     input:
         bam=OUTPUT_DIR + "/aligned/filtered/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/filtered/{sample}.bam.bai",
@@ -83,4 +83,4 @@ rule move_bam_to_final_location:
 
 
 localrules:
-    move_bam_to_final_location
+    bam_move_to_final_location

@@ -2,10 +2,10 @@ from seqnado.workflow.helpers.common import define_time_requested, define_memory
 
 if CONFIG.remove_blacklist:
 
-    rule remove_blacklisted_regions:
+    rule bam_remove_blacklisted_regions:
         input:
             bam=OUTPUT_DIR + "/aligned/sorted/{sample}.bam",
-            bai=rules.index_bam.output.bai,
+            bai=rules.bam_index.output.bai,
         output:
             bam=temp(OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam"),
             bai=temp(OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam.bai"),
@@ -28,10 +28,10 @@ if CONFIG.remove_blacklist:
 
 else:
 
-    rule ignore_blacklisted_regions:
+    rule bam_ignore_blacklisted_regions:
         input:
             bam=OUTPUT_DIR + "/aligned/sorted/{sample}.bam",
-            bai=rules.index_bam.output.bai,
+            bai=rules.bam_index.output.bai,
         output:
             bam=temp(OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam"),
             bai=temp(OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam.bai"),

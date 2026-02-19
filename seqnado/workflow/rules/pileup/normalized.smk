@@ -10,7 +10,7 @@ from seqnado.workflow.helpers.normalization import (
 )
 
 
-rule deeptools_make_bigwigs_scale:
+rule make_bigwigs_deeptools_scale:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -36,7 +36,7 @@ rule deeptools_make_bigwigs_scale:
         """
 
 
-use rule deeptools_make_bigwigs_scale as deeptools_make_bigwigs_spikein with:
+use rule make_bigwigs_deeptools_scale as make_bigwigs_deeptools_spikein with:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -51,7 +51,7 @@ use rule deeptools_make_bigwigs_scale as deeptools_make_bigwigs_spikein with:
     message: "Making spike-in normalized bigWig with deeptools for sample {wildcards.sample} using {wildcards.spikein_method}"
 
 
-rule bamnado_make_bigwigs_scale:
+rule make_bigwigs_bamnado_scale:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -79,7 +79,7 @@ rule bamnado_make_bigwigs_scale:
         """
 
 
-rule bamnado_make_bigwigs_spikein:
+rule make_bigwigs_bamnado_spikein:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -104,7 +104,7 @@ rule bamnado_make_bigwigs_spikein:
         """
 
 
-rule deeptools_make_bigwigs_rna_spikein_plus:
+rule make_bigwigs_deeptools_rna_spikein_plus:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -127,7 +127,7 @@ rule deeptools_make_bigwigs_rna_spikein_plus:
         """
 
 
-rule deeptools_make_bigwigs_rna_spikein_minus:
+rule make_bigwigs_deeptools_rna_spikein_minus:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",

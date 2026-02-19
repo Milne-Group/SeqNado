@@ -22,6 +22,7 @@ assay_config:
       - bamnado
       - homer
     scale_methods:
+      - unscaled
       - csaw
   plot_with_plotnado: True
   create_heatmaps: True

@@ -43,6 +43,7 @@ def configure_matplotlib():
     plt.rcParams["svg.fonttype"] = "none"
 
 
+
 def parse_bigwig_metadata(path: Path) -> tuple[str, str]:
     """
     Parse pileup method and normalisation from a bigwig path.

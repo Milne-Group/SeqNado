@@ -124,7 +124,7 @@ rule geo_fastq_dump_single:
         echo "Done extracting {wildcards.sample_name}"
         """
 
-rule compress_fastq_files:
+rule geo_compress_fastq_files:
     input:
         config["geo_outdir"] + "/{filename}.fastq"
     output:

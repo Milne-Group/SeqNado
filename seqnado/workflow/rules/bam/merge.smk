@@ -2,7 +2,7 @@
 from seqnado.workflow.helpers.bam import get_bam_files_for_consensus
 
 
-rule merge_bams:
+rule bam_merge:
     input:
         bams=lambda wc: get_bam_files_for_consensus(wc, SAMPLE_GROUPINGS=SAMPLE_GROUPINGS, OUTPUT_DIR=OUTPUT_DIR),
     output:
@@ -18,11 +18,12 @@ rule merge_bams:
     benchmark: OUTPUT_DIR + "/.benchmark/merge_bam/{group}.tsv",
     message: "Merging BAM files for group {wildcards.group} using samtools",
     shell: """
-    samtools merge {output} {input} -@ {threads}
+    echo "Input BAM files: {input.bams}" > {log} 2>&1
+    samtools merge {output} {input} -@ {threads} >> {log} 2>&1
     """
 
 
-use rule index_bam as index_consensus_bam with:
+use rule bam_index as bam_index_consensus with:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
     output:

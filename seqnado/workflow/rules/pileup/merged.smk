@@ -4,7 +4,7 @@ from seqnado.workflow.helpers.common import define_time_requested, define_memory
 # Pileup for grouped sample
 
 
-rule bamnado_make_bigwigs_merged:
+rule make_bigwigs_bamnado_merged:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -32,7 +32,7 @@ rule bamnado_make_bigwigs_merged:
         """
 
 
-rule deeptools_make_bigwigs_merged:
+rule make_bigwigs_deeptools_merged:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -94,7 +94,7 @@ rule homer_make_tag_directory_merged:
         """
 
 
-rule homer_make_bigwigs_merged:
+rule make_bigwigs_homer_merged:
     input:
         homer_tag_directory=OUTPUT_DIR + "/tag_dirs/merged/unscaled/{group}",
     output:

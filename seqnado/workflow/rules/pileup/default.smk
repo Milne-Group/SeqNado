@@ -4,7 +4,7 @@ from seqnado.config.third_party_tools import CommandLineArguments
 
 include: "common.smk"
 
-rule homer_make_bigwigs:
+rule make_bigwigs_homer:
     input:
         homer_tag_directory=OUTPUT_DIR + "/tag_dirs/{sample}",
     output:
@@ -38,7 +38,7 @@ rule homer_make_bigwigs:
     mv {params.outdir}/{wildcards.sample}.ucsc.bigWig {output.homer_bigwig}
     """
 
-rule deeptools_make_bigwigs:
+rule make_bigwigs_deeptools:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -73,7 +73,7 @@ rule deeptools_make_bigwigs:
     """
 
 
-rule bamnado_make_bigwigs:
+rule make_bigwigs_bamnado:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
