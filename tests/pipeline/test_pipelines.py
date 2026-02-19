@@ -1,4 +1,3 @@
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -15,6 +14,7 @@ def test_pipeline(
     design: Path,
     test_profile_path: Path,
     pytestconfig,
+    seqnado_runner,
 ):
     assay_type = test_context.assay_type(assay)
     cores = test_context.cores
@@ -35,7 +35,7 @@ def test_pipeline(
             df['consensus_group'] = 'all'
             df.to_csv(design, index=False)
 
-    res = subprocess.run(
+    res = seqnado_runner(
         [
             "seqnado",
             "pipeline",

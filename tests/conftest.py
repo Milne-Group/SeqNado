@@ -1,7 +1,12 @@
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
+
+_REPO_ROOT = Path(__file__).parent.parent
+_DOCKER_IMAGE = "seqnado-devcontainer:test"
+_VENV_PATH = "/tmp/seqnado_venv"
 
 def pytest_sessionstart(session: pytest.Session) -> None:
     """Ensure a clean pytest basetemp directory for this repo."""
@@ -101,9 +106,6 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]):
     """Modify test collection to add markers based on test names and locations."""
-    # Determine environment/tool availability once
-    apptainer_available = bool(shutil.which("apptainer") or shutil.which("singularity"))
-
     for item in items:
         # Add unit marker to all tests by default
         if not any(
@@ -131,15 +133,6 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
                     )
                 )
 
-        # If a test requires Apptainer and it's not available, skip it
-        # unless the chosen preset doesn't use Apptainer (tc, le)
-        if any(m.name == "requires_apptainer" for m in item.iter_markers()):
-            preset = config.getoption("--preset", default="t")
-            presets_without_apptainer = {"tc", "le"}
-            if not apptainer_available and preset not in presets_without_apptainer:
-                item.add_marker(
-                    pytest.mark.skip(reason="Apptainer/Singularity not found in PATH")
-                )
 
 
 # -------------------------
@@ -154,3 +147,85 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
         assays_str: str = config.getoption("--assays") or "chip"
         assays = [a.strip() for a in assays_str.split(",") if a.strip()]
         metafunc.parametrize("assay", assays or ["chip"])
+
+
+@pytest.fixture(scope="session")
+def docker_image(pytestconfig):
+    """Build the devcontainer Docker image once per session (for --preset=ld on Mac).
+
+    The image is only built when --preset=ld is specified and Apptainer is not
+    available locally (i.e. macOS without Apptainer).
+    """
+    preset = pytestconfig.getoption("--preset", default="t")
+    apptainer_available = bool(shutil.which("apptainer") or shutil.which("singularity"))
+    if preset != "ld" or apptainer_available:
+        return None
+
+    if not shutil.which("docker"):
+        pytest.skip("Docker not found — required for --preset=ld without Apptainer")
+
+    result = subprocess.run(
+        [
+            "docker", "build",
+            "--platform", "linux/amd64",
+            "-t", _DOCKER_IMAGE,
+            "-f", str(_REPO_ROOT / ".devcontainer" / "Dockerfile"),
+            str(_REPO_ROOT),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        pytest.fail(f"Failed to build Docker image:\n{result.stderr}")
+    return _DOCKER_IMAGE
+
+
+@pytest.fixture
+def seqnado_runner(pytestconfig, docker_image):
+    """Return a function that runs a seqnado command.
+
+    With --preset=ld and no local Apptainer, each call is routed through
+    ``docker run`` using the pre-built devcontainer image.  ``cwd`` and the
+    repo root are mounted at their exact host paths so that absolute paths
+    embedded in config files remain valid inside the container.
+    """
+    preset = pytestconfig.getoption("--preset", default="t")
+    apptainer_available = bool(shutil.which("apptainer") or shutil.which("singularity"))
+    use_docker = preset == "ld" and not apptainer_available and docker_image is not None
+
+    def run(cmd, cwd, **kwargs):
+        cwd = Path(cwd).resolve()
+        if not use_docker:
+            return subprocess.run(cmd, cwd=cwd, **kwargs)
+
+        # Install seqnado into a persistent venv volume on first call;
+        # subsequent calls skip the install (uv detects nothing changed).
+        install = (
+            f"(test -f {_VENV_PATH}/bin/activate || uv venv {_VENV_PATH}) "
+            f"&& . {_VENV_PATH}/bin/activate "
+            f"&& uv pip install -q -e {_REPO_ROOT}"
+        )
+        seqnado_cmd = " ".join(str(a) for a in cmd)
+
+        docker_cmd = [
+            "docker", "run", "--rm",
+            "--privileged",
+            "--platform", "linux/amd64",
+            # Mount cwd and repo at identical paths — keeps all absolute
+            # references in config files and Apptainer bind-args valid
+            "-v", f"{cwd}:{cwd}",
+            "-v", f"{_REPO_ROOT}:{_REPO_ROOT}",
+            # Persist the Apptainer image cache and seqnado venv between runs
+            "-v", "seqnado-apptainer-cache:/apptainer-cache",
+            "-v", f"seqnado-test-venv:{_VENV_PATH}",
+            "-e", "APPTAINER_CACHEDIR=/apptainer-cache",
+            "-e", "APPTAINER_TMPDIR=/apptainer-cache/tmp",
+            "-e", "SINGULARITY_CACHEDIR=/apptainer-cache",
+            "-e", "SINGULARITY_TMPDIR=/apptainer-cache/tmp",
+            "-w", str(cwd),
+            docker_image,
+            "bash", "-c", f"{install} && {seqnado_cmd}",
+        ]
+        return subprocess.run(docker_cmd, **kwargs)
+
+    return run

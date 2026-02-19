@@ -1,12 +1,12 @@
 executor: local
 jobs: 100
 
-use-conda: "False"
-software-deployment-method: "apptainer"
-use-apptainer: "True"
+use-conda: false
+software-deployment-method: apptainer
+use-apptainer: true
 
-show-failed-logs: "True"
-printshellcmds: "True"
+show-failed-logs: true
+printshellcmds: true
 
 default-resources:
     runtime: "1h"

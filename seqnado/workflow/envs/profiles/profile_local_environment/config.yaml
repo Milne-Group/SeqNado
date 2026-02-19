@@ -1,15 +1,12 @@
 executor: local
 jobs: 100
 
+use-conda: false
+use-apptainer: false
 
-use-conda: "False"
-software-deployment-method: null
-use-apptainer: "False"
+show-failed-logs: true
+printshellcmds: true
 
-show-failed-logs: "True"
-printshellcmds: "True"
-
-
-default-resources: 
+default-resources:
     runtime: "1h"
     mem: "3G"

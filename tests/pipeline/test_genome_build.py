@@ -146,20 +146,20 @@ def _stage_genome(resources: GenomeResources, out_dir: Path, genome_name: str) -
 
 @pytest.mark.pipeline
 @pytest.mark.snakemake
-@pytest.mark.requires_apptainer
 @pytest.mark.slow
 class TestGenomeBuild:
-    """Build indices from pre-staged chr21 test data via apptainer."""
+    """Build indices from pre-staged chr21 test data."""
 
-    def test_build_single_genome(self, tmp_path: Path) -> None:
+    def test_build_single_genome(self, tmp_path: Path, seqnado_runner, pytestconfig) -> None:
         """Build bt2, STAR, and faidx indices from chr21 FASTA."""
+        preset = pytestconfig.getoption("--preset", default="t")
         resources = GenomeResources.download_resources(
             tmp_path / "test_genomes", "build"
         )
         out_dir = tmp_path / "output"
         _stage_genome(resources, out_dir, GENOME_NAME)
 
-        result = subprocess.run(
+        result = seqnado_runner(
             [
                 "seqnado",
                 "genomes",
@@ -169,14 +169,14 @@ class TestGenomeBuild:
                 "--outdir",
                 str(out_dir),
                 "--preset",
-                "t",
+                preset,
                 "--cores",
                 "4",
             ],
+            cwd=tmp_path,
             capture_output=True,
             text=True,
             timeout=600,
-            cwd=tmp_path,
         )
 
         assert result.returncode == 0, (

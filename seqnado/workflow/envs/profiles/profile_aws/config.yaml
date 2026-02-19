@@ -1,11 +1,13 @@
-executor: local
+executor: aws-batch
 jobs: 100
 
-use-conda: true
-use-apptainer: false
+use-conda: false
+software-deployment-method: apptainer
+use-apptainer: true
 
 show-failed-logs: true
 printshellcmds: true
+retries: 3
 
 default-resources:
     runtime: "1h"

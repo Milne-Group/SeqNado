@@ -40,6 +40,7 @@ dependencies = [
 
 [project.optional-dependencies]
 slurm = ["snakemake-executor-plugin-slurm<=2.0.3"]
+aws = ["snakemake-executor-plugin-aws-batch"]
 docs = [
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.7.1",

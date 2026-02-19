@@ -2,16 +2,15 @@ __use_yte__: true
 executor: slurm
 jobs: 100
 
-software-deployment-method: 
-    - "apptainer"
+use-conda: false
+software-deployment-method: apptainer
 use-apptainer: true
 
 show-failed-logs: true
 printshellcmds: true
 retries: 3
 
-
-default-resources: 
+default-resources:
     slurm_partition: "short"
     runtime: "1h"
     mem: "3G"
