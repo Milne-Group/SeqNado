@@ -51,6 +51,59 @@ use rule deeptools_make_bigwigs_scale as deeptools_make_bigwigs_spikein with:
     message: "Making spike-in normalized bigWig with deeptools for sample {wildcards.sample} using {wildcards.spikein_method}"
 
 
+rule bamnado_make_bigwigs_scale:
+    input:
+        bam=OUTPUT_DIR + "/aligned/{sample}.bam",
+        bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
+        scaling_factors=lambda wc: OUTPUT_DIR + f"/resources/{get_group_for_sample(wc, INPUT_FILES)}_scaling_factors.tsv",
+    output:
+        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/csaw/{sample}.bigWig",
+    params:
+        scale=lambda wc: get_scaling_factor(
+            wc,
+            OUTPUT_DIR + f"/resources/{get_group_for_sample(wc, INPUT_FILES)}_scaling_factors.tsv",
+        ),
+        options=str(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments),
+    threads: CONFIG.third_party_tools.bamnado.bam_coverage.threads
+    resources:
+        mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
+        runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
+    container: "docker://ghcr.io/alsmith151/bamnado:latest"
+    log: OUTPUT_DIR + "/logs/pileups/bamnado/scaled/{sample}.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/pileups/bamnado/scaled/{sample}.tsv",
+    message: "Making CSAW-scaled bigWig with bamnado for sample {wildcards.sample}"
+    shell:
+        """
+        export RAYON_NUM_THREADS={threads}
+        bamnado bam-coverage {params.options} --scale-factor {params.scale} -b {input.bam} -o {output.bigwig} > {log} 2>&1
+        """
+
+
+rule bamnado_make_bigwigs_spikein:
+    input:
+        bam=OUTPUT_DIR + "/aligned/{sample}.bam",
+        bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
+        scaling_factors=OUTPUT_DIR + "/resources/{spikein_method}/normalisation_factors.json",
+    output:
+        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/spikein/{spikein_method}/{sample}.bigWig",
+    params:
+        scale=lambda wc: get_norm_factor_spikein(wc, OUTPUT_DIR, CONFIG, negative=False),
+        options=str(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments),
+    threads: CONFIG.third_party_tools.bamnado.bam_coverage.threads
+    resources:
+        mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
+        runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
+    container: "docker://ghcr.io/alsmith151/bamnado:latest"
+    log: OUTPUT_DIR + "/logs/pileups/bamnado/spikein/{spikein_method}/{sample}.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/pileups/bamnado/spikein/{spikein_method}/{sample}.tsv",
+    message: "Making spike-in normalized bigWig with bamnado for sample {wildcards.sample} using {wildcards.spikein_method}"
+    shell:
+        """
+        export RAYON_NUM_THREADS={threads}
+        bamnado bam-coverage {params.options} --scale-factor {params.scale} -b {input.bam} -o {output.bigwig} > {log} 2>&1
+        """
+
+
 rule deeptools_make_bigwigs_rna_spikein_plus:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",

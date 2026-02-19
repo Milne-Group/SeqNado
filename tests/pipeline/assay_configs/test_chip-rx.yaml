@@ -23,4 +23,5 @@ assay_config:
       - homer
     scale_methods:
       - csaw
-  plot_with_plotnado: False
+  plot_with_plotnado: True
+  create_heatmaps: True

@@ -46,7 +46,7 @@ rule bed_to_saf:
     benchmark: OUTPUT_DIR + "/.benchmark/genomic_bins_saf.tsv",
     message: "Converting genomic bins BED to SAF format",
     shell: """
-    awk 'BEGIN{{OFS="\t"}} {{print $4, $1, $2, $3, "."}}' {input.bed} > {output.saf} 2> {log}
+    awk 'BEGIN{{OFS="\t"}} {{print $1":"$2"-"$3, $1, $2, $3, "."}}' {input.bed} > {output.saf} 2> {log}
     """
 
 

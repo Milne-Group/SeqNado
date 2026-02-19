@@ -68,10 +68,12 @@ class SeqnadoOutputFiles(BaseModel):
 
     files: list[str] = Field(default_factory=list)
     sample_names: List[str] = Field(default_factory=list)
+    ip_sample_names: List[str] = Field(default_factory=list)
     sample_groups: SampleGroupings | None = None
     assay: Assay | None = None
     config: Any = None
     design_dataframe: Any = None  # pd.DataFrame - use Any to avoid circular imports
+    output_dir: str = "seqnado_output"
 
     class Config:
         arbitrary_types_allowed = True
@@ -121,34 +123,47 @@ class SeqnadoOutputFiles(BaseModel):
         method: PileupMethod = PileupMethod.DEEPTOOLS,
         scale: DataScalingTechnique = DataScalingTechnique.UNSCALED,
         assay: Assay | None = None,
+        is_merged: bool = False,
+        ip_only: bool = False,
     ):
         """Select bigWig files of a specific subtype.
 
         Args:
             method (PileupMethod): The pileup method to filter by.
-            scale (ScaleMethod): The scale method to filter by.
+            scale (DataScalingTechnique): The scale method to filter by.
             assay (Assay, optional): The assay type to filter by. Defaults to None.
+            is_merged (bool): If True, select merged (consensus) bigWigs only.
+            ip_only (bool): If True, exclude control/input samples (requires ip_sample_names to be set).
 
         Returns:
             List[str]: A list of bigWig files matching the specified subtype.
         """
-
+        includes = [method.value, scale.value]
+        if is_merged:
+            includes.append("merged")
         if assay is not None:
-            return self.select_files(
-                ".bigWig",
-                include=[method.value, scale.value, assay.value.lower()],
-                exclude="/geo_submission/",
-                must_include_all_patterns=True,
-                case_sensitive=False,
-            )
+            includes.append(assay.value.lower())
+
+        results = self.select_files(
+            ".bigWig",
+            include=includes,
+            exclude="/geo_submission/",
+            must_include_all_patterns=True,
+            case_sensitive=False,
+        )
+        # Separate individual from merged: both paths contain the scale string,
+        # so filter explicitly on the presence/absence of "/merged/".
+        if is_merged:
+            results = [f for f in results if "/merged/" in f]
         else:
-            return self.select_files(
-                ".bigWig",
-                include=[method.value, scale.value],
-                exclude="/geo_submission/",
-                must_include_all_patterns=True,
-                case_sensitive=False,
-            )
+            results = [f for f in results if "/merged/" not in f]
+
+        # Optionally filter to IP samples only (exclude control/input samples)
+        if ip_only and self.ip_sample_names:
+            ip_set = set(self.ip_sample_names)
+            results = [f for f in results if Path(f).stem in ip_set]
+
+        return results
 
     @property
     def peak_files(self):
@@ -166,13 +181,63 @@ class SeqnadoOutputFiles(BaseModel):
             for f in self.files
         )
 
+    def _heatmap_dir(
+        self,
+        scale: DataScalingTechnique,
+        method: PileupMethod = PileupMethod.DEEPTOOLS,
+        is_merged: bool = False,
+    ) -> str:
+        """Return the heatmap output directory.
+
+        Always returns a valid path string even if not yet registered, so that
+        Snakemake rule definitions remain valid at parse time.
+        """
+        prefix = "merged/" if is_merged else ""
+        return f"{self.output_dir}/heatmap/{prefix}{method.value}/{scale.value}"
+
+    def select_heatmap_matrix(
+        self,
+        scale: DataScalingTechnique,
+        method: PileupMethod = PileupMethod.DEEPTOOLS,
+        is_merged: bool = False,
+    ) -> str:
+        """Return the matrix path (temp file, not in self.files)."""
+        return f"{self._heatmap_dir(scale, method, is_merged)}/matrix.mat.gz"
+
+    def select_heatmap_plot(
+        self,
+        scale: DataScalingTechnique,
+        method: PileupMethod = PileupMethod.DEEPTOOLS,
+        is_merged: bool = False,
+    ) -> str:
+        return f"{self._heatmap_dir(scale, method, is_merged)}/heatmap.pdf"
+
+    def select_heatmap_metaplot(
+        self,
+        scale: DataScalingTechnique,
+        method: PileupMethod = PileupMethod.DEEPTOOLS,
+        is_merged: bool = False,
+    ) -> str:
+        return f"{self._heatmap_dir(scale, method, is_merged)}/metaplot.pdf"
+
+    def select_genome_browser_plots(
+        self,
+        scale: DataScalingTechnique,
+        method: PileupMethod = PileupMethod.DEEPTOOLS,
+        is_merged: bool = False,
+    ) -> list[str]:
+        """Select genome browser plot files for a specific method/scale/merged combination."""
+        prefix = "merged/" if is_merged else ""
+        target = f"genome_browser_plots/{prefix}{method.value}/{scale.value}/"
+        return [f for f in self.files if target in f]
+
     @property
     def heatmap_files(self):
         return self.select_files(".pdf", include="heatmap")
 
     @property
     def genome_browser_plots(self):
-        return self.select_files(".pdf", include="genome_browser")
+        return [f for f in self.files if "genome_browser_plots" in f]
 
     @property
     def sentinel_files(self):
@@ -601,15 +666,51 @@ class SeqnadoOutputBuilder:
         self.file_collections.append(bigbed_files)
 
     def add_heatmap_files(self) -> None:
-        """Add heatmap files to the output collection."""
+        """Add heatmap files to the output collection.
+
+        Creates one HeatmapFiles entry per (method, is_merged) combination,
+        filtering out scale/method pairs that are incompatible or have no backing
+        bigwigs (e.g. homer/bamnado individual bigwigs only support UNSCALED, and
+        only when UNSCALED is actually in the configured scale methods).
+        """
         has_spikein = getattr(self.config.assay_config, "has_spikein", False)
-        heatmaps = HeatmapFiles(
-            assay=self.assay,
-            scale_methods=self.scale_methods,
-            has_spikein=has_spikein,
-            output_dir=self.output_dir,
+        has_consensus = bool(
+            self.sample_groupings and self.sample_groupings.groupings.get("consensus")
         )
-        self.file_collections.append(heatmaps)
+        pileup_methods = self.config.assay_config.bigwigs.pileup_method
+
+        # Methods that only support UNSCALED for individual (not merged) bigwigs
+        _unscaled_only_individual = {PileupMethod.HOMER, PileupMethod.BAMNADO}
+        # Methods that only support UNSCALED for merged bigwigs
+        _unscaled_only_merged = {PileupMethod.HOMER}
+
+        for method in pileup_methods:
+            for is_merged in ([False, True] if has_consensus else [False]):
+                if is_merged:
+                    restricted = method in _unscaled_only_merged
+                else:
+                    restricted = method in _unscaled_only_individual
+
+                if restricted:
+                    # Restricted methods only support UNSCALED.
+                    # For individual bigwigs, unscaled files are only generated when
+                    # UNSCALED is explicitly in scale_methods; skip if not present.
+                    if not is_merged and DataScalingTechnique.UNSCALED not in self.scale_methods:
+                        continue
+                    scales = [DataScalingTechnique.UNSCALED]
+                else:
+                    scales = list(self.scale_methods)
+                    if has_spikein and DataScalingTechnique.SPIKEIN not in scales:
+                        scales.append(DataScalingTechnique.SPIKEIN)
+
+                heatmaps = HeatmapFiles(
+                    assay=self.assay,
+                    scale_methods=scales,
+                    output_dir=self.output_dir,
+                    is_merged=is_merged,
+                    method=method,
+                )
+                self.file_collections.append(heatmaps)
 
     def add_hub_files(self) -> None:
         """Add hub files to the output collection."""
@@ -633,13 +734,47 @@ class SeqnadoOutputBuilder:
         self.file_collections.append(spikein_files)
 
     def add_plot_files(self) -> None:
-        """Add plot files to the output collection."""
-        plot_files = PlotFiles(
-            coordinates=self.config.assay_config.plotting.coordinates,
-            file_format=self.config.assay_config.plotting.file_format,
-            output_dir=self.output_dir,
+        """Add plot files to the output collection.
+
+        Creates one PlotFiles entry per (method, scale, is_merged) combination,
+        applying the same incompatibility and availability filtering as
+        add_heatmap_files().
+        """
+        has_spikein = getattr(self.config.assay_config, "has_spikein", False)
+        has_consensus = bool(
+            self.sample_groupings and self.sample_groupings.groupings.get("consensus")
         )
-        self.file_collections.append(plot_files)
+        pileup_methods = self.config.assay_config.bigwigs.pileup_method
+
+        _unscaled_only_individual = {PileupMethod.HOMER, PileupMethod.BAMNADO}
+        _unscaled_only_merged = {PileupMethod.HOMER}
+
+        for method in pileup_methods:
+            for is_merged in ([False, True] if has_consensus else [False]):
+                if is_merged:
+                    restricted = method in _unscaled_only_merged
+                else:
+                    restricted = method in _unscaled_only_individual
+
+                if restricted:
+                    if not is_merged and DataScalingTechnique.UNSCALED not in self.scale_methods:
+                        continue
+                    method_scales = [DataScalingTechnique.UNSCALED]
+                else:
+                    method_scales = list(self.scale_methods)
+                    if has_spikein and DataScalingTechnique.SPIKEIN not in method_scales:
+                        method_scales.append(DataScalingTechnique.SPIKEIN)
+
+                for scale in method_scales:
+                    plot_files = PlotFiles(
+                        coordinates=self.config.assay_config.plotting.coordinates,
+                        file_format=self.config.assay_config.plotting.file_format,
+                        output_dir=self.output_dir,
+                        scale=scale.value,
+                        is_merged=is_merged,
+                        method=method.value,
+                    )
+                    self.file_collections.append(plot_files)
 
     def add_snp_files(self) -> None:
         """Add SNP files to the output collection."""
@@ -752,13 +887,22 @@ class SeqnadoOutputBuilder:
         if hasattr(self.samples, "to_dataframe"):
             design_df = self.samples.to_dataframe()
 
+        from seqnado.inputs import FastqCollectionForIP
+        ip_sample_names = (
+            self.samples.ip_sample_names
+            if isinstance(self.samples, FastqCollectionForIP)
+            else []
+        )
+
         return SeqnadoOutputFiles(
             files=all_files,
             sample_names=self.samples.sample_names,
+            ip_sample_names=ip_sample_names,
             sample_groups=self.sample_groupings,
             assay=self.assay,
             config=self.config,
             design_dataframe=design_df,
+            output_dir=self.output_dir,
         )
 
 
@@ -837,6 +981,7 @@ class MultiomicsOutputBuilder:
             assay=None,
             config=None,
             design_dataframe=None,
+            output_dir=str(self.output_dir),
         )
 
 

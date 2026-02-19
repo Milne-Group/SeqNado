@@ -70,7 +70,8 @@ rule geo_symlink:
                              design=OUTPUT.design_dataframe,
                              sample_names=OUTPUT.sample_names,
                              config=OUTPUT.config,
-                             processed_files=source_files)
+                             processed_files=source_files,
+                             output=OUTPUT)
 
         fastqs = geo_files.raw_files
         processed_files = geo_files.processed_data_files

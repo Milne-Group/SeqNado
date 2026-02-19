@@ -47,7 +47,9 @@ scaling_groups = SampleGroups.from_dataframe(
     subset_column="scaling_group",
 )
 
-# Defines groupings used to call consensus peaks and aggregate samples into bigwigs
+# Defines groupings used to call consensus peaks and aggregate samples into bigwigs.
+# For FastqCollectionForIP, to_dataframe() returns only IP rows (index = uid = sample_id + ip),
+# so consensus groups are guaranteed to contain IP samples only (no input/control samples).
 consensus_groups = SampleGroups.from_dataframe(
     INPUT_FILES.to_dataframe(),
     subset_column="consensus_group",
@@ -115,6 +117,7 @@ match ASSAY:
         include: "rules/pileup/merged.smk"
         include: "rules/pileup/normalized.smk"
         include: "rules/pileup/merge_normalized.smk"
+        include: "rules/normalization/scaling.smk"
         include: "rules/visualise/hub.smk"
         include: "rules/visualise/browser.smk"
         include: "rules/peaks/merge.smk"

@@ -15,11 +15,13 @@ def snakemake_setup():
         raise RuntimeError("This script must be run via Snakemake.")
     log_file = snakemake.log[0]
     logger.remove()
+    logger.add(log_file, level="DEBUG")
+    logger.add(sys.stderr, level="ERROR")
     assay = snakemake.params.assay
     input_data = snakemake.input.data
     output_plots = snakemake.output.plots
     regions = snakemake.params.regions
-    outdir = snakemake.params.outdir
+    outdir = Path(snakemake.output.template).parent
     plotting_format = snakemake.params.plotting_format
     genes = snakemake.params.genes if hasattr(snakemake.params, "genes") else None
     template = snakemake.output.template
@@ -39,6 +41,31 @@ def configure_matplotlib():
     """Set matplotlib style parameters."""
     plt.rcParams["font.family"] = "sans-serif"
     plt.rcParams["svg.fonttype"] = "none"
+
+
+def parse_bigwig_metadata(path: Path) -> tuple[str, str]:
+    """
+    Parse pileup method and normalisation from a bigwig path.
+
+    Handles all path structures produced by SeqNado:
+    - bigwigs/{method}/{scale}/{name}.bigWig
+    - bigwigs/{method}/merged/{scale}/{name}.bigWig
+    - bigwigs/{method}/spikein/{spikein_method}/{name}.bigWig
+    - bigwigs/{method}/merged/spikein/{spikein_method}/{name}.bigWig
+
+    Returns:
+        Tuple of (method, normalisation) e.g. ("deeptools", "merged/spikein/orlando")
+    """
+    parts = path.parts
+    if "bigwigs" not in parts:
+        # Fallback for non-standard paths
+        return parts[-3], parts[-2]
+    bw_idx = parts.index("bigwigs")
+    # Everything between bigwigs/ and the filename
+    inner = parts[bw_idx + 1 : -1]
+    method = inner[0]
+    normalisation = "/".join(inner[1:]) if len(inner) > 1 else ""
+    return method, normalisation
 
 
 def load_tracks(input_paths: list, assay: str) -> pd.DataFrame:
@@ -61,14 +88,21 @@ def load_tracks(input_paths: list, assay: str) -> pd.DataFrame:
         df["type"], categories=[".bigWig", ".bed"], ordered=True
     )
 
-    # Extract metadata from path structure
-    df["normalisation"] = np.where(
-        df["type"] != ".bed", df["path"].apply(lambda x: x.parts[-2]), ""
-    )
+    # Extract metadata from path structure — anchor on the known "bigwigs" dir
+    # so that merged/spikein/merged+spikein paths are all handled correctly.
+    def _method(p):
+        return parse_bigwig_metadata(p)[0]
+
+    def _normalisation(p):
+        return parse_bigwig_metadata(p)[1]
+
     df["method"] = np.where(
         df["type"] != ".bed",
-        df["path"].apply(lambda x: x.parts[-3]),
+        df["path"].apply(_method),
         df["path"].apply(lambda x: x.parts[-2]),
+    )
+    df["normalisation"] = np.where(
+        df["type"] != ".bed", df["path"].apply(_normalisation), ""
     )
 
     # Sort and create track names
