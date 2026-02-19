@@ -11,6 +11,31 @@ import seaborn as sns
 from loguru import logger
 
 
+def _patch_pybedtools_tabix_detection():
+    """
+    Monkey-patch pybedtools so that tabix_intervals auto-detects an existing
+    .tbi index when a BedTool is created from a .gz path (without going through
+    .tabix()).  This is needed because plotnado creates fresh BedTool objects
+    from file paths, losing the _tabix attribute set by our prepare_bed_for_tabix
+    helper.
+    """
+    import pysam
+
+    _original = pybedtools.BedTool.tabix_intervals
+
+    def _patched(self, interval, **kwargs):
+        if self._tabix is None and getattr(self, "fn", None) and self.fn.endswith(".gz"):
+            tbi = self.fn + ".tbi"
+            if Path(tbi).exists():
+                self._tabix = pysam.TabixFile(self.fn)
+        return _original(self, interval, **kwargs)
+
+    pybedtools.BedTool.tabix_intervals = _patched
+
+
+_patch_pybedtools_tabix_detection()
+
+
 def snakemake_setup():
     if "snakemake" not in globals():
         raise RuntimeError("This script must be run via Snakemake.")
