@@ -11,6 +11,7 @@
     * [Pipeline Overview](pipeline.md)
     * [Outputs](outputs.md)
     * [Output Examples](examples.md)
+    * [Normalisation Methods](normalisation.md)
     * [Third-Party Tools](tools.md)
     * [CLI Reference](cli.md)
 * Reference

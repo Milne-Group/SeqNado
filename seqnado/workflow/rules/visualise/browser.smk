@@ -19,8 +19,8 @@ rule index_individual_peaks:
     input:
         peaks=OUTPUT.peak_files,
     output:
-        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
-        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        peaks_indexed=temp(expand("{peak}.gz", peak=OUTPUT.peak_files)),
+        peaks_tbi=temp(expand("{peak}.gz.tbi", peak=OUTPUT.peak_files)),
     shell:
         """
         for bed in {input.peaks}; do
@@ -34,8 +34,8 @@ rule index_genes_bed:
     input:
         genes=str(CONFIG.genome.genes) if hasattr(CONFIG.genome, 'genes') else [],
     output:
-        bed_gz=OUTPUT_DIR + "/resources/genes_indexed.bed.gz",
-        tbi=OUTPUT_DIR + "/resources/genes_indexed.bed.gz.tbi",
+        bed_gz=temp(OUTPUT_DIR + "/resources/genes_indexed.bed.gz"),
+        tbi=temp(OUTPUT_DIR + "/resources/genes_indexed.bed.gz.tbi"),
     shell:
         """
         if [ -s {input.genes} ]; then
@@ -69,6 +69,7 @@ rule plotnado_deeptools:
         genes=OUTPUT_DIR + "/resources/genes_indexed.bed.gz" if CONFIG.assay_config.plot_with_plotnado and hasattr(CONFIG.genome, 'genes') else None,
         regions=str(CONFIG.assay_config.plotting.coordinates) if CONFIG.assay_config.plotting and hasattr(CONFIG.assay_config.plotting, 'coordinates') else None,
         plotting_format=str(CONFIG.assay_config.plotting.file_format) if CONFIG.assay_config.plotting and hasattr(CONFIG.assay_config.plotting, 'file_format') else None,
+        outdir=lambda wildcards, output: str(os.path.dirname(output.template)),
     resources:
         mem="1.5GB",
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),

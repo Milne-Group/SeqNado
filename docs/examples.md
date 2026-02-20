@@ -253,19 +253,23 @@ BigWig files provide genome-wide signal visualisation.
 
 ### File Naming Convention
 
-BigWig files are organised by tool and scaling method:
+BigWig files are organised by tool, scaling method, and individual vs merged:
 
 ```
-bigwigs/{method}/{scale}/{sample}.bigWig
-
-Examples:
-- bigwigs/deeptools/chip-rx_MLL.bigWig
+Individual samples:
+- bigwigs/deeptools/chip-rx_MLL.bigWig              # Unscaled
 - bigwigs/bamnado/chip-rx_MLL.bigWig
 - bigwigs/homer/chip-rx_MLL.bigWig
-- bigwigs/deeptools/csaw/chip-rx_MLL.bigWig
-- bigwigs/deeptools/spikein/orlando/chip-rx_MLL.bigWig
-- bigwigs/deeptools/merged/consensus_group.bigWig
+- bigwigs/deeptools/csaw/chip-rx_MLL.bigWig         # CSAW-normalised
+- bigwigs/deeptools/spikein/orlando/chip-rx_MLL.bigWig  # Spike-in normalised
+
+Merged consensus groups:
+- bigwigs/deeptools/merged/consensus_group.bigWig             # Unscaled merged
+- bigwigs/deeptools/merged/csaw/consensus_group.bigWig        # CSAW-scaled merged
+- bigwigs/deeptools/merged/spikein/orlando/consensus_group.bigWig  # Spike-in scaled merged
 ```
+
+See [Pipeline Outputs — Normalisation factor calculation](outputs.md#normalisation-factor-calculation) for a full explanation of how per-sample and merged scale factors are derived.
 
 For RNA-seq, stranded tracks include `_plus` and `_minus` suffixes:
 

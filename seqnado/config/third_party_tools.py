@@ -585,7 +585,7 @@ class Lanceotron(BaseModel):
     """Lanceotron peak calling tool configuration."""
     
     call_peaks: ToolConfig = Field(
-        default_factory=lambda: ToolConfig(threads=8, command_line_arguments=CommandLineArguments(value="-c 0.5")),
+        default_factory=lambda: ToolConfig(threads=1, command_line_arguments=CommandLineArguments(value="-c 0.5")),
         description="Peak calling configuration"
     )
 
@@ -646,7 +646,7 @@ class Macs(BaseModel):
 
 class Seacr(BaseModel):
     """SEACR peak calling tool configuration (non-ToolConfig based)."""
-    
+
     threshold: float = Field(default=0.01, ge=0, le=1, description="Peak calling threshold")
     normalization: Optional[str] = Field(default="non", description="Normalization method")
     stringency: Literal["stringent", "relaxed"] = Field(

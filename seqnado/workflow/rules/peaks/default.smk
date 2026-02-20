@@ -277,10 +277,11 @@ rule call_peaks_lanceotron_with_input:
         basename=lambda wc, output: output.peaks.replace(".bed", ""),
     container:
         "oras://ghcr.io/alsmith151/seqnado_ml_cpu:latest"
-    threads: 1
+    threads: 
+        CONFIG.third_party_tools.lanceotron.call_peaks.threads
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(
-            initial_value=12, attempts=attempt, scale=SCALE_RESOURCES
+            initial_value=16, attempts=attempt, scale=SCALE_RESOURCES
         ),
         runtime=lambda wildcards, attempt: define_time_requested(
             initial_value=6, attempts=attempt, scale=SCALE_RESOURCES
@@ -312,12 +313,13 @@ rule call_peaks_lanceotron_no_input:
         ),
         outdir=lambda wc, output: os.path.dirname(output.peaks),
         basename=lambda wc, output: output.peaks.replace(".bed", ""),
-    threads: 1
+    threads: 
+        CONFIG.third_party_tools.lanceotron.call_peaks.threads
     container:
         "oras://ghcr.io/alsmith151/seqnado_ml_cpu:latest"
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(
-            initial_value=12, attempts=attempt, scale=SCALE_RESOURCES
+            initial_value=16, attempts=attempt, scale=SCALE_RESOURCES
         ),
         runtime=lambda wildcards, attempt: define_time_requested(
             initial_value=6, attempts=attempt, scale=SCALE_RESOURCES
