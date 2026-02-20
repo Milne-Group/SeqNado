@@ -24,7 +24,8 @@ def _patch_pybedtools_tabix_detection():
     _original = pybedtools.BedTool.tabix_intervals
 
     def _patched(self, interval, **kwargs):
-        if self._tabix is None and getattr(self, "fn", None) and self.fn.endswith(".gz"):
+        # Safely check if _tabix exists and is None
+        if getattr(self, "_tabix", None) is None and getattr(self, "fn", None) and self.fn.endswith(".gz"):
             tbi = self.fn + ".tbi"
             if Path(tbi).exists():
                 self._tabix = pysam.TabixFile(self.fn)
@@ -316,4 +317,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        logger.exception(f"Fatal error during Plotnado execution: {e}")
+        raise

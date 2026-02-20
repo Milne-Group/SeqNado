@@ -917,6 +917,7 @@ class GEOFiles(BaseModel):
             pileup_methods = (
                 self.output.config.assay_config.bigwigs.pileup_method
                 if self.output.config is not None
+                and self.output.config.assay_config.bigwigs is not None
                 else list(PileupMethod)
             )
             for method in pileup_methods:
