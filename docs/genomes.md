@@ -17,10 +17,23 @@ After successful initialization of SeqNado ([Initialisation](initialisation.md))
 
 `seqnado genomes build` downloads the FASTA, GTF, chromosome sizes, and blacklist from UCSC, then builds Bowtie2 and STAR indices.
 
+### ⚠️ Dependencies
+
+The genome build workflow requires **samtools**, **Bowtie2**, and **STAR**. These are not installed by default in a basic SeqNado environment.
+
+**Use `--preset` to ensure dependencies are available:**
+
+- **`--preset ls`** (recommended) — Uses Apptainer/Singularity to provide all tools
+- **`--preset ss`** — On SLURM clusters with Apptainer/Singularity
+- **`--preset lc`** — Local execution with Conda + Apptainer
+- **`--preset le`** (default) — Requires manual installation of dependencies
+
+All examples below include `--preset ls`. If using a different environment, adjust accordingly.
+
 ### Single genome
 
 ```bash
-seqnado genomes build --name hg38 --outdir /path/to/genomes
+seqnado genomes build --name hg38 --outdir /path/to/genomes --preset ls
 ```
 
 ### Multiple genomes
@@ -28,7 +41,7 @@ seqnado genomes build --name hg38 --outdir /path/to/genomes
 Comma-separate names to build several genomes in one run:
 
 ```bash
-seqnado genomes build --name hg38,mm39,dm6 --outdir /path/to/genomes
+seqnado genomes build --name hg38,mm39,dm6 --outdir /path/to/genomes --preset ls
 ```
 
 ### Spike-in (composite) genome
@@ -36,7 +49,7 @@ seqnado genomes build --name hg38,mm39,dm6 --outdir /path/to/genomes
 Combine a primary genome with a spike-in. This downloads both genomes, concatenates their FASTA and GTF, and builds composite indices:
 
 ```bash
-seqnado genomes build --name hg38 --spikein dm6 --outdir /path/to/genomes
+seqnado genomes build --name hg38 --spikein dm6 --outdir /path/to/genomes --preset ls
 ```
 
 The composite genome is named `hg38_dm6` and spike-in chromosomes are prefixed (e.g. `dm6_chr2L`).
@@ -46,7 +59,7 @@ The composite genome is named `hg38_dm6` and spike-in chromosomes are prefixed (
 Preview planned jobs without executing them:
 
 ```bash
-seqnado genomes build --name hg38 --outdir /path/to/genomes --dry-run
+seqnado genomes build --name hg38 --outdir /path/to/genomes --preset ls --dry-run
 ```
 
 ### What gets built
@@ -87,16 +100,16 @@ On successful completion, the build automatically registers the genome in `~/.co
 
 ### Presets
 
-Presets select a Snakemake execution profile:
+Presets select a Snakemake execution profile. For genome builds, use a preset that includes samtools, Bowtie2, and STAR:
 
-| Preset | Profile                | Description |
-|--------|------------------------|-------------|
-| `le`   | `local_environment`    | Local execution, no containers (default) |
-| `ls`   | `local_singularity`    | Local execution with Apptainer/Singularity |
-| `lc`   | `local_conda`          | Local execution with Conda + Apptainer |
-| `ld`   | `local_docker`         | Local execution with Conda + Docker |
-| `ss`   | `slurm_singularity`    | SLURM cluster with Apptainer |
-| `t`    | Test                   | For testing and development |
+| Preset | Tools included? | Environment | Description |
+|--------|-----------------|-------------|-------------|
+| `le`   | ❌ No | Local | Requires manual tool installation (not recommended for genome builds) |
+| `ls`   | ✅ Yes | Local | Singularity/Apptainer containers (recommended) |
+| `lc`   | ✅ Yes | Local | Conda + Singularity |
+| `ld`   | ✅ Yes | Local | Docker + Conda |
+| `ss`   | ✅ Yes | SLURM cluster | Singularity/Apptainer containers on HPC |
+| `t`    | ✅ Yes | Local | Testing/development |
 
 ## Listing Genomes
 
@@ -120,6 +133,10 @@ Set `$EDITOR` to your preferred editor (defaults to `nano`).
 
 [FastQ Screen](https://www.bioinformatics.babraham.ac.uk/projects/fastq_screen/) checks for sample contamination by aligning reads against a set of reference genomes. SeqNado can auto-generate the `fastq_screen.conf` configuration file from your built genomes.
 
+**Key distinction:**
+- `--contaminant-path` = **input** (where your contaminant reference indices are located)
+- `--screen` = **output** (where to save the generated config file)
+
 ### Generating the config
 
 ```bash
@@ -129,43 +146,33 @@ seqnado genomes fastqscreen
 This reads your genome config (`~/.config/seqnado/genome_config.json`), finds each genome's Bowtie2 index, and writes a `fastq_screen.conf` with a `DATABASE` entry per genome. Organism names (Human, Mouse, Drosophila, etc.) are inferred automatically from the genome prefix (e.g. `hg38` → Human, `mm39` → Mouse).
 
 ### Adding contaminant databases
- 
-By default, the command prompts for a path to contaminant reference files. If provided, it adds common contaminant screens (E. coli, PhiX, rRNA, adapters, etc.).
 
 By default, the command prompts for a path to contaminant reference files. If provided, it adds common contaminant screens (E. coli, PhiX, rRNA, adapters, etc.).
 
-A pre-built set of contaminant references is available here. Download and extract it:
+A pre-built set of contaminant references is available. Download and extract it:
 
 ```bash
 wget https://userweb.molbiol.ox.ac.uk/public/project/milne_group/seqnado/genomes/fastqscreen_reference.tar.gz
 tar -xzf fastqscreen_reference.tar.gz
 ```
 
-Then point the command at the extracted directory:
+Then generate the config with contaminants:
 
 ```bash
+# Quick example: contaminants in current directory
 seqnado genomes fastqscreen --contaminant-path ./fastqscreen_reference
 
-Then point the command at the extracted directory:
+# Specify custom output path
+seqnado genomes fastqscreen --contaminant-path ./fastqscreen_reference --screen /path/to/my_fastq_screen.conf
 
-```bash
-seqnado genomes fastqscreen --contaminant-path ./fastqscreen_reference
-
-Then point the command at the extracted directory:
- 
- ```bash
-
-# Provide path directly
-seqnado genomes fastqscreen --contaminant-path ./fastqscreen_reference
- 
- # Skip contaminants entirely
- seqnado genomes fastqscreen --no-contaminants
+# Skip contaminants entirely
+seqnado genomes fastqscreen --no-contaminants
 ```
 
 The contaminant directory should contain Bowtie2 indices organised in subdirectories:
 
 ```
-contaminant_refs/
+fastqscreen_reference/
 ├── E_coli/Ecoli.*bt2
 ├── PhiX/phi_plus_SNPs.*bt2
 ├── rRNA/GRCm38_rRNA.*bt2
@@ -178,10 +185,10 @@ contaminant_refs/
 
 | Option                | Default | Description |
 |-----------------------|---------|-------------|
-| `--screen`, `-s`      | `~/.config/seqnado/fastq_screen.conf` | Output path |
+| `--screen`, `-s`      | `~/.config/seqnado/fastq_screen.conf` | **Output path**: Where to write the generated `fastq_screen.conf` |
+| `--contaminant-path`  | *(prompted)* | **Input path**: Directory containing contaminant Bowtie2 indices |
 | `--threads`, `-t`     | `8`     | Bowtie2 threads used by FastQ Screen |
 | `--no-contaminants`   | off     | Skip contaminant databases |
-| `--contaminant-path`  | *(prompted)* | Path to contaminant Bowtie2 indices |
 
 ---
 
