@@ -247,99 +247,121 @@ seqnado config --make-dirs --interactive
 
 ## Third Party Tools
 
-SeqNado integrates with specialized tools for each analysis step. These tools have parameters that can be customized in the generated YAML config. **Default parameters are sensible for most experiments**, but you may need to customize them based on your specific data, assay, and experimental design.
-
-!!! warning "Review tool parameters before running the pipeline"
-    Common mistakes that cause misleading or failed analyses:
-
-    - **featureCounts** (subread package): Default parameters count reads at the **exon level** (`-t exon`) and aggregate by **gene_id**. Before running, verify:
-      - Does your GTF use `gene_id` or `gene_name`? featureCounts must match.
-      - **Strandedness is critical** — use `0` (unstranded), `1` (forward), or `2` (reverse) based on your library prep. Using `2` for a forward-stranded library will result in 50–90% fewer counts.
-      - Paired-end mode (`-p --countReadPairs`) is auto-detected from your FASTQ files.
-      - If all genes get zero counts, you likely have a GTF feature attribute mismatch.
-
-    - **MACS2** (peak calling): Peak calling mode depends on your mark:
-      - **Narrow mode** (default) for transcription factors and sharp marks (H3K4me3, H3K27ac)
-      - **Broad mode** for diffuse marks (H3K27me3, H3K36me3). Without `--broad`, you'll miss broad domains.
-      - For weak ChIP-seq with few peaks, consider switching to SEACR or Lanceotron instead.
-
-    - **SEACR** (peak calling): Designed for low-background data (CUT&Tag). Configure stringency based on expected noise:
-      - `stringent` mode (recommended for CUT&Tag) reduces false positives
-      - `relaxed` mode if you're missing expected peaks
-      - Threshold values control sensitivity vs. specificity trade-off
-
-    - **Lanceotron** (deep learning peak caller): Works well for both broad and narrow peaks:
-      - No hyper-parameter tuning needed; model is pre-trained
-      - Can be slow on large files; consider using on a sample first
-
-    - **Salmon** (RNA-seq quantification): Requires a compatible reference index:
-      - GTF version must match your genome build (e.g., GRCh38 GTF for hg38)
-      - Faster than alignment-based methods but less flexible for debugging strandedness
-      - Generate a Salmon index before running: `salmon index -t transcripts.fa -i salmon_index_hg38`
-
-    - **Bigwig generation (deeptools bamCoverage)**: Choose your scaling method:
-      - **RPGC** (reads per genomic content): Normalizes for sequencing depth; standard for genome-wide comparisons
-      - **CPM** (counts per million): Simple per-library normalization
-      - **CSAW** (cyclic shift aware): For ChIP-seq with spike-in; see [Normalisation Methods](normalisation.md)
-      - For unscaled signal, pipeline generates raw coverage (useful for visual inspection)
-
-    - **Spike-in normalisation** (DESeq2, edgeR, Orlando, CSAW): Requires correct spike-in genome specification:
-      - Confirm your spike-in species matches your genome selection (e.g., `dm6` for *Drosophila*)
-      - Control gene names must match your spike-in reference GTF (e.g., `AmpR`, `Cas9_3p`)
-      - With-input normalisation requires ChIP and input samples paired in the design file — see [Design guide](design.md)
-
-    See the [Pipeline Overview](pipeline.md#supported-assays) for guidance on which tools to use for each assay type.
+SeqNado integrates with specialized tools for each analysis step. Before running the pipeline, review the guidance below for tools critical to your assay. **Default parameters are sensible for most experiments**, but customization may be necessary for specific data, assays, and experimental designs.
 
 ### Supported Tools Reference
 
-Below is a comprehensive list of tools integrated into SeqNado, organized by function:
+Below is a comprehensive list of tools integrated into SeqNado, organized by function. **⚠️ Key configuration warnings are included for critical tools.**
 
 #### Alignment & Indexing
+
 - **bowtie2** — Maps sequencing reads to a reference genome (ATAC, ChIP, CUT&Tag, SNP)
 - **STAR** — Splice-aware aligner for RNA-seq data (RNA)
 - **salmon** — Pseudoalignment-based RNA quantification (RNA; optional alternative to alignment)
+  - ⚠️ **Requires compatible reference index**: GTF version must match your genome build (e.g., GRCh38 GTF for hg38)
+  - Faster than alignment-based methods but less flexible for debugging strandedness
+  - Generate a Salmon index before running: `salmon index -t transcripts.fa -i salmon_index_hg38`
 
 #### Read Processing
+
 - **samtools** — BAM/SAM file manipulation and sorting
 - **picard** — Java tools for high-throughput sequencing data manipulation
 - **cutadapt** — Removes adapter sequences from reads
 - **trim-galore** — Wrapper for Cutadapt and FastQC for quality control
 
 #### Peak Calling (ChIP-seq, ATAC-seq, CUT&Tag, MCC)
-- **MACS2** — Model-based peak calling; use narrow mode for TFs/sharp marks, broad mode for diffuse marks
+
+- **MACS2** — Model-based peak calling
+  - ⚠️ **Peak calling mode depends on your mark**:
+    - **Narrow mode** (default) for transcription factors and sharp marks (H3K4me3, H3K27ac)
+    - **Broad mode** for diffuse marks (H3K27me3, H3K36me3). Without `--broad`, you'll miss 90% of broad domains
+    - For weak ChIP-seq with few peaks, consider switching to SEACR or Lanceotron instead
+
 - **SEACR** — Peak caller optimized for low-background data (CUT&Tag)
+  - Configure stringency based on expected noise:
+    - `stringent` mode (recommended for CUT&Tag) reduces false positives
+    - `relaxed` mode if you're missing expected peaks
+    - Threshold values control sensitivity vs. specificity trade-off
+
 - **Lanceotron** — Deep learning–based peak caller for broad and narrow peaks
+  - No hyper-parameter tuning needed; model is pre-trained
+  - Can be slow on large files; consider testing on a sample first
+
 - **lanceotronmcc** — Specialized Lanceotron variant for MCC interaction peaks
 
 #### Quantification (RNA-seq)
-- **featureCounts** (subread package) — Assigns aligned reads to genomic features; ensure strandedness and GTF attributes match
-- **Salmon** — Faster pseudoalignment-based quantification (requires compatible index)
+
+- **featureCounts** (subread package) — Assigns aligned reads to genomic features for RNA-seq quantification
+  - ⚠️ **Critical GTF and strandedness configuration**:
+    - Default parameters count reads at the **exon level** (`-t exon`) and aggregate by **gene_id**
+    - **Must verify GTF attribute match**: Does your GTF use `gene_id` or `gene_name`? featureCounts requires exact match or all counts will be zero
+    - **Strandedness must match library prep**: Use `0` (unstranded), `1` (forward), or `2` (reverse). Using wrong strandedness results in 50–90% fewer counts
+    - Paired-end mode (`-p --countReadPairs`) is auto-detected from FASTQ files
+    - If all genes get zero counts, check GTF feature attribute match first
+
+- **Salmon** — Faster pseudoalignment-based quantification (requires compatible index; see Alignment & Indexing above)
 
 #### Bigwig Generation & Visualization
-- **deeptools bamCoverage** — Generates BigWig files from BAM; supports multiple scaling methods
+
+- **deeptools bamCoverage** — Generates BigWig files from BAM alignments
+  - **Using deeptools' native `--normalizeUsing` ** — To use deeptools' built-in normalization methods (`RPKM`, `CPM`, `BPM`, `RPGC`), select `unscaled` for your bigwig scaling method, then manually edit `third_party_tools.deeptools.bam_coverage.command_line_arguments` to add `--normalizeUsing` (e.g., `"--binSize 10 --normalizeUsing RPKM"`). This disables SeqNado's scaling entirely. Example use case: comparing standard RPKM-normalized bigwigs across studies
+  - **Bigwig scaling method** — You choose during config (options: `unscaled`, `csaw`):
+    - **`unscaled`**: Raw read coverage without normalization; useful for visual inspection and as input for downstream analysis tools
+    - **`csaw`** (ChIP-Seq Analysis with Windows): Applies scaling factors between samples to equalize library depth while preserving broad features; recommended when comparing ChIP-seq samples or using spike-in controls; see [Normalisation Methods](normalisation.md)
+  - **Spike-in normalisation for bigwigs** — If you selected spike-in normalisation (Orlando, with-input, DESeq2, or edgeR) during config, scale factors are automatically calculated and applied to bigwig generation, producing spike-in–normalized bigwigs for downstream analysis; see [Normalisation Methods](normalisation.md)
+  
+!!! info
+    **How SeqNado prevents conflicts between `--normalizeUsing` and `--scaleFactor`**: The default deeptools config includes `--normalizeUsing RPKM`. However, when you select spike-in or csaw normalization, SeqNado **automatically removes** `--normalizeUsing` and applies **only** `--scaleFactor`. This prevents deeptools from silently ignoring your scale factors (since `--normalizeUsing` overrides `--scaleFactor` in deeptools). Result: your spike-in/csaw scale factors apply correctly without unwanted RPKM normalization
+  
+  
 - **bamnado** — Alternative tool for BigWig generation and BAM manipulation
+
 - **deeptools heatmap** — Creates heatmaps from BigWig files around genomic coordinates
+
 - **deeptools metaplot** — Generates metaplots of signal around features
 
 #### Motif Analysis (peak regions)
+
 - **Homer** — Motif discovery and annotation in peak regions
 - **MEME** — Alternative motif discovery tool
 
 #### Variant Calling (SNP)
+
 - **bcftools** — SNP calling and VCF manipulation
 - **SnpEff/SnpSift** — SNP annotation and variant functional impact prediction
 
 #### Methylation & Specialized
+
 - **methyldackel** — Extract methylation calls from bisulfite-seq data
 - **MAGeCK** — Statistical analysis of CRISPR screen data
 - **UCSC utilities** — Convert and manage genome tracks in UCSC format
 
-#### Data Analysis
-- **DESeq2** (R/Bioconductor) — Differential expression analysis (RNA-seq)
-- **edgeR** (R/Bioconductor) — Differential expression with spike-in normalisation
-- **Scaling & normalisation methods** — Orlando, with-input, CSAW for ChIP-seq (see [Normalisation Methods](normalisation.md))
+#### Data Analysis & Normalisation
 
-For detailed guidance on parameter customization, consult the official documentation for each tool.
+- **DESeq2** (R/Bioconductor) — Differential expression analysis (RNA-seq)
+
+- **edgeR** (R/Bioconductor) — Differential expression with spike-in normalisation
+  - ⚠️ **Spike-in normalisation setup**:
+    - Requires correct spike-in genome specification (e.g., `dm6` for *Drosophila*)
+    - Control gene names must match spike-in reference GTF (e.g., `ERCC`)
+    - With-input normalisation requires ChIP and input samples paired in design file — see [Design guide](design.md)
+
+- **Orlando** — Spike-in normalisation method for chromatin-based assays (ChIP, CAT)
+  - Recommended for spike-in data with balanced endogenous and exogenous reads
+
+- **with-input** — Normalisation using paired input controls (ChIP-seq only)
+  - Requires input samples correctly paired in design file
+  - Alternative to spike-in normalisation when spike-ins unavailable
+
+- **CSAW** — Cyclic shift aware normalisation; produces merged bigwigs
+  - Recommended for spike-in data with unbalanced read distributions
+  - See [Normalisation Methods](normalisation.md) for detailed comparison
+
+### Configuration Logic & Tool Interactions
+
+See the [Pipeline Overview](pipeline.md#supported-assays) for guidance on which tools to use for each assay type.
+
+For detailed normalisation methods comparison, see [Normalisation Methods](normalisation.md).
 
 For configuration command options and usage patterns, see [seqnado config](cli.md#cli-seqnado-config).
 
@@ -349,23 +371,23 @@ For configuration command options and usage patterns, see [seqnado config](cli.m
 
 ### Pitfalls to Avoid
 
-1. **Assuming defaults are correct without validation** 
+**Assuming defaults are correct without validation** 
    - **Problem**: Accepting default peak caller (lanceotron), GTF attributes, or strandedness without checking your specific data
    - **Fix**: For each new assay/GTF/strandedness combo, test peak calling or quantification on 1–2 samples first; spot-check BAM files and counts
 
-2. **Mismatched GTF and genome builds**
+**Mismatched GTF and genome builds**
    - **Problem**: Using GRCh37 GTF with hg38 genome, or mm10 GTF with mm39
    - **Fix**: Verify your annotation version matches your genome build at download time; document version numbers in your README
 
-3. **Wrong peak calling mode for your biological mark**
+**Wrong peak calling mode for your biological mark**
    - **Problem**: Using MACS2 narrow mode for H3K27me3 (broad mark) → misses 90% of signal; using broad mode for H3K4me3 (sharp mark) → thousands of false positives
    - **Fix**: Know your mark. H3K4me3, H3K27ac, TF binding → narrow. H3K27me3, H3K36me3, H3K9me3 → broad. Test on a rep.
 
-4. **Forgetting to pair ChIP and input samples in design file**
-   - **Problem**: Configuring "with-input" normalisation but not specifying control sample pairs in [Design](design.md)
+**Forgetting to pair ChIP and input samples in design file**
+   - **Problem**: Configuring "with-input" normalisation but not ensuring control sample pairs in [Design](design.md)
    - **Fix**: Before running pipeline, review design file to confirm ChIP→input pairing syntax matched for all samples
 
-5. **Ignoring resource constraints**
+**Ignoring resource constraints**
    - **Problem**: Setting memory-intensive parameters (STAR `--limitSjdbInsertNsj`, deeptools multi-threaded) on systems without available RAM
    - **Fix**: Test on 1 sample and monitor resource usage (`top`, cluster monitoring); adjust thread count or binsize if needed
 
@@ -375,15 +397,6 @@ For configuration command options and usage patterns, see [seqnado config](cli.m
 - Run `seqnado snakemake ... -n` (dry-run) to visualize the workflow DAG before execution
 - Test peak calling or quantification on 1–2 samples to validate your tool selections
 - Spot-check intermediate outputs: BAM file headers (correct chromosome names?), peak files (reasonable count?), count matrices (non-zero?), BigWigs (visible in IGV?)
-
-✅ **Document your configuration choices**
-- Keep a README.md in your project directory noting:
-  - Which assay (ChIP, ATAC, RNA) and which config used
-  - Which peak callers and quantification methods you chose
-  - Strandedness and GTF version for RNA-seq
-  - Spike-in species and control genes if used
-  - Rationale for non-default parameter choices
-- Comment in your YAML config file to explain non-obvious settings
 
 ✅ **Version-control your configuration files**
 - Commit config YAML files to git so analysis is fully reproducible

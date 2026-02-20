@@ -9,6 +9,17 @@ SeqNado supports several normalisation strategies for generating coverage bigwig
 **No spike-in and expect similar global levels across conditions?** Use `csaw`.  
 Need help choosing? See [Choosing a Method](#choosing-a-method) below.
 
+## Summary Table
+
+| Method | Assay | Input data | Per-sample formula | Merged formula | Signal Unit |
+|---|---|---|---|---|---|
+| **unscaled** | Any | BAM files | \(1\) | \(1\) |  As set in deeptools/bamnado/homer configuration |
+| **orlando** | ChIP-seq, CUT&TAG, CUT&RUN | Spike-in BAM read counts | \(10^6 / S_{\text{ip}}\) | \(10^6 / \sum_i S_{\text{ip},i}\) | RRPM (spike-in reference-adjusted RPM) |
+| **with_input** | ChIP-seq, CUT&TAG, CUT&RUN | Spike-in BAM read counts (IP + input) | \((S_{\text{ctrl}} \times 10^7) / (S_{\text{ip}} \times R_{\text{ctrl}})\) | \((\sum S_{\text{ctrl},i} \times 10^7) / (\sum S_{\text{ip},i} \times \sum R_{\text{ctrl},i})\) | RRPM (IP enrichment over spike-in-normalized input) |
+| **deseq2** | RNA-seq | Spike-in gene count matrix | DESeq2 median-ratio \(\hat{s}_j\) | Arithmetic mean \(\bar{\hat{s}}\) | Library-size normalized |
+| **edgeR** | RNA-seq | Spike-in gene count matrix | edgeR TMM \(\hat{f}_j^{\text{TMM}}\) | Arithmetic mean \(\bar{\hat{f}}^{\text{TMM}}\) | Library-size normalized |
+| **csaw** | ChIP-seq, CUT&TAG, CUT&RUN, ATAC-seq (RNA-seq: see note) | Genomic bin read counts | \(\bar{L} / L_j\) | \(1 / \sum_i (1/s_i)\) | CPM (library-size normalized, within group) |
+
 ---
 
 ## Spike-in Normalisation
@@ -24,7 +35,7 @@ Spike-in normalisation uses a known amount of exogenous material (chromatin or R
 **Concept:** Scale each sample so that one million spike-in reads would have been sequenced, making signal proportional to the absolute amount of chromatin immunoprecipitated.
 
 !!! note "In plain terms"
-    You added a fixed amount of foreign chromatin (e.g. *Drosophila*) to each ChIP sample before sequencing. Samples that were sequenced more deeply will produce more spike-in reads, but the amount of spike-in chromatin was the same. By dividing every sample's signal by its spike-in read count, you remove the effect of unequal sequencing depth and make signals directly comparable across samples — a bigger signal in the bigwig means more protein was genuinely bound, not just that more reads were generated.
+    You added a fixed amount of exogenous chromatin (e.g. *Drosophila*) to each ChIP sample before sequencing. Samples that were sequenced more deeply will produce more spike-in reads, but the amount of spike-in chromatin was the same. By dividing every sample's signal by its spike-in read count, you remove the effect of unequal sequencing depth and make signals directly comparable across samples — a bigger signal in the bigwig means more protein was genuinely bound, not just that more reads were generated.
 
 **Per-sample formula:**
 
@@ -159,7 +170,7 @@ $$
 
 **Reference:** Lun ATL, Smyth GK. *csaw: a Bioconductor package for differential binding analysis of ChIP-seq data using sliding windows.* Nucleic Acids Research. 2016;44(5):e45. doi:[10.1093/nar/gkv1191](https://doi.org/10.1093/nar/gkv1191)
 
-**Designed for:** ChIP-seq, CUT&TAG, CUT&RUN. Technically applicable to RNA-seq (it is equivalent to reads-per-million normalisation), but DESeq2 or edgeR are strongly preferred for RNA-seq because they additionally correct for compositional bias — see [Choosing a method](#choosing-a-method) below.
+**Designed for:** ChIP-seq, CUT&TAG, CUT&RUN, ATAC-seq. Technically applicable to RNA-seq (it is equivalent to reads-per-million normalisation), but DESeq2 or edgeR are strongly preferred for RNA-seq because they additionally correct for compositional bias — see [Choosing a method](#choosing-a-method) below.
 
 **Concept:** Equalise read depth across samples within a scaling group by comparing the total number of reads falling into randomly sampled genomic bins. This normalises for library size differences without relying on exogenous spike-in material.
 
@@ -207,19 +218,6 @@ When normalisation is not enabled, bigwigs are generated with no scaling factor 
 
 ---
 
-## Summary Table
-
-| Method | Assay | Input data | Per-sample formula | Merged formula |
-|---|---|---|---|---|
-| **orlando** | ChIP-seq, CUT&TAG, CUT&RUN | Spike-in BAM read counts | \(10^6 / S_{\text{ip}}\) | \(10^6 / \sum_i S_{\text{ip},i}\) |
-| **with_input** | ChIP-seq, CUT&TAG, CUT&RUN | Spike-in BAM read counts (IP + input) | \((S_{\text{ctrl}} \times 10^7) / (S_{\text{ip}} \times R_{\text{ctrl}})\) | \((\sum S_{\text{ctrl},i} \times 10^7) / (\sum S_{\text{ip},i} \times \sum R_{\text{ctrl},i})\) |
-| **deseq2** | RNA-seq | Spike-in gene count matrix | DESeq2 median-ratio \(\hat{s}_j\) | Arithmetic mean \(\bar{\hat{s}}\) |
-| **edgeR** | RNA-seq | Spike-in gene count matrix | edgeR TMM \(\hat{f}_j^{\text{TMM}}\) | Arithmetic mean \(\bar{\hat{f}}^{\text{TMM}}\) |
-| **csaw** | ChIP-seq, CUT&TAG, CUT&RUN (RNA-seq: see note) | Genomic bin read counts | \(\bar{L} / L_j\) | \(1 / \sum_i (1/s_i)\) |
-| **none** | Any | — | \(1\) | \(1\) |
-
----
-
 ## Choosing a Method
 
 ### By assay type
@@ -227,6 +225,7 @@ When normalisation is not enabled, bigwigs are generated with no scaling factor 
 | Assay | Recommended methods | Notes |
 |---|---|---|
 | **ChIP-seq / CUT&TAG / CUT&RUN** | `orlando`, `with_input`, `csaw` | Prefer `orlando` or `with_input` when a chromatin spike-in was added — they are purpose-built and more direct than DESeq2/edgeR for this use case. Use `csaw` when no spike-in is available and you expect similar global levels across conditions. |
+| **ATAC-seq** | `csaw` | Library-size normalization is most appropriate for ATAC-seq. |
 | **RNA-seq** | `deseq2`, `edgeR` | These are the standard methods for RNA-seq. `orlando` and `with_input` are not applicable. `csaw` is technically valid but does not correct for compositional bias — see below. |
 
 ### Can CSAW be used for RNA-seq?
