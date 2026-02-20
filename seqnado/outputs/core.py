@@ -702,7 +702,11 @@ class SeqnadoOutputBuilder:
         has_consensus = bool(
             self.sample_groupings and self.sample_groupings.groupings.get("consensus")
         )
-        pileup_methods = self.config.assay_config.bigwigs.pileup_method
+        bigwigs_config = self.config.assay_config.bigwigs
+        if bigwigs_config is None or not bigwigs_config.pileup_method:
+            pileup_methods = [PileupMethod.DEEPTOOLS]
+        else:
+            pileup_methods = bigwigs_config.pileup_method
         spikein_config = getattr(self.config.assay_config, "spikein", None)
         spikein_methods = spikein_config.method if spikein_config else []
 
@@ -775,7 +779,11 @@ class SeqnadoOutputBuilder:
         has_consensus = bool(
             self.sample_groupings and self.sample_groupings.groupings.get("consensus")
         )
-        pileup_methods = self.config.assay_config.bigwigs.pileup_method
+        bigwigs_config = self.config.assay_config.bigwigs
+        if bigwigs_config is None or not bigwigs_config.pileup_method:
+            pileup_methods = [PileupMethod.DEEPTOOLS]
+        else:
+            pileup_methods = bigwigs_config.pileup_method
         spikein_config = getattr(self.config.assay_config, "spikein", None)
         spikein_methods = spikein_config.method if spikein_config else []
 

@@ -176,7 +176,7 @@ class BigWigFiles(BaseModel):
                 f"and will be skipped. Use deeptools or bamnado instead."
             )
             return False
-        if assay in self.incompatible_methods.get(method, []):
+        if method in self.incompatible_methods.get(assay, []):
             return False
         return True
 

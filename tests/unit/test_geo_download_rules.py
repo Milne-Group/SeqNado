@@ -88,8 +88,8 @@ def test_has_single_rule(rules_content):
 
 
 def test_has_compress_rule(rules_content):
-    """Test that download.smk contains the compress_fastq_files rule."""
-    assert "rule compress_fastq_files:" in rules_content
+    """Test that download.smk contains the geo_compress_fastq_files rule."""
+    assert "rule geo_compress_fastq_files:" in rules_content
 
 
 def test_has_download_all_rule(rules_content):
@@ -174,19 +174,19 @@ def test_single_rule_has_wildcard_constraints(rules_content):
 # --- Compress rule tests ---
 def test_compress_uses_pigz(rules_content):
     """Test that compress rule uses pigz for parallel compression."""
-    section = _get_rule_section(rules_content, "compress_fastq_files")
+    section = _get_rule_section(rules_content, "geo_compress_fastq_files")
     assert "pigz" in section
 
 
 def test_compress_uses_threads(rules_content):
     """Test that compress rule uses multiple threads."""
-    section = _get_rule_section(rules_content, "compress_fastq_files")
+    section = _get_rule_section(rules_content, "geo_compress_fastq_files")
     assert "threads:" in section
 
 
 def test_compress_input_output_pattern(rules_content):
     """Test that compress rule converts .fastq to .fastq.gz."""
-    section = _get_rule_section(rules_content, "compress_fastq_files")
+    section = _get_rule_section(rules_content, "geo_compress_fastq_files")
     assert ".fastq.gz" in section
     assert "{filename}" in section
 
