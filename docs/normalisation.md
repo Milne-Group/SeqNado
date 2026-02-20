@@ -11,19 +11,6 @@ Need help choosing? See [Choosing a Method](#choosing-a-method) below.
 
 ---
 
-## Background Terminology
-
-This document assumes familiarity with high-throughput sequencing concepts. If you are new to ChIP-seq or RNA-seq normalisation, these terms may be useful:
-
-- **Spike-in**: Known quantity of exogenous material (chromatin from another species, or synthetic RNA) added to each sample before sequencing. Because the amount is constant, reads mapping to spike-in reflect sequencing depth, not biology.
-- **IP (immunoprecipitation)**: In ChIP-seq, the antibody pulls down target protein and its bound DNA. The "IP" sample contains what was pulled down; the "input" sample is unselected chromatin (background).
-- **Reference genome**: The genome of interest (e.g., *Homo sapiens*). In spike-in experiments, reads are split by which genome they map to.
-- **Replicates**: Multiple independent experiments. Normalisation models (DESeq2, edgeR) use replicates to estimate variability; merged BAMs (pooled replicates) have no replicate structure, so these models cannot be re-fit.
-- **Compositional bias** (RNA-seq): When highly expressed genes make up a large fraction of all reads, raw library size estimates become misleading. DESeq2/edgeR handle this by comparing genes relative to a geometric mean reference.
-- **Geometric mean**: The $N$-th root of the product of $N$ values — used in DESeq2 as a stable reference that is not affected by any single highly expressed gene.
-
----
-
 ## Spike-in Normalisation
 
 Spike-in normalisation uses a known amount of exogenous material (chromatin or RNA from a different species) added to each library before sequencing. Because the amount added is constant, the number of reads mapping to the spike-in reflects sequencing depth and can be used to normalise samples to a comparable scale. SeqNado implements three spike-in strategies — two based on total spike-in read counts (orlando, with_input) and two based on gene-level counting from a spike-in-aware count matrix (deseq2, edgeR).
@@ -266,3 +253,16 @@ It depends on your spike-in strategy:
 | DESeq2 factors | `seqnado_output/{assay}/resources/deseq2/normalisation_factors.json` |
 | edgeR factors | `seqnado_output/{assay}/resources/edger/normalisation_factors.json` |
 | CSAW factors | `seqnado_output/{assay}/resources/{group}_scaling_factors.tsv` |
+
+---
+
+## Background Terminology
+
+This document assumes familiarity with high-throughput sequencing concepts. If you are new to ChIP-seq or RNA-seq normalisation, these terms may be useful:
+
+- **Spike-in**: Known quantity of exogenous material (chromatin from another species, or synthetic RNA) added to each sample before sequencing. Because the amount is constant, reads mapping to spike-in reflect sequencing depth, not biology.
+- **IP (immunoprecipitation)**: In ChIP-seq, the antibody pulls down target protein and its bound DNA. The "IP" sample contains what was pulled down; the "input" sample is unselected chromatin (background).
+- **Reference genome**: The genome of interest (e.g., *Homo sapiens*). In spike-in experiments, reads are split by which genome they map to.
+- **Replicates**: Multiple independent experiments. Normalisation models (DESeq2, edgeR) use replicates to estimate variability; merged BAMs (pooled replicates) have no replicate structure, so these models cannot be re-fit.
+- **Compositional bias** (RNA-seq): When highly expressed genes make up a large fraction of all reads, raw library size estimates become misleading. DESeq2/edgeR handle this by comparing genes relative to a geometric mean reference.
+- **Geometric mean**: The $N$-th root of the product of $N$ values — used in DESeq2 as a stable reference that is not affected by any single highly expressed gene.
