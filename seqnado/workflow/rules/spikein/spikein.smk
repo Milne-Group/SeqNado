@@ -5,10 +5,6 @@ use rule bam_sort as bam_sort_spikein with:
     output:
         bam=temp(OUTPUT_DIR + "/aligned/spikein/sorted/{sample}.bam"),
         read_log=temp(OUTPUT_DIR + "/aligned/spikein/sorted/{sample}_read.log"),
-    resources:
-        mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
-        runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
     log: OUTPUT_DIR + "/logs/aligned_spikein/{sample}_sort.log",
     benchmark: OUTPUT_DIR + "/.benchmark/aligned_spikein/{sample}_sort.tsv",
     message: "Sorting spike-in aligned BAM for sample {wildcards.sample} using samtools"
