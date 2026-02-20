@@ -15,6 +15,38 @@ _has_spikein_withinput = SpikeInMethod.WITH_INPUT in _spikein_methods
 #   bamnado    : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
 #   homer      : individual → unscaled              ; merged → unscaled
 
+rule index_individual_peaks:
+    input:
+        peaks=OUTPUT.peak_files,
+    output:
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+    shell:
+        """
+        for bed in {input.peaks}; do
+            sort -k1,1 -k2,2n "$bed" | bgzip > "$bed.gz"
+            tabix -p bed "$bed.gz"
+        done
+        """
+
+
+rule index_genes_bed:
+    input:
+        genes=str(CONFIG.genome.genes) if hasattr(CONFIG.genome, 'genes') else [],
+    output:
+        bed_gz=OUTPUT_DIR + "/resources/genes_indexed.bed.gz",
+        tbi=OUTPUT_DIR + "/resources/genes_indexed.bed.gz.tbi",
+    shell:
+        """
+        if [ -s {input.genes} ]; then
+            sort -k1,1 -k2,2n {input.genes} | bgzip > {output.bed_gz}
+            tabix -p bed {output.bed_gz}
+        else
+            touch {output.bed_gz}
+            touch {output.tbi}
+        fi
+        """
+
 
 # ─── deeptools · individual · unscaled (base rule) ───────────────────────────
 rule plotnado_deeptools:
@@ -23,13 +55,18 @@ rule plotnado_deeptools:
             method=PileupMethod.DEEPTOOLS,
             scale=DataScalingTechnique.UNSCALED,
             ip_only=True,
-        ) + OUTPUT.peak_files,
+        ),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        genes_indexed=rules.index_genes_bed.output.bed_gz,
+        genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
         plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.UNSCALED),
         template=OUTPUT_DIR + "/genome_browser_plots/deeptools/unscaled/template.toml",
     params:
         assay=str(CONFIG.assay) if hasattr(CONFIG, 'assay') else None,
-        genes=str(CONFIG.genome.genes) if CONFIG.assay_config.plot_with_plotnado and hasattr(CONFIG.genome, 'genes') else None,
+        peak_files=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        genes=OUTPUT_DIR + "/resources/genes_indexed.bed.gz" if CONFIG.assay_config.plot_with_plotnado and hasattr(CONFIG.genome, 'genes') else None,
         regions=str(CONFIG.assay_config.plotting.coordinates) if CONFIG.assay_config.plotting and hasattr(CONFIG.assay_config.plotting, 'coordinates') else None,
         plotting_format=str(CONFIG.assay_config.plotting.file_format) if CONFIG.assay_config.plotting and hasattr(CONFIG.assay_config.plotting, 'file_format') else None,
     resources:
@@ -50,7 +87,11 @@ use rule plotnado_deeptools as plotnado_deeptools_csaw with:
             method=PileupMethod.DEEPTOOLS,
             scale=DataScalingTechnique.CSAW,
             ip_only=True,
-        ) + OUTPUT.peak_files,
+        ),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        genes_indexed=rules.index_genes_bed.output.bed_gz,
+        genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
         plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.CSAW),
         template=OUTPUT_DIR + "/genome_browser_plots/deeptools/csaw/template.toml",
@@ -67,7 +108,11 @@ use rule plotnado_deeptools as plotnado_deeptools_spikein_orlando with:
             scale=DataScalingTechnique.SPIKEIN,
             spikein_method=SpikeInMethod.ORLANDO.value,
             ip_only=True,
-        ) + OUTPUT.peak_files,
+        ),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        genes_indexed=rules.index_genes_bed.output.bed_gz,
+        genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
         plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.SPIKEIN, spikein_method=SpikeInMethod.ORLANDO.value),
         template=OUTPUT_DIR + "/genome_browser_plots/deeptools/spikein/orlando/template.toml",
@@ -84,7 +129,11 @@ use rule plotnado_deeptools as plotnado_deeptools_spikein_withinput with:
             scale=DataScalingTechnique.SPIKEIN,
             spikein_method=SpikeInMethod.WITH_INPUT.value,
             ip_only=True,
-        ) + OUTPUT.peak_files,
+        ),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        genes_indexed=rules.index_genes_bed.output.bed_gz,
+        genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
         plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.SPIKEIN, spikein_method=SpikeInMethod.WITH_INPUT.value),
         template=OUTPUT_DIR + "/genome_browser_plots/deeptools/spikein/with_input/template.toml",
@@ -100,7 +149,11 @@ use rule plotnado_deeptools as plotnado_deeptools_merged with:
             method=PileupMethod.DEEPTOOLS,
             scale=DataScalingTechnique.UNSCALED,
             is_merged=True,
-        ) + OUTPUT.peak_files,
+        ),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        genes_indexed=rules.index_genes_bed.output.bed_gz,
+        genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
         plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.UNSCALED, is_merged=True),
         template=OUTPUT_DIR + "/genome_browser_plots/merged/deeptools/unscaled/template.toml",
@@ -116,7 +169,11 @@ use rule plotnado_deeptools as plotnado_deeptools_merged_csaw with:
             method=PileupMethod.DEEPTOOLS,
             scale=DataScalingTechnique.CSAW,
             is_merged=True,
-        ) + OUTPUT.peak_files,
+        ),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        genes_indexed=rules.index_genes_bed.output.bed_gz,
+        genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
         plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.CSAW, is_merged=True),
         template=OUTPUT_DIR + "/genome_browser_plots/merged/deeptools/csaw/template.toml",
@@ -133,7 +190,11 @@ use rule plotnado_deeptools as plotnado_deeptools_merged_spikein_orlando with:
             scale=DataScalingTechnique.SPIKEIN,
             spikein_method=SpikeInMethod.ORLANDO.value,
             is_merged=True,
-        ) + OUTPUT.peak_files,
+        ),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        genes_indexed=rules.index_genes_bed.output.bed_gz,
+        genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
         plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.SPIKEIN, is_merged=True, spikein_method=SpikeInMethod.ORLANDO.value),
         template=OUTPUT_DIR + "/genome_browser_plots/merged/deeptools/spikein/orlando/template.toml",
@@ -150,7 +211,11 @@ use rule plotnado_deeptools as plotnado_deeptools_merged_spikein_withinput with:
             scale=DataScalingTechnique.SPIKEIN,
             spikein_method=SpikeInMethod.WITH_INPUT.value,
             is_merged=True,
-        ) + OUTPUT.peak_files,
+        ),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        genes_indexed=rules.index_genes_bed.output.bed_gz,
+        genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
         plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.SPIKEIN, is_merged=True, spikein_method=SpikeInMethod.WITH_INPUT.value),
         template=OUTPUT_DIR + "/genome_browser_plots/merged/deeptools/spikein/with_input/template.toml",
@@ -166,7 +231,11 @@ use rule plotnado_deeptools as plotnado_bamnado with:
             method=PileupMethod.BAMNADO,
             scale=DataScalingTechnique.UNSCALED,
             ip_only=True,
-        ) + OUTPUT.peak_files,
+        ),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        genes_indexed=rules.index_genes_bed.output.bed_gz,
+        genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
         plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.BAMNADO),
         template=OUTPUT_DIR + "/genome_browser_plots/bamnado/unscaled/template.toml",
@@ -182,7 +251,11 @@ use rule plotnado_deeptools as plotnado_bamnado_merged with:
             method=PileupMethod.BAMNADO,
             scale=DataScalingTechnique.UNSCALED,
             is_merged=True,
-        ) + OUTPUT.peak_files,
+        ),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        genes_indexed=rules.index_genes_bed.output.bed_gz,
+        genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
         plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.BAMNADO, is_merged=True),
         template=OUTPUT_DIR + "/genome_browser_plots/merged/bamnado/unscaled/template.toml",
@@ -198,7 +271,11 @@ use rule plotnado_deeptools as plotnado_bamnado_merged_csaw with:
             method=PileupMethod.BAMNADO,
             scale=DataScalingTechnique.CSAW,
             is_merged=True,
-        ) + OUTPUT.peak_files,
+        ),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        genes_indexed=rules.index_genes_bed.output.bed_gz,
+        genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
         plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.CSAW, method=PileupMethod.BAMNADO, is_merged=True),
         template=OUTPUT_DIR + "/genome_browser_plots/merged/bamnado/csaw/template.toml",
@@ -215,7 +292,11 @@ use rule plotnado_deeptools as plotnado_bamnado_merged_spikein_orlando with:
             scale=DataScalingTechnique.SPIKEIN,
             spikein_method=SpikeInMethod.ORLANDO.value,
             is_merged=True,
-        ) + OUTPUT.peak_files,
+        ),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        genes_indexed=rules.index_genes_bed.output.bed_gz,
+        genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
         plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.SPIKEIN, method=PileupMethod.BAMNADO, is_merged=True, spikein_method=SpikeInMethod.ORLANDO.value),
         template=OUTPUT_DIR + "/genome_browser_plots/merged/bamnado/spikein/orlando/template.toml",
@@ -232,7 +313,11 @@ use rule plotnado_deeptools as plotnado_bamnado_merged_spikein_withinput with:
             scale=DataScalingTechnique.SPIKEIN,
             spikein_method=SpikeInMethod.WITH_INPUT.value,
             is_merged=True,
-        ) + OUTPUT.peak_files,
+        ),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        genes_indexed=rules.index_genes_bed.output.bed_gz,
+        genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
         plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.SPIKEIN, method=PileupMethod.BAMNADO, is_merged=True, spikein_method=SpikeInMethod.WITH_INPUT.value),
         template=OUTPUT_DIR + "/genome_browser_plots/merged/bamnado/spikein/with_input/template.toml",
@@ -248,7 +333,11 @@ use rule plotnado_deeptools as plotnado_homer with:
             method=PileupMethod.HOMER,
             scale=DataScalingTechnique.UNSCALED,
             ip_only=True,
-        ) + OUTPUT.peak_files,
+        ),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        genes_indexed=rules.index_genes_bed.output.bed_gz,
+        genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
         plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.HOMER),
         template=OUTPUT_DIR + "/genome_browser_plots/homer/unscaled/template.toml",
@@ -264,7 +353,11 @@ use rule plotnado_deeptools as plotnado_homer_merged with:
             method=PileupMethod.HOMER,
             scale=DataScalingTechnique.UNSCALED,
             is_merged=True,
-        ) + OUTPUT.peak_files,
+        ),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
+        genes_indexed=rules.index_genes_bed.output.bed_gz,
+        genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
         plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.HOMER, is_merged=True),
         template=OUTPUT_DIR + "/genome_browser_plots/merged/homer/unscaled/template.toml",
