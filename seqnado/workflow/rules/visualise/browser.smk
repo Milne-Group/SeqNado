@@ -1,4 +1,4 @@
-from seqnado.workflow.helpers.common import define_time_requested
+from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
 from seqnado import DataScalingTechnique, PileupMethod, SpikeInMethod
 
 _spikein_cfg = getattr(CONFIG.assay_config, "spikein", None)
@@ -21,6 +21,12 @@ rule index_individual_peaks:
     output:
         peaks_indexed=temp(expand("{peak}.gz", peak=OUTPUT.peak_files)),
         peaks_tbi=temp(expand("{peak}.gz.tbi", peak=OUTPUT.peak_files)),
+    resources:
+        mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
+        runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
+    log: OUTPUT_DIR + "/logs/visualise/index_individual_peaks.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/visualise/index_individual_peaks.tsv",
+    message: "Indexing individual peak files"
     shell:
         """
         for bed in {input.peaks}; do
@@ -36,6 +42,12 @@ rule index_genes_bed:
     output:
         bed_gz=temp(OUTPUT_DIR + "/resources/genes_indexed.bed.gz"),
         tbi=temp(OUTPUT_DIR + "/resources/genes_indexed.bed.gz.tbi"),
+    resources:
+        mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
+        runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
+    log: OUTPUT_DIR + "/logs/visualise/index_genes_bed.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/visualise/index_genes_bed.tsv",
+    message: "Indexing genes file for plotting"
     shell:
         """
         if [ -s {input.genes} ]; then

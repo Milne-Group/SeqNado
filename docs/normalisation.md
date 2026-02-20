@@ -80,16 +80,16 @@ $$
 where \(R\) is the number of reads mapping to the reference genome and \(S\) is the number of reads mapping to the spike-in genome. The relative signal (IP enrichment over background) is then normalised to a reads-per-million scale:
 
 $$
-\text{norm_factor} = \frac{\rho_{\text{ip}}}{\rho_{\text{ctrl}}} \times \frac{10^7}{R_{\text{ip}}}
+\text{scale_factor} = \frac{\rho_{\text{ip}}}{\rho_{\text{ctrl}}} \times \frac{10^7}{R_{\text{ip}}}
 $$
 
 Expanding:
 
 $$
-\text{norm_factor} = \frac{S_{\text{ctrl}} \times 10^7}{S_{\text{ip}} \times R_{\text{ctrl}}}
+\text{scale_factor} = \frac{S_{\text{ctrl}} \times 10^7}{S_{\text{ip}} \times R_{\text{ctrl}}}
 $$
 
-**Important:** This formula applies only to IP samples. Input control samples are treated separately — they receive a normalization factor of 1 (unscaled), as they do not undergo the IP/input correction. When input samples are visualised as tracks (if configured to do so), they appear unscaled.
+**Important:** This formula applies only to IP samples. Input control samples are treated separately — they receive a scale factor of 1 (unscaled), as they do not undergo the IP/input correction. When input samples are visualised as tracks (if configured to do so), they appear unscaled.
 
 **Merged bigwig:** The per-sample normalisation table (`resources/with_input/normalisation_factors.tsv`) already contains the IP and paired-input read counts for each sample. SeqNado sums these across all samples in the group and applies the same formula as for a single sample — mathematically equivalent to running the calculation on the merged BAM directly:
 
