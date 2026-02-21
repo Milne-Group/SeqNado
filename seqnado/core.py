@@ -105,6 +105,7 @@ class PileupMethod(Enum):
     DEEPTOOLS = "deeptools"
     HOMER = "homer"
     BAMNADO = "bamnado"
+    METHYLDACKEL = "methyldackel"
 
 
 class DataScalingTechnique(Enum):

@@ -157,7 +157,7 @@ Resolutions for MCC cooler files — comma-separated (default: 100,1000)
 ### Methylation Specific
 
 ```
-Call methylation? (default: no)
+Call methylation? (default: yes)
   └─ Spike-in genomes — comma-separated, if yes (default: Lambda,250bp-v1,2kb-unmod)
 
 Methylation assay? (default: taps; options: taps, bsseq)

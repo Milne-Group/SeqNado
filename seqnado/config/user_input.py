@@ -254,10 +254,11 @@ def get_bigwig_config(assay: Assay) -> Optional[BigwigConfig]:
     if not make_bigwigs:
         return None
 
-    # Multi-select for pileup methods
+    pileup_method_choices = [m.value for m in PileupMethod]
+
     pileup_methods = get_user_input(
         "Bigwig method(s) (comma-separated for multiple):",
-        choices=[m.value for m in PileupMethod],
+        choices=pileup_method_choices,
         default="deeptools" if not assay == Assay.MCC else PileupMethod.BAMNADO.value,
         multi_select=True,
     )
@@ -563,7 +564,7 @@ def get_mcc_config() -> Optional[MCCConfig]:
 def get_methylation_config() -> Optional[MethylationConfig]:
     """Get methylation calling configuration."""
     call_methylation = get_user_input(
-        "Call methylation?", default="no", is_boolean=True
+        "Call methylation?", default="yes", is_boolean=True
     )
     spikein_genomes: list[str] = []
     if call_methylation:
@@ -599,8 +600,8 @@ def build_assay_config(
 ) -> Optional[AssaySpecificConfig]:
     """Build assay-specific configuration based on the assay type."""
 
-    # Collect standard configuration for assays that need it
-    if assay not in [Assay.CRISPR, Assay.SNP]:
+    # Collect standard configuration for assays that support bigwigs
+    if assay not in [Assay.CRISPR, Assay.SNP, Assay.METH]:
         bigwigs = get_bigwig_config(assay=assay)
         plotting = get_plotting_config()
         ucsc_hub = get_ucsc_hub_config()
@@ -619,6 +620,18 @@ def build_assay_config(
             "create_heatmaps": create_heatmaps,
             "create_geo_submission_files": geo_files,
         }
+    elif assay == Assay.METH:
+        # METH uses methylation-specific bigwig generation, not pileup-based
+        # Ask if bigwigs should be created, but use defaults for all sub-options
+        make_bigwigs = get_user_input("Make Bigwigs?", default="yes", is_boolean=True)
+        bigwigs = BigwigConfig(
+            pileup_method=[PileupMethod.METHYLDACKEL],
+            binsize=1,
+            scale_methods=[DataScalingTechnique.UNSCALED.value]
+        ) if make_bigwigs else None
+        plotting = None
+        create_heatmaps = False
+        geo_files = False
 
     match assay:
         case Assay.ATAC:
@@ -682,7 +695,6 @@ def build_assay_config(
             methylation = get_methylation_config()
             return MethylationAssayConfig(
                 genome=genome_config,
-                bigwigs=bigwigs,
                 plotting=plotting,
                 ucsc_hub=None,
                 create_heatmaps=create_heatmaps,
