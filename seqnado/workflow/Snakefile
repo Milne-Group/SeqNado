@@ -124,6 +124,7 @@ match ASSAY:
         include: "rules/alignment/rna.smk"
         include: "rules/bam/all.smk"
         include: "rules/fastq/trim.smk"
+        include: "rules/normalization/scaling.smk"
         include: "rules/pileup/rna.smk"
         include: "rules/quant/featurecounts.smk"
         include: "rules/quant/salmon.smk"

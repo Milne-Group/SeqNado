@@ -1,6 +1,6 @@
 from enum import Enum
-from typing import Union
-from pydantic import BaseModel, computed_field, field_validator
+
+from pydantic import BaseModel, field_validator
 
 # =============================================================================
 # CONSTANTS
@@ -29,7 +29,7 @@ class Assay(Enum):
     def all_assays(cls):
         """Return all supported assays."""
         return list(cls)
-    
+
     @property
     def clean_name(self):
         """Return a short name for the assay."""
@@ -44,12 +44,12 @@ class Assay(Enum):
             self.CRISPR: "crispr",
             self.MULTIOMICS: "multiomics",
         }
-        
+
         if self in short_names:
             return short_names[self]
         else:
             raise ValueError(f"Unknown assay type: {self}")
-    
+
     @classmethod
     def from_clean_name(cls, clean_name):
         """Return the assay type from a short name."""
@@ -57,7 +57,7 @@ class Assay(Enum):
             if assay.clean_name == clean_name:
                 return assay
         raise ValueError(f"Unknown clean name: {clean_name}")
-    
+
     @classmethod
     def all_assay_clean_names(cls):
         """Return a list of all clean names for assays."""
@@ -67,7 +67,6 @@ class Assay(Enum):
     def non_multiomics_assays(cls):
         """Return assays that are not multiomics."""
         return [assay for assay in cls if assay != cls.MULTIOMICS]
-
 
     @classmethod
     def non_ip_assays(cls):
@@ -81,7 +80,6 @@ class Assay(Enum):
         return [cls.CHIP, cls.CAT]
 
 
-
 AssaysWithPeakCalling = (Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.MCC)
 AssaysWithHeatmaps = (Assay.ATAC, Assay.CHIP, Assay.RNA, Assay.CAT)
 AssaysWithSpikein = (Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.RNA)
@@ -89,6 +87,7 @@ AssaysWithSpikein = (Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.RNA)
 
 class FileType(Enum):
     """Supported file types."""
+
     BAM = "bam"
     BED = "bed"
     BIGWIG = "bigwig"
@@ -98,6 +97,7 @@ class FileType(Enum):
     TSV = "tsv"
     XLSX = "xlsx"
     TAG_DIRECTORY = "homer_tag_directory"
+
 
 class PileupMethod(Enum):
     """Methods for creating pileup files."""
@@ -150,7 +150,6 @@ class PCRDuplicateTool(Enum):
     NONE = "None"
 
 
-
 class SpikeInMethod(Enum):
     """Methods for spike-in normalization."""
 
@@ -190,6 +189,7 @@ class Molecule(Enum):
     protein = "protein"
     other = "other"
 
+
 class Organism(Enum):
     """Supported organisms."""
 
@@ -201,8 +201,10 @@ class Organism(Enum):
     C_ELEGANS = "Caenorhabditis elegans"
     UNKNOWN = "Unknown"
 
+
 class LibraryType(Enum):
     """Supported library types."""
+
     SINGLE = "single-end"
     PAIRED = "paired-end"
 

@@ -11,7 +11,7 @@ from pydantic import (
     model_validator,
 )
 
-from seqnado import Assay
+from seqnado import Assay, SpikeInMethod
 
 from .configs import (
     BigwigConfig,
@@ -82,6 +82,25 @@ class RNAAssayConfig(BaseAssayConfig):
     spikein: Annotated[SpikeInConfig | None, BeforeValidator(none_str_to_none)] = None
     rna_quantification: RNAQuantificationConfig | None = None
     create_heatmaps: bool = False
+
+    @field_validator("spikein")
+    @classmethod
+    def validate_spikein_methods(cls, v):
+        """Filter out incompatible spike-in methods for RNA-seq.
+        
+        WITH_INPUT requires paired input/control samples, which is a ChIP-seq concept.
+        RNA-seq supports only ORLANDO, DESEQ2, and EDGER.
+        """
+        if v is not None and SpikeInMethod.WITH_INPUT in v.method:
+            from loguru import logger
+            logger.warning(
+                "The 'with_input' spike-in method is not compatible with RNA-seq and will be skipped. "
+                "RNA-seq supports: 'orlando', 'deseq2', 'edger'. "
+                "WITH_INPUT requires paired input/control samples (ChIP-seq concept)."
+            )
+            # Filter out the incompatible method
+            v.method = [m for m in v.method if m != SpikeInMethod.WITH_INPUT]
+        return v
 
 
 class SNPAssayConfig(BaseAssayConfig, SNPCallingMixin):

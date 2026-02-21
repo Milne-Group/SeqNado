@@ -380,9 +380,12 @@ def get_spikein_config(assay: Assay) -> Optional[SpikeInConfig]:
     if not spikein:
         return None
 
+    # RNA-seq does not support with_input method (requires input/control samples)
+    available_methods = [m.value for m in SpikeInMethod if not (assay == Assay.RNA and m == SpikeInMethod.WITH_INPUT)]
+    
     normalisation_method = get_user_input(
         "Normalisation method(s) (comma-separated for multiple)?",
-        choices=[m.value for m in SpikeInMethod],
+        choices=available_methods,
         default="deseq2" if assay == Assay.RNA else "orlando",
         multi_select=True,
     )

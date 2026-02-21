@@ -1,29 +1,28 @@
-from typing import Protocol, List, Any
 from pathlib import Path
+from typing import Any, List, Literal, Protocol
 
-from pydantic import BaseModel, computed_field, Field, field_validator
-from typing import Literal
-from snakemake.io import expand
 from loguru import logger
+from pydantic import BaseModel, Field, computed_field, field_validator
+from snakemake.io import expand
 
 from seqnado import (
     Assay,
-    PileupMethod,
     DataScalingTechnique,
-    PeakCallingMethod,
     MethylationMethod,
+    PeakCallingMethod,
+    PileupMethod,
     QuantificationMethod,
     SpikeInMethod,
 )
-from seqnado.core import AssaysWithHeatmaps, AssaysWithSpikein, AssaysWithPeakCalling
+from seqnado.config.configs import QCConfig
+from seqnado.core import AssaysWithHeatmaps, AssaysWithPeakCalling, AssaysWithSpikein
 from seqnado.inputs import (
+    BamCollection,
+    BigWigCollection,
     FastqCollection,
     FastqCollectionForIP,
     SampleGroups,
-    BamCollection,
-    BigWigCollection,
 )
-from seqnado.config.configs import QCConfig
 
 
 class FileCollection(Protocol):
@@ -149,26 +148,46 @@ class BigWigFiles(BaseModel):
         return self.assay == Assay.RNA
 
     @property
-    def incompatible_methods(self) -> dict[PileupMethod, list[DataScalingTechnique]]:
-        if self.is_merged:
-            return {
-                Assay.MCC: [PileupMethod.HOMER, PileupMethod.DEEPTOOLS],
-                PileupMethod.HOMER: [
-                    DataScalingTechnique.CSAW,
-                    DataScalingTechnique.SPIKEIN,
-                ],
-            }
+    def incompatible_methods(self) -> dict:
+        """Return incompatibilities between pileup methods/assays and scaling techniques.
+
+        This dictionary is used with both PileupMethod and Assay as keys:
+        - Keys that are PileupMethod: map to incompatible DataScalingTechnique values
+        - Keys that are Assay: map to incompatible PileupMethod values
+
+        Spike-in method restrictions per docs/normalisation.md summary table:
+        - ORLANDO, WITH_INPUT: ChIP-seq, CUT&TAG, CUT&RUN only
+        - DESEQ2, EDGER: RNA-seq only
+        - CSAW: Supported for all assays (not preferred for RNA due to compositional bias)
+
+        These are further enforced at config validation time (e.g., RNAAssayConfig validator).
+        """
         return {
-            Assay.MCC: [PileupMethod.HOMER, PileupMethod.DEEPTOOLS],
+            # HOMER doesn't support scaled outputs
             PileupMethod.HOMER: [
                 DataScalingTechnique.CSAW,
                 DataScalingTechnique.SPIKEIN,
             ],
+            
+            # MCC assay: doesn't support standard pileup methods
+            Assay.MCC: [PileupMethod.HOMER, PileupMethod.DEEPTOOLS],
+            
+            # RNA-seq: doesn't support with_input or orlando spike-in methods
+            # CSAW is technically supported but not preferred (use deseq2/edger for compositional bias correction)
+            Assay.RNA: [SpikeInMethod.WITH_INPUT, SpikeInMethod.ORLANDO],
+            
+            # atac doesn't support spike-in methods
+            Assay.ATAC: [DataScalingTechnique.SPIKEIN],
+            
+            # cat, chip: don't support DESeq2/edgeR spike-in methods
+            Assay.CAT: [SpikeInMethod.DESEQ2, SpikeInMethod.EDGER],
+            Assay.CHIP: [SpikeInMethod.DESEQ2, SpikeInMethod.EDGER],
         }
 
     def _is_compatible(
         self, method: PileupMethod, scale: DataScalingTechnique, assay: Assay
     ) -> bool:
+        """Check if a method-scale-assay combination is compatible."""
         if scale in self.incompatible_methods.get(method, []):
             context = "merged " if self.is_merged else ""
             logger.warning(
@@ -180,7 +199,42 @@ class BigWigFiles(BaseModel):
             return False
         return True
 
+    def _get_scale_path(
+        self, scale: DataScalingTechnique, spikein_method: SpikeInMethod | None = None
+    ) -> str:
+        """Build the scale path component based on merged status and scale type."""
+        if self.is_merged:
+            if scale == DataScalingTechnique.SPIKEIN and spikein_method:
+                return f"merged/spikein/{spikein_method.value}"
+            return f"merged/{scale.value}"
+        else:
+            if scale == DataScalingTechnique.SPIKEIN and spikein_method:
+                return f"{scale.value}/{spikein_method.value}"
+            return scale.value
+
+    def _build_bigwig_paths(self, method: PileupMethod, scale_path: str) -> list[str]:
+        """Build bigwig file paths for a given method and scale path.
+
+        Handles strand-specific paths for RNA-seq (plus/minus) and non-strand paths for other assays.
+        """
+        paths = []
+        if self.is_rna:
+            for name in self.names:
+                for strand in ["plus", "minus"]:
+                    path = f"{self.prefix}{method.value}/{scale_path}/{name}_{strand}.bigWig"
+                    paths.append(path)
+        else:
+            for name in self.names:
+                path = f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
+                paths.append(path)
+        return paths
+
     def generate_bigwig_paths(self) -> list[str]:
+        """Generate all bigwig file paths based on configuration.
+
+        Iterates over all combinations of pileup methods, scaling techniques, and (for spike-in)
+        spike-in normalization methods. Checks compatibility before generating paths.
+        """
         paths = []
 
         for method in self.pileup_methods:
@@ -191,51 +245,11 @@ class BigWigFiles(BaseModel):
                 # For spike-in scaling, iterate over all spikein methods
                 if scale == DataScalingTechnique.SPIKEIN and self.spikein_methods:
                     for spikein_method in self.spikein_methods:
-                        if self.is_merged:
-                            scale_path = f"merged/spikein/{spikein_method.value}"
-                            if self.is_rna:
-                                for name in self.names:
-                                    for strand in ["plus", "minus"]:
-                                        path = f"{self.prefix}{method.value}/{scale_path}/{name}_{strand}.bigWig"
-                                        paths.append(path)
-                            else:
-                                for name in self.names:
-                                    path = f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
-                                    paths.append(path)
-                        else:
-                            scale_path = f"{scale.value}/{spikein_method.value}"
-                            if self.is_rna:
-                                for name in self.names:
-                                    for strand in ["plus", "minus"]:
-                                        path = f"{self.prefix}{method.value}/{scale_path}/{name}_{strand}.bigWig"
-                                        paths.append(path)
-                            else:
-                                for name in self.names:
-                                    path = f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
-                                    paths.append(path)
+                        scale_path = self._get_scale_path(scale, spikein_method)
+                        paths.extend(self._build_bigwig_paths(method, scale_path))
                 else:
-                    if self.is_merged:
-                        scale_path = f"merged/{scale.value}"
-                        if self.is_rna:
-                            for name in self.names:
-                                for strand in ["plus", "minus"]:
-                                    path = f"{self.prefix}{method.value}/{scale_path}/{name}_{strand}.bigWig"
-                                    paths.append(path)
-                        else:
-                            for name in self.names:
-                                path = f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
-                                paths.append(path)
-                    else:
-                        scale_path = scale.value
-                        if self.is_rna:
-                            for name in self.names:
-                                for strand in ["plus", "minus"]:
-                                    path = f"{self.prefix}{method.value}/{scale_path}/{name}_{strand}.bigWig"
-                                    paths.append(path)
-                        else:
-                            for name in self.names:
-                                path = f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
-                                paths.append(path)
+                    scale_path = self._get_scale_path(scale)
+                    paths.extend(self._build_bigwig_paths(method, scale_path))
 
         return paths
 
@@ -432,7 +446,9 @@ class PlotFiles(BaseModel):
                 scale_dir = f"spikein/{self.spikein_method}"
             else:
                 scale_dir = self.scale
-            outdir = Path(f"{self.output_dir}/genome_browser_plots/{prefix}{self.method}/{scale_dir}/")
+            outdir = Path(
+                f"{self.output_dir}/genome_browser_plots/{prefix}{self.method}/{scale_dir}/"
+            )
             for region in coords_df.itertuples():
                 fig_name = (
                     f"{region.Chromosome}-{region.Start}-{region.End}"
@@ -596,6 +612,7 @@ class BigBedFiles(BaseModel):
         """Return a list of bigBed files."""
         return [str(f.with_suffix(".bb")) for f in self.bed_files if f.suffix == ".bed"]
 
+
 class PairFiles(BaseModel):
     assay: Assay
     names: list[str]
@@ -606,10 +623,12 @@ class PairFiles(BaseModel):
     @property
     def files(self) -> List[str]:
         """Return a list of pair files."""
-        expand(self.output_dir + "/{name}/ligation_junctions/{viewpoint}.pairs.gz",
-               name=self.names,
-               viewpoint=self.viewpoints,
-               )
+        expand(
+            self.output_dir + "/{name}/ligation_junctions/{viewpoint}.pairs.gz",
+            name=self.names,
+            viewpoint=self.viewpoints,
+        )
+
 
 class ContactFiles(BaseModel):
     assay: Assay
@@ -802,7 +821,7 @@ class GeoSubmissionFiles(BaseModel):
     @property
     def metadata_files(self) -> list[str]:
         """Return only the metadata files that are declared as explicit rule outputs.
-        
+
         Note: The individual symlinked FASTQ and processed files are created by geo_symlink rule
         but are not included here as they cannot be declared as dynamic rule outputs in Snakemake.
         """
@@ -825,7 +844,9 @@ class GEOFiles(BaseModel):
     sample_names: List[str]
     config: Any  # SeqnadoConfig, but use Any to avoid issues
     processed_files: List[str] = Field(default_factory=list)
-    output: Any = None  # SeqnadoOutputFiles, used to select bigwigs via select_bigwig_subtype
+    output: Any = (
+        None  # SeqnadoOutputFiles, used to select bigwigs via select_bigwig_subtype
+    )
 
     class Config:
         arbitrary_types_allowed = True

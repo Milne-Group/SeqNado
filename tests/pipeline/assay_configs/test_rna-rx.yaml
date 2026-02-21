@@ -11,10 +11,13 @@ assay_config:
     binsize: 10
     scale_methods:
       - unscaled
+      - csaw
   spikein:
-    method: 
-    - "deseq2"
-    - "edger"
+    method:
+      - deseq2
+      - edger
+      - orlando
+      - with_input
     exogenous_genome: "plasmid"
     endogenous_genome: "hg38"
     control_genes:
