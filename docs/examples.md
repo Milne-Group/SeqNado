@@ -312,7 +312,7 @@ Publication-ready visualisations of genomic regions (when plotting coordinates a
 ### Output Files
 
 ```
-genome_browser_plots/
+track_plots/
 ├── MYC_promoter.svg             # Named region from BED file
 ├── chr1-1000000-1005000.svg     # Unnamed region uses coordinates
 └── template.toml                # PlotNado configuration template

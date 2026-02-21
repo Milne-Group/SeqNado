@@ -2,106 +2,109 @@ import re
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested, format_deeptools_options
 from seqnado.config.third_party_tools import CommandLineArguments
 
-rule make_bigwigs_homer:
-    input:
-        homer_tag_directory=OUTPUT_DIR + "/tag_dirs/{sample}",
-    output:
-        homer_bigwig=OUTPUT_DIR + "/bigwigs/homer/unscaled/{sample}.bigWig",
-    params:
-        genome_name=CONFIG.genome.name,
-        genome_chrom_sizes=CONFIG.genome.chromosome_sizes,
-        options=str(CONFIG.third_party_tools.homer.make_bigwig.command_line_arguments),
-        outdir=OUTPUT_DIR + "/bigwigs/homer/",
-        temp_bw=lambda wc, output: output.homer_bigwig.replace(
-            ".bigWig", ".ucsc.bigWig"
-        ),
-    container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    resources:
-        mem=lambda wildcards, attempt: define_memory_requested(
-            initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
-        ),
-        runtime=lambda wildcards, attempt: define_time_requested(
-            initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
-        ),
-    log:
-        OUTPUT_DIR + "/logs/homer/makebigwigs_{sample}.log",
-    benchmark:
-        OUTPUT_DIR + "/.benchmark/homer/makebigwigs_{sample}.tsv"
-    message:
-        "Making bigWig with HOMER for sample {wildcards.sample}"
-    shell:
+# Only define HOMER bigwig rule if HOMER is configured (to avoid accessing None attributes)
+if CONFIG.third_party_tools.homer is not None:
+    rule make_bigwigs_homer:
+        input:
+            homer_tag_directory=OUTPUT_DIR + "/tag_dirs/{sample}",
+        output:
+            homer_bigwig=OUTPUT_DIR + "/bigwigs/homer/unscaled/{sample}.bigWig",
+        params:
+            genome_name=CONFIG.genome.name,
+            genome_chrom_sizes=CONFIG.genome.chromosome_sizes,
+            options=str(CONFIG.third_party_tools.homer.make_bigwig.command_line_arguments),
+            outdir=OUTPUT_DIR + "/bigwigs/homer/",
+            temp_bw=lambda wc, output: output.homer_bigwig.replace(
+                ".bigWig", ".ucsc.bigWig"
+            ),
+        container:
+            "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        resources:
+            mem=lambda wildcards, attempt: define_memory_requested(
+                initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
+            ),
+            runtime=lambda wildcards, attempt: define_time_requested(
+                initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
+            ),
+        log:
+            OUTPUT_DIR + "/logs/homer/makebigwigs_{sample}.log",
+        benchmark:
+            OUTPUT_DIR + "/.benchmark/homer/makebigwigs_{sample}.tsv"
+        message:
+            "Making bigWig with HOMER for sample {wildcards.sample}"
+        shell:
+            """
+        makeBigWig.pl {input.homer_tag_directory} {params.genome_name} -chromSizes {params.genome_chrom_sizes} -url INSERT_URL -webdir {params.outdir} {params.options} > {log} 2>&1 &&
+        mv {params.outdir}/{wildcards.sample}.ucsc.bigWig {output.homer_bigwig}
         """
-    makeBigWig.pl {input.homer_tag_directory} {params.genome_name} -chromSizes {params.genome_chrom_sizes} -url INSERT_URL -webdir {params.outdir} {params.options} > {log} 2>&1 &&
-    mv {params.outdir}/{wildcards.sample}.ucsc.bigWig {output.homer_bigwig}
-    """
 
-rule make_bigwigs_deeptools:
-    input:
-        bam=OUTPUT_DIR + "/aligned/{sample}.bam",
-        bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
-    output:
-        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/unscaled/{sample}.bigWig",
-    params:
-        options=lambda wildcards: format_deeptools_options(
-            wildcards,
-            str(CONFIG.third_party_tools.deeptools.bam_coverage.command_line_arguments),
-            INPUT_FILES,
-            SAMPLE_GROUPINGS,
-        ),
-    resources:
-        mem=lambda wildcards, attempt: define_memory_requested(
-            initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
-        ),
-        runtime=lambda wildcards, attempt: define_time_requested(
-            initial_value=6, attempts=attempt, scale=SCALE_RESOURCES
-        ),
-    threads: CONFIG.third_party_tools.deeptools.bam_coverage.threads
-    container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log:
-        OUTPUT_DIR + "/logs/pileups/deeptools/unscaled/{sample}.log",
-    benchmark:
-        OUTPUT_DIR + "/.benchmark/deeptools/makebigwigs_{sample}.tsv"
-    message:
-        "Making bigWig with deeptools for sample {wildcards.sample}"
-    shell:
+if CONFIG.third_party_tools.deeptools is not None:
+    rule make_bigwigs_deeptools:
+        input:
+            bam=OUTPUT_DIR + "/aligned/{sample}.bam",
+            bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
+        output:
+            bigwig=OUTPUT_DIR + "/bigwigs/deeptools/unscaled/{sample}.bigWig",
+        params:
+            options=lambda wildcards: format_deeptools_options(
+                wildcards,
+                str(CONFIG.third_party_tools.deeptools.bam_coverage.command_line_arguments),
+                INPUT_FILES,
+                SAMPLE_GROUPINGS,
+            ),
+        resources:
+            mem=lambda wildcards, attempt: define_memory_requested(
+                initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
+            ),
+            runtime=lambda wildcards, attempt: define_time_requested(
+                initial_value=6, attempts=attempt, scale=SCALE_RESOURCES
+            ),
+        threads: CONFIG.third_party_tools.deeptools.bam_coverage.threads
+        container:
+            "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        log:
+            OUTPUT_DIR + "/logs/pileups/deeptools/unscaled/{sample}.log",
+        benchmark:
+            OUTPUT_DIR + "/.benchmark/deeptools/makebigwigs_{sample}.tsv"
+        message:
+            "Making bigWig with deeptools for sample {wildcards.sample}"
+        shell:
+            """
+        bamCoverage {params.options} -p {threads} -b {input.bam} -o {output.bigwig} > {log} 2>&1
         """
-    bamCoverage {params.options} -p {threads} -b {input.bam} -o {output.bigwig} > {log} 2>&1
-    """
 
-
-rule make_bigwigs_bamnado:
-    input:
-        bam=OUTPUT_DIR + "/aligned/{sample}.bam",
-        bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
-    output:
-        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/unscaled/{sample}.bigWig",
-    params:
-        options=str(
-            CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments
-        ),
-    resources:
-        mem=lambda wildcards, attempt: define_memory_requested(
-            initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
-        ),
-        runtime=lambda wildcards, attempt: define_time_requested(
-            initial_value=6, attempts=attempt, scale=SCALE_RESOURCES
-        ),
-    threads: CONFIG.third_party_tools.bamnado.bam_coverage.threads
-    container:
-        "docker://ghcr.io/alsmith151/bamnado:latest"
-    log:
-        OUTPUT_DIR + "/logs/pileups/bamnado/unscaled/{sample}.log",
-    benchmark:
-        OUTPUT_DIR + "/.benchmark/bamnado/makebigwigs_{sample}.tsv"
-    message:
-        "Making bigWig with bamnado for sample {wildcards.sample}"
-    shell:
+if CONFIG.third_party_tools.bamnado is not None:
+    rule make_bigwigs_bamnado:
+        input:
+            bam=OUTPUT_DIR + "/aligned/{sample}.bam",
+            bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
+        output:
+            bigwig=OUTPUT_DIR + "/bigwigs/bamnado/unscaled/{sample}.bigWig",
+        params:
+            options=str(
+                CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments
+            ),
+        resources:
+            mem=lambda wildcards, attempt: define_memory_requested(
+                initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
+            ),
+            runtime=lambda wildcards, attempt: define_time_requested(
+                initial_value=6, attempts=attempt, scale=SCALE_RESOURCES
+            ),
+        threads: CONFIG.third_party_tools.bamnado.bam_coverage.threads
+        container:
+            "docker://ghcr.io/alsmith151/bamnado:latest"
+        log:
+            OUTPUT_DIR + "/logs/pileups/bamnado/unscaled/{sample}.log",
+        benchmark:
+            OUTPUT_DIR + "/.benchmark/bamnado/makebigwigs_{sample}.tsv"
+        message:
+            "Making bigWig with bamnado for sample {wildcards.sample}"
+        shell:
+            """
+        export RAYON_NUM_THREADS={threads}
+        bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} > {log} 2>&1
         """
-    export RAYON_NUM_THREADS={threads}
-    bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} > {log} 2>&1
-    """
 
 
 rule fragment_bedgraph:

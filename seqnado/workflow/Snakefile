@@ -144,12 +144,14 @@ match ASSAY:
         include: "rules/bam/all.smk"
         include: "rules/fastq/trim.smk"
         include: "rules/meth/calling.smk"
+        include: "rules/pileup/common.smk"
+        include: "rules/pileup/dna.smk"
     case Assay.SNP:
         include: "rules/alignment/dna.smk"
         include: "rules/bam/all.smk"
         include: "rules/fastq/trim.smk"
-        include: "rules/variant/annotate.smk"
         include: "rules/variant/call.smk"
+        include: "rules/variant/annotate.smk"
     case _:
         raise ValueError(f"Assay {ASSAY} not supported yet.")
 

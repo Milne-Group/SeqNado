@@ -5,7 +5,7 @@ from typing import Any, List
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from seqnado import Assay, DataScalingTechnique, PeakCallingMethod, PileupMethod
+from seqnado import Assay, DataScalingTechnique, PeakCallingMethod, PileupMethod, SpikeInMethod
 from seqnado import QuantificationMethod
 from seqnado.config import SeqnadoConfig
 from seqnado.inputs import (
@@ -234,7 +234,7 @@ class SeqnadoOutputFiles(BaseModel):
     ) -> str:
         return f"{self._heatmap_dir(scale, method, is_merged, spikein_method)}/metaplot.pdf"
 
-    def select_genome_browser_plots(
+    def select_track_plots(
         self,
         scale: DataScalingTechnique,
         method: PileupMethod = PileupMethod.DEEPTOOLS,
@@ -248,9 +248,9 @@ class SeqnadoOutputFiles(BaseModel):
         """
         prefix = "merged/" if is_merged else ""
         if scale == DataScalingTechnique.SPIKEIN and spikein_method is not None:
-            target = f"genome_browser_plots/{prefix}{method.value}/spikein/{spikein_method}/"
+            target = f"track_plots/{prefix}{method.value}/spikein/{spikein_method}/"
         else:
-            target = f"genome_browser_plots/{prefix}{method.value}/{scale.value}/"
+            target = f"track_plots/{prefix}{method.value}/{scale.value}/"
         return [f for f in self.files if target in f]
 
     @property
@@ -258,8 +258,8 @@ class SeqnadoOutputFiles(BaseModel):
         return self.select_files(".pdf", include="heatmap")
 
     @property
-    def genome_browser_plots(self):
-        return [f for f in self.files if "genome_browser_plots" in f]
+    def track_plots(self):
+        return [f for f in self.files if "track_plots" in f]
 
     @property
     def sentinel_files(self):
@@ -447,6 +447,10 @@ class SeqnadoOutputBuilder:
         """Add individual bigwig files to the output collection."""
         from seqnado.inputs import FastqCollectionForIP
 
+        # Skip if assay doesn't support bigwigs (e.g., METH uses methylation-specific generation)
+        if self.config.assay_config.bigwigs is None:
+            return
+
         unscaled_scales = [m for m in self.scale_methods if m == DataScalingTechnique.UNSCALED]
         normalized_scales = [m for m in self.scale_methods if m != DataScalingTechnique.UNSCALED]
 
@@ -478,6 +482,10 @@ class SeqnadoOutputBuilder:
 
     def add_spikein_bigwig_files(self) -> None:
         """Add spike-in normalized bigwig files to the output collection."""
+        # Skip if assay doesn't support bigwigs (e.g., METH uses methylation-specific generation)
+        if self.config.assay_config.bigwigs is None:
+            return
+
         spikein_config = getattr(self.config.assay_config, 'spikein', None)
         spikein_methods = spikein_config.method if spikein_config else []
 
@@ -494,6 +502,9 @@ class SeqnadoOutputBuilder:
 
     def add_grouped_bigwig_files(self) -> None:
         """Add grouped bigwig files to the output collection."""
+        # Skip if assay doesn't support bigwigs (e.g., METH uses methylation-specific generation)
+        if self.config.assay_config.bigwigs is None:
+            return
 
         # Go through the sample groupings e.g. ['consensus', 'scaling']
         for group_name, sample_groups in self.sample_groupings.groupings.items():
@@ -515,6 +526,9 @@ class SeqnadoOutputBuilder:
 
     def add_grouped_normalized_bigwig_files(self) -> None:
         """Add CSAW-scaled merged bigwig files to the output collection."""
+        # Skip if assay doesn't support bigwigs (e.g., METH uses methylation-specific generation)
+        if self.config.assay_config.bigwigs is None:
+            return
 
         normalized_scales = [
             s for s in self.scale_methods
@@ -540,6 +554,9 @@ class SeqnadoOutputBuilder:
 
     def add_grouped_spikein_bigwig_files(self) -> None:
         """Add spike-in normalized merged bigwig files to the output collection."""
+        # Skip if assay doesn't support bigwigs (e.g., METH uses methylation-specific generation)
+        if self.config.assay_config.bigwigs is None:
+            return
 
         spikein_config = getattr(self.config.assay_config, "spikein", None)
         spikein_methods = spikein_config.method if spikein_config else []
@@ -709,6 +726,12 @@ class SeqnadoOutputBuilder:
             pileup_methods = bigwigs_config.pileup_method
         spikein_config = getattr(self.config.assay_config, "spikein", None)
         spikein_methods = spikein_config.method if spikein_config else []
+        # Filter spike-in methods to only include those supported for heatmap generation
+        # (ORLANDO and WITH_INPUT are the traditional spike-in normalization methods)
+        supported_spikein_methods = [
+            m for m in spikein_methods 
+            if m in (SpikeInMethod.ORLANDO, SpikeInMethod.WITH_INPUT)
+        ]
 
         # Methods that only support UNSCALED for individual (not merged) bigwigs
         _unscaled_only_individual = {PileupMethod.HOMER, PileupMethod.BAMNADO}
@@ -737,7 +760,7 @@ class SeqnadoOutputBuilder:
                 heatmaps = HeatmapFiles(
                     assay=self.assay,
                     scale_methods=scales,
-                    spikein_methods=spikein_methods,
+                    spikein_methods=supported_spikein_methods,
                     output_dir=self.output_dir,
                     is_merged=is_merged,
                     method=method,
@@ -786,6 +809,12 @@ class SeqnadoOutputBuilder:
             pileup_methods = bigwigs_config.pileup_method
         spikein_config = getattr(self.config.assay_config, "spikein", None)
         spikein_methods = spikein_config.method if spikein_config else []
+        # Filter spike-in methods to only include those supported for track plot generation
+        # (ORLANDO and WITH_INPUT are the traditional spike-in normalization methods)
+        supported_spikein_methods = [
+            m for m in spikein_methods 
+            if m in (SpikeInMethod.ORLANDO, SpikeInMethod.WITH_INPUT)
+        ]
 
         _unscaled_only_individual = {PileupMethod.HOMER, PileupMethod.BAMNADO}
         _unscaled_only_merged = {PileupMethod.HOMER}
@@ -807,9 +836,9 @@ class SeqnadoOutputBuilder:
                         method_scales.append(DataScalingTechnique.SPIKEIN)
 
                 for scale in method_scales:
-                    if scale == DataScalingTechnique.SPIKEIN and spikein_methods:
+                    if scale == DataScalingTechnique.SPIKEIN and supported_spikein_methods:
                         # Create one PlotFiles per spike-in method for separate output dirs
-                        for sm in spikein_methods:
+                        for sm in supported_spikein_methods:
                             plot_files = PlotFiles(
                                 coordinates=self.config.assay_config.plotting.coordinates,
                                 file_format=self.config.assay_config.plotting.file_format,
@@ -1089,12 +1118,12 @@ class SeqnadoOutputFactory:
             builder.add_report_files()
 
         if self.assay_config.create_bigwigs:
-            if not self.assay == Assay.MCC:
+            if self.assay not in (Assay.MCC, Assay.SNP, Assay.CRISPR):
                 builder.add_individual_bigwig_files()
                 if self.sample_groupings:
                     builder.add_grouped_bigwig_files()
                     builder.add_grouped_normalized_bigwig_files()
-            else:
+            elif self.assay == Assay.MCC:
                 builder.add_mcc_sentinel_pileup_files()
 
         if bool(getattr(self.assay_config, "call_peaks", False)):
@@ -1143,7 +1172,15 @@ class SeqnadoOutputFactory:
         # Add additional files based on the assay type
         match self.assay:
             case Assay.ATAC | Assay.CHIP | Assay.CAT | Assay.RNA:
-                if self.assay_config.plot_with_plotnado:
+                # Add plot files if plotting is configured with valid coordinates
+                # For RNA, plotting works with spike-in normalization options (deseq2, edger)
+                if (
+                    self.assay_config.plot_with_plotnado
+                    and hasattr(self.assay_config, "plotting")
+                    and self.assay_config.plotting
+                    and hasattr(self.assay_config.plotting, "coordinates")
+                    and Path(str(self.assay_config.plotting.coordinates)).exists()
+                ):
                     builder.add_plot_files()
             case Assay.CRISPR:
                 builder.add_crispr_files()

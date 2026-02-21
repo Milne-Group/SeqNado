@@ -1,7 +1,7 @@
 
 # Define input and output files so that seqnado isnt required in the rule
 
-plot_files=OUTPUT.genome_browser_plots
+plot_files=OUTPUT.track_plots
 
 
 rule plotnado_multiomics_deeptools:
@@ -9,11 +9,11 @@ rule plotnado_multiomics_deeptools:
         rules.gather_bigwigs.output.bw_dir,
     output:
         plots=plot_files,
-        template=OUTPUT_DIR + "/multiomics/genome_browser_plots/template.toml",
+        template=OUTPUT_DIR + "/multiomics/track_plots/template.toml",
     params:
         assay=str(CONFIG.assay) if hasattr(CONFIG, 'assay') else None,
         genes=str(CONFIG.genome.genes) if CONFIG.assay_config.plot_with_plotnado and hasattr(CONFIG.genome, 'genes') else None,
-        outdir=OUTPUT_DIR + "/multiomics/genome_browser_plots/",
+        outdir=OUTPUT_DIR + "/multiomics/track_plots/",
         regions=str(CONFIG.assay_config.plotting.coordinates) if CONFIG.assay_config.plotting and hasattr(CONFIG.assay_config.plotting, 'coordinates') else None,
         plotting_format=str(CONFIG.assay_config.plotting.file_format) if CONFIG.assay_config.plotting and hasattr(CONFIG.assay_config.plotting, 'file_format') else None,
     resources:

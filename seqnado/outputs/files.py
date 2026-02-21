@@ -168,20 +168,16 @@ class BigWigFiles(BaseModel):
                 DataScalingTechnique.CSAW,
                 DataScalingTechnique.SPIKEIN,
             ],
-            
-            # MCC assay: doesn't support standard pileup methods
-            Assay.MCC: [PileupMethod.HOMER, PileupMethod.DEEPTOOLS],
-            
-            # RNA-seq: doesn't support with_input or orlando spike-in methods
-            # CSAW is technically supported but not preferred (use deseq2/edger for compositional bias correction)
-            Assay.RNA: [SpikeInMethod.WITH_INPUT, SpikeInMethod.ORLANDO],
-            
-            # atac doesn't support spike-in methods
             Assay.ATAC: [DataScalingTechnique.SPIKEIN],
-            
-            # cat, chip: don't support DESeq2/edgeR spike-in methods
             Assay.CAT: [SpikeInMethod.DESEQ2, SpikeInMethod.EDGER],
             Assay.CHIP: [SpikeInMethod.DESEQ2, SpikeInMethod.EDGER],
+            Assay.MCC: [PileupMethod.HOMER, PileupMethod.DEEPTOOLS],
+            Assay.METH: [
+                PileupMethod.HOMER,
+                PileupMethod.BAMNADO,
+                PileupMethod.DEEPTOOLS,
+            ],
+            Assay.RNA: [SpikeInMethod.WITH_INPUT, SpikeInMethod.ORLANDO],
         }
 
     def _is_compatible(
@@ -447,7 +443,7 @@ class PlotFiles(BaseModel):
             else:
                 scale_dir = self.scale
             outdir = Path(
-                f"{self.output_dir}/genome_browser_plots/{prefix}{self.method}/{scale_dir}/"
+                f"{self.output_dir}/track_plots/{prefix}{self.method}/{scale_dir}/"
             )
             for region in coords_df.itertuples():
                 fig_name = (

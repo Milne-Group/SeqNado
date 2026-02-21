@@ -70,7 +70,7 @@ rule methyldackel_extract:
     input:
         bam=rules.methylation_bam_splits.output.bam
     output:
-        bdg=OUTPUT_DIR + "/methylation/methyldackel/{sample}_{genome}_CpG.bedGraph"
+        bdg=temp(OUTPUT_DIR + "/methylation/methyldackel/{sample}_{genome}_CpG.bedGraph")
     params:
         fasta=CONFIG.genome.fasta,
         options=CONFIG.third_party_tools.methyldackel.command_line_arguments,
@@ -96,12 +96,49 @@ rule taps_inverted:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
     log: OUTPUT_DIR + "/logs/methylation/taps_inverted/{sample}_{genome}.log"
     benchmark: OUTPUT_DIR + "/.benchmark/methylation/taps_inverted/{sample}_{genome}.tsv"
     message: "Converting to TAPS methylation for sample {wildcards.sample} and genome {wildcards.genome}"
     shell: """
     awk -v OFS="\t" '{{print $1, $2, $3, (100-$4), $5, $6}}' {input.bdg} > {output.taps} 2> {log}
+    rm {input.bdg}
+    """
+
+rule make_bigwigs_meth_taps:
+    input:
+        bdg=rules.taps_inverted.output.taps
+    output:
+        bigwig=OUTPUT_DIR + "/bigwigs/taps/{sample}_{genome}.bigWig"
+    params:
+        chrom_sizes=CONFIG.genome.chromosome_sizes,
+    resources:
+        mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
+        runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
+    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    log: OUTPUT_DIR + "/logs/methylation/taps/bigwig/{sample}_{genome}.log"
+    benchmark: OUTPUT_DIR + "/.benchmark/methylation/taps/bigwig/{sample}_{genome}.tsv"
+    message: "Converting to bigWig for sample {wildcards.sample} and genome {wildcards.genome}"
+    shell: """
+    bedGraphToBigWig {input.bdg} {params.chrom_sizes} {output.bigwig} > {log} 2>&1
+    rm {input.bdg}
+    """
+
+rule make_bigwigs_meth_wgbs:
+    input:
+        bdg=rules.methyldackel_extract.output.bdg
+    output:
+        bigwig=OUTPUT_DIR + "/bigwigs/wgbs/{sample}_{genome}.bigWig"
+    params:
+        chrom_sizes=CONFIG.genome.chromosome_sizes,
+    resources:
+        mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
+        runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
+    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    log: OUTPUT_DIR + "/logs/methylation/wgbs/bigwig/{sample}_{genome}.log"
+    benchmark: OUTPUT_DIR + "/.benchmark/methylation/wgbs/bigwig/{sample}_{genome}.tsv"
+    message: "Converting to bigWig for sample {wildcards.sample} and genome {wildcards.genome}"
+    shell: """
+    bedGraphToBigWig {input.bdg} {params.chrom_sizes} {output.bigwig} > {log} 2>&1
     rm {input.bdg}
     """
 

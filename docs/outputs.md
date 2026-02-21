@@ -20,7 +20,7 @@ seqnado_output/{assay}/       # Assay-specific directory
 ├── motifs/                   # Motif analysis results (if enabled)
 ├── tag_dirs/                 # HOMER tag directories
 ├── resources/                # Normalisation factors (spike-in and CSAW)
-├── genome_browser_plots/     # PlotNado visualisations (if configured)
+├── track_plots/     # PlotNado visualisations (if configured)
 ├── geo_submission/           # GEO submission-ready files (if enabled)
 ├── methylation/              # Methylation calls (METH only)
 ├── variant/                  # VCF files (SNP only)
@@ -273,12 +273,12 @@ motifs/
         └── {sample}/
 ```
 
-### Genome Browser Plots (`genome_browser_plots/`)
+### Genome Browser Plots (`track_plots/`)
 
 Publication-ready visualisations generated with PlotNado (if configured with plotting coordinates). One set of plots is produced per pileup method × scaling method combination:
 
 ```
-genome_browser_plots/
+track_plots/
 ├── {method}/                              # deeptools, homer, or bamnado
 │   ├── unscaled/
 │   │   ├── {region_name}.{format}         # Named regions from BED file

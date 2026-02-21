@@ -3,7 +3,12 @@ assay_for_protocol = ASSAY.name
 protocol_inputs = [
     str(p)
     for p in OUTPUT.files
-    if "/geo_submission/" not in str(p) and not str(p).endswith("/protocol.txt")
+    if "/geo_submission/" not in str(p) 
+    and not str(p).endswith("/protocol.txt")
+    and "genome_browser_plots" not in str(p)
+    and "track_plots" not in str(p)
+    and "heatmap" not in str(p)
+    and "hub/" not in str(p)
 ]
 
 

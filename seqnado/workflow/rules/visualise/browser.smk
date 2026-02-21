@@ -73,8 +73,8 @@ rule plotnado_deeptools:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.UNSCALED),
-        template=OUTPUT_DIR + "/genome_browser_plots/deeptools/unscaled/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED),
+        template=OUTPUT_DIR + "/track_plots/deeptools/unscaled/template.toml",
     params:
         assay=str(CONFIG.assay) if hasattr(CONFIG, 'assay') else None,
         peak_files=expand("{peak}.gz", peak=OUTPUT.peak_files),
@@ -106,8 +106,8 @@ use rule plotnado_deeptools as plotnado_deeptools_csaw with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.CSAW),
-        template=OUTPUT_DIR + "/genome_browser_plots/deeptools/csaw/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.CSAW),
+        template=OUTPUT_DIR + "/track_plots/deeptools/csaw/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_deeptools_csaw.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_deeptools_csaw.tsv",
     message: "Generating deeptools CSAW-scaled genome browser visualisations with Plotnado"
@@ -127,8 +127,8 @@ use rule plotnado_deeptools as plotnado_deeptools_spikein_orlando with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.SPIKEIN, spikein_method=SpikeInMethod.ORLANDO.value),
-        template=OUTPUT_DIR + "/genome_browser_plots/deeptools/spikein/orlando/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.SPIKEIN, spikein_method=SpikeInMethod.ORLANDO.value),
+        template=OUTPUT_DIR + "/track_plots/deeptools/spikein/orlando/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_deeptools_spikein_orlando.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_deeptools_spikein_orlando.tsv",
     message: "Generating deeptools orlando spike-in genome browser visualisations with Plotnado"
@@ -148,8 +148,8 @@ use rule plotnado_deeptools as plotnado_deeptools_spikein_withinput with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.SPIKEIN, spikein_method=SpikeInMethod.WITH_INPUT.value),
-        template=OUTPUT_DIR + "/genome_browser_plots/deeptools/spikein/with_input/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.SPIKEIN, spikein_method=SpikeInMethod.WITH_INPUT.value),
+        template=OUTPUT_DIR + "/track_plots/deeptools/spikein/with_input/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_deeptools_spikein_withinput.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_deeptools_spikein_withinput.tsv",
     message: "Generating deeptools with_input spike-in genome browser visualisations with Plotnado"
@@ -168,8 +168,8 @@ use rule plotnado_deeptools as plotnado_deeptools_merged with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.UNSCALED, is_merged=True),
-        template=OUTPUT_DIR + "/genome_browser_plots/merged/deeptools/unscaled/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED, is_merged=True),
+        template=OUTPUT_DIR + "/track_plots/merged/deeptools/unscaled/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_deeptools_unscaled.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_deeptools_unscaled.tsv",
     message: "Generating deeptools merged unscaled genome browser visualisations with Plotnado"
@@ -188,8 +188,8 @@ use rule plotnado_deeptools as plotnado_deeptools_merged_csaw with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.CSAW, is_merged=True),
-        template=OUTPUT_DIR + "/genome_browser_plots/merged/deeptools/csaw/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.CSAW, is_merged=True),
+        template=OUTPUT_DIR + "/track_plots/merged/deeptools/csaw/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_deeptools_csaw.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_deeptools_csaw.tsv",
     message: "Generating deeptools merged CSAW-scaled genome browser visualisations with Plotnado"
@@ -209,8 +209,8 @@ use rule plotnado_deeptools as plotnado_deeptools_merged_spikein_orlando with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.SPIKEIN, is_merged=True, spikein_method=SpikeInMethod.ORLANDO.value),
-        template=OUTPUT_DIR + "/genome_browser_plots/merged/deeptools/spikein/orlando/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.SPIKEIN, is_merged=True, spikein_method=SpikeInMethod.ORLANDO.value),
+        template=OUTPUT_DIR + "/track_plots/merged/deeptools/spikein/orlando/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_deeptools_spikein_orlando.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_deeptools_spikein_orlando.tsv",
     message: "Generating deeptools merged orlando spike-in genome browser visualisations with Plotnado"
@@ -230,8 +230,8 @@ use rule plotnado_deeptools as plotnado_deeptools_merged_spikein_withinput with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.SPIKEIN, is_merged=True, spikein_method=SpikeInMethod.WITH_INPUT.value),
-        template=OUTPUT_DIR + "/genome_browser_plots/merged/deeptools/spikein/with_input/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.SPIKEIN, is_merged=True, spikein_method=SpikeInMethod.WITH_INPUT.value),
+        template=OUTPUT_DIR + "/track_plots/merged/deeptools/spikein/with_input/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_deeptools_spikein_withinput.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_deeptools_spikein_withinput.tsv",
     message: "Generating deeptools merged with_input spike-in genome browser visualisations with Plotnado"
@@ -250,8 +250,8 @@ use rule plotnado_deeptools as plotnado_bamnado with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.BAMNADO),
-        template=OUTPUT_DIR + "/genome_browser_plots/bamnado/unscaled/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.BAMNADO),
+        template=OUTPUT_DIR + "/track_plots/bamnado/unscaled/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_bamnado_unscaled.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_bamnado_unscaled.tsv",
     message: "Generating bamnado unscaled genome browser visualisations with Plotnado"
@@ -270,8 +270,8 @@ use rule plotnado_deeptools as plotnado_bamnado_merged with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.BAMNADO, is_merged=True),
-        template=OUTPUT_DIR + "/genome_browser_plots/merged/bamnado/unscaled/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.BAMNADO, is_merged=True),
+        template=OUTPUT_DIR + "/track_plots/merged/bamnado/unscaled/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_bamnado_unscaled.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_bamnado_unscaled.tsv",
     message: "Generating bamnado merged unscaled genome browser visualisations with Plotnado"
@@ -290,8 +290,8 @@ use rule plotnado_deeptools as plotnado_bamnado_merged_csaw with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.CSAW, method=PileupMethod.BAMNADO, is_merged=True),
-        template=OUTPUT_DIR + "/genome_browser_plots/merged/bamnado/csaw/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.CSAW, method=PileupMethod.BAMNADO, is_merged=True),
+        template=OUTPUT_DIR + "/track_plots/merged/bamnado/csaw/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_bamnado_csaw.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_bamnado_csaw.tsv",
     message: "Generating bamnado merged CSAW-scaled genome browser visualisations with Plotnado"
@@ -311,8 +311,8 @@ use rule plotnado_deeptools as plotnado_bamnado_merged_spikein_orlando with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.SPIKEIN, method=PileupMethod.BAMNADO, is_merged=True, spikein_method=SpikeInMethod.ORLANDO.value),
-        template=OUTPUT_DIR + "/genome_browser_plots/merged/bamnado/spikein/orlando/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.SPIKEIN, method=PileupMethod.BAMNADO, is_merged=True, spikein_method=SpikeInMethod.ORLANDO.value),
+        template=OUTPUT_DIR + "/track_plots/merged/bamnado/spikein/orlando/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_bamnado_spikein_orlando.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_bamnado_spikein_orlando.tsv",
     message: "Generating bamnado merged orlando spike-in genome browser visualisations with Plotnado"
@@ -332,8 +332,8 @@ use rule plotnado_deeptools as plotnado_bamnado_merged_spikein_withinput with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.SPIKEIN, method=PileupMethod.BAMNADO, is_merged=True, spikein_method=SpikeInMethod.WITH_INPUT.value),
-        template=OUTPUT_DIR + "/genome_browser_plots/merged/bamnado/spikein/with_input/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.SPIKEIN, method=PileupMethod.BAMNADO, is_merged=True, spikein_method=SpikeInMethod.WITH_INPUT.value),
+        template=OUTPUT_DIR + "/track_plots/merged/bamnado/spikein/with_input/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_bamnado_spikein_withinput.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_bamnado_spikein_withinput.tsv",
     message: "Generating bamnado merged with_input spike-in genome browser visualisations with Plotnado"
@@ -352,8 +352,8 @@ use rule plotnado_deeptools as plotnado_homer with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.HOMER),
-        template=OUTPUT_DIR + "/genome_browser_plots/homer/unscaled/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.HOMER),
+        template=OUTPUT_DIR + "/track_plots/homer/unscaled/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_homer_unscaled.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_homer_unscaled.tsv",
     message: "Generating homer unscaled genome browser visualisations with Plotnado"
@@ -372,8 +372,8 @@ use rule plotnado_deeptools as plotnado_homer_merged with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_genome_browser_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.HOMER, is_merged=True),
-        template=OUTPUT_DIR + "/genome_browser_plots/merged/homer/unscaled/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.HOMER, is_merged=True),
+        template=OUTPUT_DIR + "/track_plots/merged/homer/unscaled/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_homer_unscaled.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_homer_unscaled.tsv",
     message: "Generating homer merged unscaled genome browser visualisations with Plotnado"

@@ -848,9 +848,12 @@ def build_default_assay_config(
             return MCCAssayConfig(**base_config_mcc, mcc=mcc)
         
         case Assay.METH:
-            # Methylation assays don't use UCSC hub
-            base_config_meth = {k: v for k, v in base_config.items() if k != "ucsc_hub"}
+            # Methylation assays don't use UCSC hub or bigwigs (uses methylation-specific generation)
+            base_config_meth = {
+                k: v for k, v in base_config.items() if k not in ("ucsc_hub", "bigwigs")
+            }
             base_config_meth["ucsc_hub"] = None
+            base_config_meth["bigwigs"] = None
             methylation = MethylationConfig(method=MethylationMethod.TAPS)
             return MethylationAssayConfig(**base_config_meth, methylation=methylation)
         

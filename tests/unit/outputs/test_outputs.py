@@ -552,7 +552,7 @@ class TestPlotFiles:
 
         files = pf.files
         assert str(files[0]).endswith(".png")
-        assert "custom/genome_browser_plots/" in str(files[0])
+        assert "custom/track_plots/" in str(files[0])
 
 
 class TestSNPFilesRaw:
@@ -1515,19 +1515,19 @@ class TestSeqnadoOutputFilesProperties:
         assert len(heatmaps) == 2
         assert all(f.endswith(".pdf") and "heatmap" in f for f in heatmaps)
 
-    def test_genome_browser_plots_property(self, tmp_path):
-        """Test genome_browser_plots property filters correctly."""
+    def test_track_plots_property(self, tmp_path):
+        """Test track_plots property filters correctly."""
         output = SeqnadoOutputFiles(
             files=[
-                "seqnado_output/genome_browser_plots/deeptools/unscaled/region.pdf",
+                "seqnado_output/track_plots/deeptools/unscaled/region.pdf",
                 "seqnado_output/peaks/s1.bed",
-                "seqnado_output/genome_browser_plots/homer/unscaled/region.pdf",
+                "seqnado_output/track_plots/homer/unscaled/region.pdf",
             ],
             sample_names=["s1"],
         )
-        plots = output.genome_browser_plots
+        plots = output.track_plots
         assert len(plots) == 2
-        assert all(f.endswith(".pdf") and "genome_browser_plots" in f for f in plots)
+        assert all(f.endswith(".pdf") and "track_plots" in f for f in plots)
 
     def test_ucsc_hub_files_property(self, tmp_path):
         """Test ucsc_hub_files property filters correctly."""

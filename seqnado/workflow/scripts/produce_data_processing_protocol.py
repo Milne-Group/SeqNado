@@ -723,7 +723,7 @@ class BigWigSection(ProtocolSection):
         if not self.assay_config.get("create_bigwigs", True):
             return False
         bigwig_methods = listify(
-            self.assay_config.get("bigwigs", {}).get("pileup_method")
+            (self.assay_config.get("bigwigs") or {}).get("pileup_method")
         )
         return bool(bigwig_methods)
 
@@ -736,7 +736,7 @@ class BigWigSection(ProtocolSection):
             return versions
 
         bigwig_methods = listify(
-            self.assay_config.get("bigwigs", {}).get("pileup_method")
+            (self.assay_config.get("bigwigs") or {}).get("pileup_method")
         )
         bigwig_methods_normalized = {str(method).lower() for method in bigwig_methods}
 
@@ -751,7 +751,7 @@ class BigWigSection(ProtocolSection):
     def generate_text(self) -> list[str]:
         if self.assay_config is None:
             return []
-        bigwig_config = self.assay_config.get("bigwigs", {})
+        bigwig_config = self.assay_config.get("bigwigs") or {}
         bigwig_methods = listify(bigwig_config.get("pileup_method"))
         bigwig_methods_normalized = [str(method).lower() for method in bigwig_methods]
         binsize = bigwig_config.get("bin_size", 10)
@@ -1029,7 +1029,7 @@ class VariantCallingSection(ProtocolSection):
         ]
         
         # Add annotation step if configured
-        if self.assay_config and self.assay_config.get("snp_calling", {}).get("annotate_snps"):
+        if self.assay_config and (self.assay_config.get("snp_calling") or {}).get("annotate_snps"):
             snp_db_file = self.assay_config["snp_calling"].get("snp_database", "SNP database")
             text.append(f"Variants were annotated using bcftools annotate with the SNP database file: {snp_db_file}.")
         

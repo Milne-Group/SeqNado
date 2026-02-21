@@ -121,6 +121,9 @@ class MCCAssayConfig(BaseAssayConfig, PeakCallingMixin):
 class MethylationAssayConfig(BaseAssayConfig, MethylationMixin):
     """Configuration specific to methylation assays."""
 
+    # METH uses methylation-specific bigwig generation (TAPS/WGBS via methyldackel)
+    # not standard pileup methods, so bigwigs config is not applicable
+    bigwigs: None = None
     methylation: MethylationConfig | None = None
     ucsc_hub: None
     create_heatmaps: bool = False

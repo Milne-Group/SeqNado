@@ -135,7 +135,10 @@ def get_track_config(track, assay: str) -> tuple:
         return "bed_simple", None, None
 
     # BigWig configuration
-    style = "stairsfilled"
+    if assay == "METH":
+        style = "scatter"
+    else:
+        style = "stairsfilled"
     if assay == "ChIP":
         autoscaling_group = f"{track.antibody}-{track.method}-{track.normalisation}"
     else:
