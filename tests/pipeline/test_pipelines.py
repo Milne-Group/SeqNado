@@ -26,14 +26,32 @@ def test_pipeline(
         df = pd.read_csv(design)
         df['condition'] = df['sample_id'].str.split('-').str[1].str.split('_').str[0]
         df.to_csv(design, index=False)
-    elif assay in ('atac', 'chip-rx'):
+    elif assay in ('atac', 'chip-rx', 'rna', 'rna-rx'):
         import pandas as pd
-        # For ATAC-seq and ChIP-rx, we need to add a 'consensus_group' column to the design file
-        # for merged peak calling and bigwig normalisation
+        # For ATAC-seq, ChIP-rx, and RNA assays, we need to add a 'consensus_group' column to the design file
+        # for merged peak calling (ATAC/ChIP-rx) and general metadata validation (RNA)
         df = pd.read_csv(design)
         if 'consensus_group' not in df.columns:
-            df['consensus_group'] = 'all'
-            df.to_csv(design, index=False)
+            # For RNA-rx, use condition/group for consensus grouping so replicates are merged by condition
+            if assay in ('rna-rx',):
+                if 'condition' in df.columns:
+                    df['consensus_group'] = df['condition']
+                elif 'group' in df.columns:
+                    df['consensus_group'] = df['group']
+                else:
+                    df['consensus_group'] = df['sample_id'].str.split('-').str[2]
+            else:
+                df['consensus_group'] = 'all'
+        else:
+            # Fill any NaN values in consensus_group with 'all'
+            df['consensus_group'] = df['consensus_group'].fillna('all')
+        # For RNA-RX, add group and deseq2 columns if not present
+        if assay in ('rna', 'rna-rx'):
+            if 'group' not in df.columns:
+                df['group'] = df['sample_id'].str.split('-').str[2]
+            if 'deseq2' not in df.columns:
+                df['deseq2'] = (df['group'].str.lower() == 'treated').astype(int)
+        df.to_csv(design, index=False)
 
     res = seqnado_runner(
         [

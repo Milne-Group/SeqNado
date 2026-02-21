@@ -3,6 +3,14 @@ project:
   name: default_project
   description: "Test project for RNA-seq with spike in"
 assay_config:
+  bigwigs:
+    pileup_method:
+      - deeptools
+      - bamnado
+      - homer
+    binsize: 10
+    scale_methods:
+      - unscaled
   spikein:
     method: 
     - "deseq2"

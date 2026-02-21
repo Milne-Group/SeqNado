@@ -102,55 +102,52 @@ INPUT_FILES.symlink_fastq_files(output_dir=fastq_dir)
 # Include Rules
 ################################
 include: "rules/common/utilities.smk"
-include: "rules/qc/qc.smk"
 include: "rules/fastq/screen.smk"
+include: "rules/pileup/common.smk"
 include: "rules/protocol/protocol.smk"
+include: "rules/qc/qc.smk"
 
 match ASSAY:
     case Assay.ATAC | Assay.CAT | Assay.CHIP:
-        include: "rules/fastq/trim.smk"
-        include: "rules/bam/all.smk"
         include: "rules/alignment/dna.smk"
-        include: "rules/pileup/default.smk"
-        include: "rules/peaks/default.smk"
-        include: "rules/motifs/motif.smk"
-        include: "rules/pileup/merged.smk"
-        include: "rules/pileup/normalized.smk"
-        include: "rules/pileup/merge_normalized.smk"
-        include: "rules/normalization/scaling.smk"
-        include: "rules/visualise/hub.smk"
-        include: "rules/visualise/browser.smk"
-        include: "rules/peaks/merge.smk"
-        include: "rules/quant/merged.smk"
-    case Assay.RNA:
+        include: "rules/bam/all.smk"
         include: "rules/fastq/trim.smk"
+        include: "rules/motifs/motif.smk"
+        include: "rules/normalization/scaling.smk"
+        include: "rules/peaks/default.smk"
+        include: "rules/peaks/merge.smk"
+        include: "rules/pileup/dna.smk"
+        include: "rules/quant/merged.smk"
+        include: "rules/visualise/browser.smk"
+        include: "rules/visualise/hub.smk"
+    case Assay.RNA:
         include: "rules/alignment/rna.smk"
         include: "rules/bam/all.smk"
+        include: "rules/fastq/trim.smk"
+        include: "rules/pileup/rna.smk"
         include: "rules/quant/featurecounts.smk"
         include: "rules/quant/salmon.smk"
-        include: "rules/pileup/rna.smk"
-        include: "rules/pileup/normalized.smk"
-        include: "rules/visualise/hub.smk"
         include: "rules/visualise/browser.smk"
+        include: "rules/visualise/hub.smk"
     case Assay.MCC:
-        include: "rules/fastq/trim.smk"
         include: "rules/bam/all.smk"
-        include: "rules/mcc/all.smk"
         include: "rules/fastq/manipulate.smk"
+        include: "rules/fastq/trim.smk"
+        include: "rules/mcc/all.smk"
         include: "rules/visualise/hub.smk"
     case Assay.CRISPR:
         include: "rules/crispr/all.smk"
     case Assay.METH:
-        include: "rules/fastq/trim.smk"
         include: "rules/alignment/dna.smk"
         include: "rules/bam/all.smk"
+        include: "rules/fastq/trim.smk"
         include: "rules/meth/calling.smk"
     case Assay.SNP:
-        include: "rules/fastq/trim.smk"
         include: "rules/alignment/dna.smk"
         include: "rules/bam/all.smk"
-        include: "rules/variant/call.smk"
+        include: "rules/fastq/trim.smk"
         include: "rules/variant/annotate.smk"
+        include: "rules/variant/call.smk"
     case _:
         raise ValueError(f"Assay {ASSAY} not supported yet.")
 
@@ -175,8 +172,6 @@ if CONFIG.assay_config.has_spikein:
         case Assay.RNA:
             ruleorder: rename_aligned_spikein > align_paired_spikein_rna > align_single_spikein_rna
             ruleorder: bam_move_ref > rename_aligned > align_paired_spikein_rna > align_paired > align_single_spikein_rna > align_single
-            ruleorder: make_bigwigs_deeptools_rna_spikein_plus > make_bigwigs_deeptools_rna_plus
-            ruleorder: make_bigwigs_deeptools_rna_spikein_minus > make_bigwigs_deeptools_rna_minus
         case _:
             ruleorder: align_paired_spikein > align_single_spikein
             ruleorder: bam_move_ref > align_paired > align_single

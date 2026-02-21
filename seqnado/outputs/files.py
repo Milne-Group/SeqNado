@@ -193,9 +193,15 @@ class BigWigFiles(BaseModel):
                     for spikein_method in self.spikein_methods:
                         if self.is_merged:
                             scale_path = f"merged/spikein/{spikein_method.value}"
-                            for name in self.names:
-                                path = f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
-                                paths.append(path)
+                            if self.is_rna:
+                                for name in self.names:
+                                    for strand in ["plus", "minus"]:
+                                        path = f"{self.prefix}{method.value}/{scale_path}/{name}_{strand}.bigWig"
+                                        paths.append(path)
+                            else:
+                                for name in self.names:
+                                    path = f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
+                                    paths.append(path)
                         else:
                             scale_path = f"{scale.value}/{spikein_method.value}"
                             if self.is_rna:
@@ -210,9 +216,15 @@ class BigWigFiles(BaseModel):
                 else:
                     if self.is_merged:
                         scale_path = f"merged/{scale.value}"
-                        for name in self.names:
-                            path = f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
-                            paths.append(path)
+                        if self.is_rna:
+                            for name in self.names:
+                                for strand in ["plus", "minus"]:
+                                    path = f"{self.prefix}{method.value}/{scale_path}/{name}_{strand}.bigWig"
+                                    paths.append(path)
+                        else:
+                            for name in self.names:
+                                path = f"{self.prefix}{method.value}/{scale_path}/{name}.bigWig"
+                                paths.append(path)
                     else:
                         scale_path = scale.value
                         if self.is_rna:
