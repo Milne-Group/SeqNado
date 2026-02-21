@@ -103,7 +103,6 @@ INPUT_FILES.symlink_fastq_files(output_dir=fastq_dir)
 ################################
 include: "rules/common/utilities.smk"
 include: "rules/fastq/screen.smk"
-include: "rules/pileup/common.smk"
 include: "rules/protocol/protocol.smk"
 include: "rules/qc/qc.smk"
 
@@ -116,6 +115,7 @@ match ASSAY:
         include: "rules/normalization/scaling.smk"
         include: "rules/peaks/default.smk"
         include: "rules/peaks/merge.smk"
+        include: "rules/pileup/common.smk"
         include: "rules/pileup/dna.smk"
         include: "rules/quant/merged.smk"
         include: "rules/visualise/browser.smk"
@@ -125,6 +125,7 @@ match ASSAY:
         include: "rules/bam/all.smk"
         include: "rules/fastq/trim.smk"
         include: "rules/normalization/scaling.smk"
+        include: "rules/pileup/common.smk"
         include: "rules/pileup/rna.smk"
         include: "rules/quant/featurecounts.smk"
         include: "rules/quant/salmon.smk"
