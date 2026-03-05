@@ -3,7 +3,6 @@
 # Orchestrates genome downloading, indexing, and config updates
 ################################
 
-import json
 import os
 from pathlib import Path
 
@@ -85,6 +84,8 @@ include: "rules/genomes/build_index.smk"
 # On Success: Update Genome Config
 ################################
 onsuccess:
+    from seqnado.cli.utils import update_genome_config
+
     cfg_path = Path.home() / ".config" / "seqnado" / "genome_config.json"
 
     def _blacklist_or_na(bl_path):
@@ -94,38 +95,29 @@ onsuccess:
             return str(p)
         return "NA"
 
-    existing = {}
-    if cfg_path.exists():
-        try:
-            existing = json.loads(cfg_path.read_text())
-        except Exception:
-            pass
-
     if SPIKEIN:
         name = f"{GENOME}_{SPIKEIN}"
-        existing[name] = {
+        update_genome_config(cfg_path, name, {
             "bt2_index": f"{OUTPUT_DIR}/{name}/bt2_index/{name}",
             "star_index": f"{OUTPUT_DIR}/{name}/STAR_2.7.10b",
             "chromosome_sizes": f"{OUTPUT_DIR}/{name}/sequence/{name}.fa.fai",
             "gtf": f"{OUTPUT_DIR}/{name}/genes/{name}.gtf",
             "blacklist": _blacklist_or_na(f"{OUTPUT_DIR}/{GENOME}/{GENOME}-blacklist.bed.gz"),
             "fasta": f"{OUTPUT_DIR}/{name}/sequence/{name}.fa",
-        }
+        })
         print(f"Added genome entry: {name}")
     else:
         for g in GENOMES:
-            existing[g] = {
+            update_genome_config(cfg_path, g, {
                 "bt2_index": f"{OUTPUT_DIR}/{g}/bt2_index/{g}",
                 "star_index": f"{OUTPUT_DIR}/{g}/STAR_2.7.10b",
                 "chromosome_sizes": f"{OUTPUT_DIR}/{g}/sequence/{g}.chrom.sizes",
                 "gtf": f"{OUTPUT_DIR}/{g}/genes/{g}.ncbiRefSeq.gtf",
                 "blacklist": _blacklist_or_na(f"{OUTPUT_DIR}/{g}/{g}-blacklist.bed.gz"),
                 "fasta": f"{OUTPUT_DIR}/{g}/sequence/{g}.fa",
-            }
+            })
             print(f"Added genome entry: {g}")
 
-    cfg_path.parent.mkdir(parents=True, exist_ok=True)
-    cfg_path.write_text(json.dumps(existing, indent=4))
     print(f"Updated genome config: {cfg_path}")
 
     remove_unwanted_run_files()

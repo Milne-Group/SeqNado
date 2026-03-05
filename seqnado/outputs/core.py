@@ -1033,18 +1033,30 @@ class MultiomicsOutputBuilder:
         path = str(Path(self.output_dir) / "multiomics" / "heatmap" / "metaplot.pdf")
         self.file_collections.append(BasicFileCollection(files=[path]))
 
-    def add_multiomics_dataset(self, use_binsize: bool = True) -> str:
+    def add_multiomics_dataset(self) -> str:
         """Add the multiomics dataset output file.
-
-        Args:
-            use_binsize: If True, adds dataset_bins.h5ad (binsize mode).
-                        If False, adds dataset_regions.h5ad (regions mode).
         """
-        filename = "dataset_bins.h5ad" if use_binsize else "dataset_regions.h5ad"
+        filename = "dataset.zarr"
         path = str(
-            Path(self.output_dir) / "multiomics" / "dataset" / filename
+            Path(self.output_dir) / "multiomics" / filename
         )
         self.file_collections.append(BasicFileCollection(files=[path]))
+
+    @property
+    def dataset_bam_files(self) -> list[str]:
+        """Get BAM files for assays with create_dataset=True.
+
+        For ChIP-like assays with IP samples, only IP samples are included.
+        BAM paths follow the convention: {output_dir}/aligned/{sample}.bam
+        """
+        bams = []
+        for assay, output_files in self.assay_outputs.items():
+            if not getattr(output_files.config.assay_config, "create_dataset", False):
+                continue
+            samples = output_files.ip_sample_names or output_files.sample_names
+            for sample in samples:
+                bams.append(f"{output_files.output_dir}/aligned/{sample}.bam")
+        return bams
 
     def add_assay_outputs(self) -> None:
         """Add all assay output files to the multiomics output collection."""

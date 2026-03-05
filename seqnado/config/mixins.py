@@ -84,17 +84,6 @@ class CommonComputedFieldsMixin(BaseModel):
 
         return info.data.get("plotting") is not None
 
-    @field_validator("create_dataset", mode="before")
-    def compute_create_dataset(
-        cls,
-        v: Optional[bool],
-        info: ValidationInfo,
-    ) -> Optional[bool]:
-        if v is not None:
-            return v
-
-        return info.data.get("dataset_for_ml") is not None
-
     @field_validator("create_ucsc_hub", mode="before")
     def compute_create_ucsc_hub(
         cls,
@@ -160,7 +149,7 @@ class CommonComputedFieldsMixin(BaseModel):
             model.plot_with_plotnado = getattr(model, "plotting", None) is not None
 
         if model.create_dataset is None:
-            model.create_dataset = getattr(model, "dataset_for_ml", None) is not None
+            model.create_dataset = False
 
         if model.create_ucsc_hub is None:
             model.create_ucsc_hub = getattr(model, "ucsc_hub", None) is not None

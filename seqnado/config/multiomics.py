@@ -1,14 +1,4 @@
-from pathlib import Path
-from typing import Annotated
-
-from pydantic import BaseModel, BeforeValidator, Field, model_validator
-
-
-def none_str_to_none(v):
-    """Convert string 'none' to None."""
-    if isinstance(v, str) and v.strip().lower() == "none":
-        return None
-    return v
+from pydantic import BaseModel, Field
 
 
 class MultiomicsConfig(BaseModel):
@@ -43,25 +33,3 @@ class MultiomicsConfig(BaseModel):
         default=True, description="Generate summary report of multiomics analysis"
     )
 
-    # Optional settings for multiomics analysis
-    regions_bed: Annotated[Path | None, BeforeValidator(none_str_to_none)] = Field(
-        default=None,
-        description="BED file with regions of interest for multiomics analysis",
-    )
-    binsize: int | None = Field(
-        default=1000, description="Bin size for genome-wide multiomics analysis"
-    )
-    fasta_index: Annotated[Path | None, BeforeValidator(none_str_to_none)] = Field(
-        default=None,
-        description="Fasta index file (.fai) for chromosome sizes in dataset generation (required when using binsize mode)",
-    )
-
-    @model_validator(mode="after")
-    def validate_fasta_index_for_binsize(self):
-        """Ensure fasta_index is provided when using binsize mode for dataset creation."""
-        if self.create_dataset and self.binsize is not None and self.regions_bed is None:
-            if self.fasta_index is None:
-                raise ValueError(
-                    "fasta_index is required when create_dataset=True and using binsize mode (no regions_bed provided)"
-                )
-        return self

@@ -65,6 +65,32 @@ def _read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def update_genome_config(config_file: Path, genome_name: str, genome_entry: dict) -> None:
+    """Add or update a genome entry in genome_config.json, stripping any placeholder entries.
+
+    Placeholder entries (where any path value contains 'PATH_TO') are removed before
+    writing, so template-generated stubs do not persist alongside real entries.
+    """
+    config_file.parent.mkdir(parents=True, exist_ok=True)
+
+    existing: dict = {}
+    if config_file.exists():
+        try:
+            existing = _read_json(config_file)
+        except Exception:
+            pass
+
+    # Drop template placeholder entries
+    existing = {
+        name: paths
+        for name, paths in existing.items()
+        if not any(isinstance(v, str) and "PATH_TO" in v for v in paths.values())
+    }
+
+    existing[genome_name] = genome_entry
+    _write_json(config_file, existing)
+
+
 def _write_json(path: Path, data: dict) -> None:
     """
     Atomically write JSON to `path` using a temporary file + os.replace.

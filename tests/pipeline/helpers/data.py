@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import ClassVar
 
 from pydantic import BaseModel, model_validator
 
+from seqnado.cli.utils import update_genome_config
 from .utils import download_with_retry, extract_tar, get_fastq_pattern
 
 
@@ -112,20 +112,11 @@ class GenomeResources(BaseModel):
 
     def write_config(self, config_file: Path) -> None:
         """Write genome_config.json from this instance."""
-        config_file.parent.mkdir(parents=True, exist_ok=True)
-
-        existing = {}
-        if config_file.exists():
-            with open(config_file) as f:
-                existing = json.load(f)
-
-        existing[self.assay] = {
+        entry = {
             k: str(v) if v else None
             for k, v in self.model_dump(exclude={"assay"}).items()
         }
-
-        with open(config_file, "w") as f:
-            json.dump(existing, f, indent=2)
+        update_genome_config(config_file, self.assay, entry)
 
     @classmethod
     def download_resources(cls, genome_path: Path, assay: str) -> GenomeResources:

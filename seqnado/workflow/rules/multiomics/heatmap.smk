@@ -1,19 +1,14 @@
 from seqnado.workflow.helpers.common import define_memory_requested, define_time_requested
 
-from seqnado.outputs.multiomics import get_assay_bigwigs
-
 
 rule multiomics_heatmap_matrix:
     input:
-        rules.gather_bigwigs.output.bw_dir,
+        bigwigs=MULTIOMICS_OUTPUT.bigwig_files,
     output:
         matrix=OUTPUT_DIR + "/multiomics/heatmap/heatmap_matrix.mat.gz",
     params:
-        # Use GTF from the first assay config (assuming shared genome)
         gtf=EXAMPLE_CONFIG.genome.gtf,
-        # options=lambda wildcards: str(LOADED_CONFIGS[ASSAYS[0]].get("third_party_tools", {}).get("deeptools", {}).get("compute_matrix", {}).get("command_line_arguments", "")),
         options=EXAMPLE_CONFIG.third_party_tools.deeptools.compute_matrix.command_line_arguments,
-        # Collect bigWig files at runtime after assay rules complete
         bigwigs=MULTIOMICS_OUTPUT.bigwig_files,
     threads: EXAMPLE_CONFIG.third_party_tools.deeptools.compute_matrix.threads,
     resources:

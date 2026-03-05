@@ -1,69 +1,34 @@
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
 
 SCALE_RESOURCES = 1
-
-
-rule make_dataset_regions:
-    """Create a dataset from bigWig files using either a BED file."""
+BAM_FILES = multiomics_builder.dataset_bam_files
+print(f"BAM_FILES: {BAM_FILES}")
+rule make_dataset:
+    """Create a dataset from bam files using QuantNado."""
     input:
-        rules.gather_bigwigs.output.bw_dir,
+        OUTPUT_DIR + "/multiomics_summary.txt",
+        bam_files=BAM_FILES,
     output:
-        dataset=OUTPUT_DIR + "/multiomics/dataset/dataset_regions.h5ad",
+        dataset=OUTPUT_DIR + "/multiomics/dataset.zarr",
     params:
-        bigwig_dir=OUTPUT_DIR + "/multiomics/bigwigs/",
         chromosome_sizes=lambda wildcards: LOADED_CONFIGS[ASSAYS[0].clean_name]["genome"]["chromosome_sizes"],
-        blacklist=lambda wildcards: LOADED_CONFIGS[ASSAYS[0].clean_name]["genome"]["blacklist"],
-        regions=lambda wildcards: str(MULTIOMICS_CONFIG.regions_bed) if MULTIOMICS_CONFIG.regions_bed else None,
-    threads: 1
+        dataset=OUTPUT_DIR + "/multiomics/dataset",
+    threads: 8
     resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=32, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_ml_cpu:latest",
-    log: OUTPUT_DIR + "/multiomics/logs/make_dataset_regions.log",
-    benchmark: OUTPUT_DIR + "/multiomics/.benchmark/make_dataset_regions.tsv",
-    message: "Making dataset from regions for machine learning"
+    container: "docker://ghcr.io/milne-group/quantnado-ci:latest",
+    log: OUTPUT_DIR + "/multiomics/logs/make_dataset.log",
+    benchmark: OUTPUT_DIR + "/multiomics/.benchmark/make_dataset.tsv",
+    message: "Making dataset from bam files using QuantNado."
     shell: """
-    quantnado-make-dataset \
-    --bigwig-dir {params.bigwig_dir} \
-    --output-file {output.dataset} \
+    quantnado create-dataset  \
+    --output {params.dataset} \
     --chromsizes {params.chromosome_sizes} \
-    --regions {params.regions} \
-    --blacklist {params.blacklist} \
-    --log-file {log}
-    """
-
-
-rule make_dataset_binsize:
-    """Create a dataset from bigWig files using bin size."""
-    input:
-        bigwigs=MULTIOMICS_OUTPUT.bigwig_files,
-    output:
-        dataset=OUTPUT_DIR + "/multiomics/dataset/dataset_bins.h5ad",
-    params:
-        bigwig_dir=OUTPUT_DIR + "/multiomics/bigwigs/",
-        chromosome_sizes=lambda wildcards: LOADED_CONFIGS[ASSAYS[0].clean_name]["genome"]["chromosome_sizes"],
-        blacklist=EXAMPLE_CONFIG.genome.blacklist,
-        binsize=MULTIOMICS_CONFIG.binsize,
-    threads: 1
-    resources:
-            mem=lambda wildcards, attempt: define_memory_requested(initial_value=32, attempts=attempt, scale=SCALE_RESOURCES),
-            runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_ml_cpu:latest",
-    log: OUTPUT_DIR + "/multiomics/logs/make_dataset_binsize.log",
-    benchmark: OUTPUT_DIR + "/multiomics/.benchmark/make_dataset_binsize.tsv",
-    message: "Making dataset from binsize for machine learning"
-    shell: """
-    # symlink bigwig files to expected directory
-    mkdir -p {params.bigwig_dir}
-    for bw in {input.bigwigs}; do
-        ln -s $(realpath $bw) {params.bigwig_dir}/$(basename $bw)
-    done
-
-    quantnado-make-dataset \
-    --bigwig-dir {params.bigwig_dir} \
-    --output-file {output.dataset} \
-    --chromsizes {params.chromosome_sizes} \
-    --binsize {params.binsize} \
-    --blacklist {params.blacklist} \
-    --log-file {log}
+    --max-workers {threads} \
+    --log-file {log} \
+    --verbose \
+    --overwrite \
+    --resume \
+    {input.bam_files}
     """

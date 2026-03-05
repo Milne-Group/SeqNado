@@ -537,29 +537,3 @@ class MCCConfig(BaseModel, PathValidatorMixin):
         return v
 
 
-class MLDatasetConfig(BaseModel, PathValidatorMixin):
-    """Configuration for ML dataset generation."""
-
-    regions_bed: Annotated[Path | None, BeforeValidator(none_str_to_none)] = Field(
-        default=None, description="BED file with regions of interest"
-    )
-    binsize: int | None = None
-
-    @field_validator("regions_bed")
-    def validate_regions_bed(cls, v: Path | None, info: ValidationInfo) -> Path | None:
-        # Allow None here; the model_post_init will enforce that at least one of
-        # regions_bed or binsize is provided. If a non-None value is given, validate it.
-        if v is None:
-            return None
-        return cls.validate_path_exists(v, "Regions BED file", info)
-
-    @field_validator("binsize")
-    def validate_binsize(cls, v: int | None) -> int | None:
-        if v is not None and v <= 0:
-            raise ValueError("Binsize must be a positive integer.")
-        return v
-
-    def model_post_init(self, __context) -> None:
-        """Validate that at least one of regions_bed or binsize is provided."""
-        if self.regions_bed is None and self.binsize is None:
-            raise ValueError("At least one of regions_bed or binsize must be provided.")

@@ -55,26 +55,6 @@ class TestCommonComputedFieldsMixin:
         model = TestModel(plotting=None)
         assert model.plot_with_plotnado is False
 
-    def test_create_dataset_when_config_present(self):
-        """Test create_dataset returns True when dataset_for_ml is set."""
-        
-        class TestModel(CommonComputedFieldsMixin, BaseModel):
-            dataset_for_ml: dict | None = None
-            create_geo_submission_files: bool = False
-        
-        model = TestModel(dataset_for_ml={"binsize": 1000})
-        assert model.create_dataset is True
-
-    def test_create_dataset_when_config_absent(self):
-        """Test create_dataset returns False when dataset_for_ml is None."""
-        
-        class TestModel(CommonComputedFieldsMixin, BaseModel):
-            dataset_for_ml: dict | None = None
-            create_geo_submission_files: bool = False
-        
-        model = TestModel(dataset_for_ml=None)
-        assert model.create_dataset is False
-
     def test_create_ucsc_hub_when_config_present(self):
         """Test create_ucsc_hub returns True when ucsc_hub is set."""
         

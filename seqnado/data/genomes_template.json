@@ -1,11 +1,11 @@
 {   
-    "dm6": {
-        "bt2_index": "PATH_TO_INDICIES/dm6",
-        "star_index": "PATH_TO_STAR/dm6/UCSC/STAR_2.7.10b",
-        "chromosome_sizes": "PATH/dm6/UCSC/sequence/dm6.chrom.sizes",
-        "gtf": "PATH/dm6/UCSC/genes/dm6.ncbiRefSeq.gtf",
-        "blacklist": "PATH/dm6/dm6-blacklist.v2.bed.gz",
-        "genes": "PATH/dm6/dm6_genes.bed",
-        "fasta": "PATH/dm6/UCSC/sequence/dm6.fa"
+    "genome": {
+        "bt2_index": "PATH_TO_INDICIES/genome",
+        "star_index": "PATH_TO_STAR/genome/UCSC/STAR_2.7.10b",
+        "chromosome_sizes": "PATH/genome/UCSC/sequence/genome.chrom.sizes",
+        "gtf": "PATH/genome/UCSC/genes/genome.ncbiRefSeq.gtf",
+        "blacklist": "PATH/genome/genome-blacklist.v2.bed.gz",
+        "genes": "PATH/genome/genome_genes.bed",
+        "fasta": "PATH/genome/UCSC/sequence/genome.fa"
     }
 }
