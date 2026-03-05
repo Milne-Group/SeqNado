@@ -31,13 +31,14 @@ rule motif_meme_chip:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
+    threads: 8
     container: "docker://quay.io/biocontainers/meme:5.5.9--pl5321h1ca524f_0"
     log: OUTPUT_DIR + "/logs/motifs/meme/{method}/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/motifs/meme/{method}/{sample}.tsv",
     message: "Running MEME-ChIP motif analysis for sample {wildcards.sample}"
     shell: """
     if [ -s {input.fasta} ] && grep -q "^>" {input.fasta}; then
-        CMD="meme-chip -oc {params.meme_dir}"
+        CMD="meme-chip -meme-p {threads} -oc {params.meme_dir}"
         [ -n "{params.meme_chip_db}" ] && CMD="$CMD -db {params.meme_chip_db}"
         $CMD{params.meme_chip_params} {input.fasta} > {log} 2>&1
     else
