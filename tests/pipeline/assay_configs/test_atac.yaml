@@ -18,7 +18,6 @@ assay_config:
     scale_methods: null
   plotting: null
   ucsc_hub: null
-  dataset_for_ml: null
   tn5_shift: True
   peak_calling:
     method:

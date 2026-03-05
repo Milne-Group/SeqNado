@@ -278,7 +278,6 @@ class TestBuildDefaultAssayConfig:
         assert result.spikein is None
         assert result.peak_calling is not None
         assert result.peak_calling.method == [PeakCallingMethod.LANCEOTRON]
-        assert result.dataset_for_ml is not None
 
     def test_build_default_cat_config(self, mock_genome_config):
         """Test building default CUT&TAG assay configuration."""

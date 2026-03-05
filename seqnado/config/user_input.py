@@ -1027,23 +1027,6 @@ def build_multiomics_config(
             "Generate summary report?", default="yes", is_boolean=True
         )
 
-        # Only ask for regions_bed and binsize if creating dataset
-        regions_bed = None
-        binsize = None
-        if create_dataset:
-            regions_bed = get_user_input(
-                "BED file with regions of interest (optional, press Enter to skip)",
-                required=False,
-                is_path=False,
-            )
-
-            binsize_input = get_user_input(
-                "Binsize for genome-wide analysis (optional, press Enter to skip)",
-                required=False,
-            )
-
-            binsize = int(binsize_input) if binsize_input and binsize_input.isdigit() else None
-
     else:
         # Non-interactive mode: still prompt for assay selection, but use defaults for everything else
         logger.info("Non-interactive mode: prompting for assays, using defaults for other settings")
@@ -1085,8 +1068,6 @@ def build_multiomics_config(
         create_heatmaps = True
         create_dataset = True
         create_summary = True
-        regions_bed = None
-        binsize = None
 
     # Build individual assay configs
     assay_configs = {}
@@ -1110,21 +1091,12 @@ def build_multiomics_config(
 
         assay_configs[assay_name] = config
 
-    # Get fasta_index from the first assay's genome config (needed for binsize mode)
-    first_assay_config = next(iter(assay_configs.values()))
-    fasta_index = None
-    if first_assay_config.genome and first_assay_config.genome.fasta:
-        fasta_index = Path(str(first_assay_config.genome.fasta) + ".fai")
-
     # Create MultiomicsConfig
     multiomics_config = MultiomicsConfig(
         assays=selected_assays,
         create_heatmaps=create_heatmaps,
         create_dataset=create_dataset,
         create_summary=create_summary,
-        regions_bed=Path(regions_bed) if regions_bed else None,
-        binsize=binsize,
-        fasta_index=fasta_index,
     )
 
     return multiomics_config, assay_configs
