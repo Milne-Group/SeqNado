@@ -2,7 +2,7 @@ from seqnado.workflow.helpers.common import define_time_requested, define_memory
 
 SCALE_RESOURCES = 1
 BAM_FILES = multiomics_builder.dataset_bam_files
-print(f"BAM_FILES: {BAM_FILES}")
+
 rule make_dataset:
     """Create a dataset from bam files using QuantNado."""
     input:

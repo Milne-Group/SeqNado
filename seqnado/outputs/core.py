@@ -1044,15 +1044,13 @@ class MultiomicsOutputBuilder:
 
     @property
     def dataset_bam_files(self) -> list[str]:
-        """Get BAM files for assays with create_dataset=True.
+        """Get BAM files from all assays for the multiomics dataset.
 
         For ChIP-like assays with IP samples, only IP samples are included.
         BAM paths follow the convention: {output_dir}/aligned/{sample}.bam
         """
         bams = []
         for assay, output_files in self.assay_outputs.items():
-            if not getattr(output_files.config.assay_config, "create_dataset", False):
-                continue
             samples = output_files.ip_sample_names or output_files.sample_names
             for sample in samples:
                 bams.append(f"{output_files.output_dir}/aligned/{sample}.bam")
