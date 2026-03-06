@@ -3,12 +3,16 @@ from seqnado.workflow.helpers.common import define_time_requested, define_memory
 SCALE_RESOURCES = 1
 
 MULTI_BAM_FILES = multiomics_builder.dataset_bam_files
+MULTI_VCF_FILES = multiomics_builder.dataset_vcf_files
+MULTI_BEDGRAPH_FILES = multiomics_builder.dataset_bedgraph_files
 CHROMOSOME_SIZES = CONFIGS_PER_ASSAY[ASSAYS[0]].genome.chromosome_sizes
 
 rule multiomics_make_dataset:
     """Create a dataset from bam files using QuantNado."""
     input:
         bam_files=MULTI_BAM_FILES,
+        bedgraph_files=MULTI_BEDGRAPH_FILES,
+        vcf_files=MULTI_VCF_FILES,
     output:
         dataset=directory(OUTPUT_DIR + "/multiomics/dataset.zarr"),
     params:
@@ -25,6 +29,9 @@ rule multiomics_make_dataset:
     shell: """
     quantnado create-dataset  \
     --output {params.dataset} \
+    --bam {input.bam_files} \
+    --bedgraph {input.bedgraph_files} \
+    --vcf {input.vcf_files} \
     --chromsizes {params.chromosome_sizes} \
     --max-workers {threads} \
     --log-file {log} \

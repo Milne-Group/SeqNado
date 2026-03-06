@@ -14,7 +14,9 @@ import pytest
         [
             "atac",
             "chip",
+            "meth",
             "rna",
+            "snp",
         ]
     ],
 )

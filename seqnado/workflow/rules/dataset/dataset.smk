@@ -2,16 +2,18 @@ from seqnado.workflow.helpers.common import define_time_requested, define_memory
 
 SCALE_RESOURCES = 1
 
-BAM_FILES = [
-    f"{OUTPUT_DIR}/aligned/{s}.bam"
-    for s in (OUTPUT.ip_sample_names or OUTPUT.sample_names)
-]
+BAM_FILES = OUTPUT.bam_files
+VCF_FILES = OUTPUT.vcf_files
+BEDGRAPH_FILES = OUTPUT.bedgraph_files
+
 CHROMOSOME_SIZES = CONFIG.genome.chromosome_sizes
 
 rule make_dataset:
     """Create a dataset from bam files using QuantNado."""
     input:
         bam_files=BAM_FILES,
+        bedgraph_files=BEDGRAPH_FILES,
+        vcf_files=VCF_FILES,
     output:
         dataset=directory(OUTPUT_DIR + "/dataset.zarr"),
     params:
@@ -28,6 +30,9 @@ rule make_dataset:
     shell: """
     quantnado create-dataset  \
     --output {params.dataset} \
+    --bam {input.bam_files} \
+    --bedgraph {input.bedgraph_files} \
+    --vcf {input.vcf_files} \
     --chromsizes {params.chromosome_sizes} \
     --max-workers {threads} \
     --log-file {log} \
@@ -36,3 +41,5 @@ rule make_dataset:
     --resume \
     {input.bam_files}
     """
+    
+                                                                                                                                                                                                                                                                                                        

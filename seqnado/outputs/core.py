@@ -170,8 +170,22 @@ class SeqnadoOutputFiles(BaseModel):
         return results
 
     @property
+    def bam_files(self):
+        """Get BAM files for the samples, using IP samples for IP-based assays."""
+        samples = self.ip_sample_names or self.sample_names
+        return [f"{self.output_dir}/aligned/{s}.bam" for s in samples]
+
+    @property
     def peak_files(self):
         return self.select_files(".bed", exclude="/geo_submission/")
+
+    @property
+    def vcf_files(self):
+        return self.select_files(".vcf.gz")
+
+    @property
+    def bedgraph_files(self):
+        return self.select_files(".bedgraph")
 
     @property
     def bigbed_files(self):
@@ -1094,6 +1108,32 @@ class MultiomicsOutputBuilder:
             for sample in samples:
                 bams.append(f"{output_files.output_dir}/aligned/{sample}.bam")
         return bams
+
+    @property
+    def dataset_vcf_files(self) -> list[str]:
+        """Get VCF files from SNP assay for the multiomics dataset.
+
+        VCF paths follow the convention: {output_dir}/variants/{sample}.vcf.gz
+        """
+        vcfs = []
+        for assay, output_files in self.assay_outputs.items():
+            if assay.clean_name == "snp":
+                for sample in output_files.sample_names:
+                    vcfs.append(f"{output_files.output_dir}/variants/{sample}.vcf.gz")
+        return vcfs
+
+    @property
+    def dataset_bedgraph_files(self) -> list[str]:
+        """Get BEDGRAPH files from methylation assay for the multiomics dataset.
+
+        BEDGRAPH paths follow the convention: {output_dir}/methylation/{sample}.bedgraph
+        """
+        bedgraphs = []
+        for assay, output_files in self.assay_outputs.items():
+            if assay.clean_name == "meth":
+                for sample in output_files.sample_names:
+                    bedgraphs.append(f"{output_files.output_dir}/methylation/{sample}.bedgraph")
+        return bedgraphs
 
     def add_assay_outputs(self) -> None:
         """Add all assay output files to the multiomics output collection."""
