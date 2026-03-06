@@ -111,6 +111,8 @@ WORKFLOW_ARGS = workflow.config_settings.config.get(
 ################################
 include: "rules/multiomics/all.smk"
 
+if MULTIOMICS_CONFIG.create_dataset:
+    include: "rules/dataset/multiomics_dataset.smk"
 
 ########################################
 # Define workflow targets

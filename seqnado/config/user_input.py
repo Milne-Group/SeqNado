@@ -582,6 +582,9 @@ def build_assay_config(
         geo_files = get_user_input(
             "Generate GEO submission files?", default="no", is_boolean=True
         )
+        create_dataset = get_user_input(
+            "Make QuantNado dataset?", default="no", is_boolean=True
+        )
 
         base_config = {
             "genome": genome_config,
@@ -590,6 +593,7 @@ def build_assay_config(
             "ucsc_hub": ucsc_hub,
             "create_heatmaps": create_heatmaps,
             "create_geo_submission_files": geo_files,
+            "create_dataset": create_dataset,
         }
     elif assay == Assay.METH:
         # METH uses methylation-specific bigwig generation, not pileup-based
@@ -1020,7 +1024,7 @@ def build_multiomics_config(
         )
 
         create_dataset = get_user_input(
-            "Generate ML-ready dataset?", default="yes", is_boolean=True
+            "Make QuantNado dataset?", default="yes", is_boolean=True
         )
 
         create_summary = get_user_input(

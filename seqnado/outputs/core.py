@@ -912,6 +912,11 @@ class SeqnadoOutputBuilder:
         )
         self.file_collections.append(crispr_files)
 
+    def add_dataset(self) -> None:
+        """Add dataset output file."""
+        path = str(Path(self.output_dir) / "dataset.zarr")
+        self.file_collections.append(BasicFileCollection(files=[path]))
+
     def add_quantification_files(self) -> None:
         """Add quantification files to the output collection."""
         # Get the consensus grouping if it exists, otherwise use empty SampleGroups
@@ -1178,6 +1183,9 @@ class SeqnadoOutputFactory:
 
         if getattr(self.assay_config, "create_quantification_files", False):
             builder.add_quantification_files()
+
+        if self.assay_config.create_dataset:
+            builder.add_dataset()
 
         # Add additional files based on the assay type
         match self.assay:

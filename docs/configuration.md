@@ -73,10 +73,7 @@ Call peaks? (default: yes)
   └─ Run motif analysis on called peaks? (default: no)
       └─ Motif analysis method(s) — if yes (default: homer; options: homer, meme)
 
-Make dataset for ML? (default: no)
-  └─ Use regions BED file? (default: yes)
-      └─ Path to regions BED file (default: path/to/regions.bed)
-         OR Binsize for dataset (default: 1000)
+Make QuantNado dataset? (default: no)
 ```
 
 ### ChIP-seq Specific
@@ -94,10 +91,7 @@ Do you have spike-in? (default: no)
   ├─ Spike-in genome (default: dm6)
   └─ Spike-in control gene names — if using deseq2 or edger (default: AmpR,Cas9_3p,Cas9_5p)
 
-Make dataset for ML? (default: no)
-  └─ Use regions BED file? (default: yes)
-      └─ Path to regions BED file (default: path/to/regions.bed)
-         OR Binsize for dataset (default: 1000)
+Make QuantNado dataset? (default: no)
 ```
 
 ### CUT&Tag (CAT) Specific
@@ -117,10 +111,7 @@ Do you have spike-in? (default: no)
   ├─ Spike-in genome (default: dm6)
   └─ Spike-in control gene names — if using deseq2 or edger (default: AmpR,Cas9_3p,Cas9_5p)
 
-Make dataset for ML? (default: no)
-  └─ Use regions BED file? (default: yes)
-      └─ Path to regions BED file
-         OR Binsize for dataset
+Make QuantNado dataset? (default: no)
 ```
 
 ### RNA-seq Specific
