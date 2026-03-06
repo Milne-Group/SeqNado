@@ -719,6 +719,20 @@ class SeqnadoOutputBuilder:
         has_consensus = bool(
             self.sample_groupings and self.sample_groupings.groupings.get("consensus")
         )
+
+        # METH uses methyldackel-generated bigwigs (taps/wgbs), not standard pileup
+        if self.assay == Assay.METH:
+            heatmaps = HeatmapFiles(
+                assay=self.assay,
+                scale_methods=[DataScalingTechnique.UNSCALED],
+                spikein_methods=[],
+                output_dir=self.output_dir,
+                is_merged=False,
+                method=PileupMethod.METHYLDACKEL,
+            )
+            self.file_collections.append(heatmaps)
+            return
+
         bigwigs_config = self.config.assay_config.bigwigs
         if bigwigs_config is None or not bigwigs_config.pileup_method:
             pileup_methods = [PileupMethod.DEEPTOOLS]
@@ -802,6 +816,20 @@ class SeqnadoOutputBuilder:
         has_consensus = bool(
             self.sample_groupings and self.sample_groupings.groupings.get("consensus")
         )
+
+        # METH uses methyldackel-generated bigwigs, not standard pileup
+        if self.assay == Assay.METH:
+            plot_files = PlotFiles(
+                coordinates=self.config.assay_config.plotting.coordinates,
+                file_format=self.config.assay_config.plotting.file_format,
+                output_dir=self.output_dir,
+                scale=DataScalingTechnique.UNSCALED.value,
+                is_merged=False,
+                method=PileupMethod.METHYLDACKEL.value,
+            )
+            self.file_collections.append(plot_files)
+            return
+
         bigwigs_config = self.config.assay_config.bigwigs
         if bigwigs_config is None or not bigwigs_config.pileup_method:
             pileup_methods = [PileupMethod.DEEPTOOLS]
@@ -879,12 +907,18 @@ class SeqnadoOutputBuilder:
 
     def add_methylation_files(self) -> None:
         """Add methylation files to the output collection."""
+        meth_config = self.config.assay_config.methylation
+        ref_genome = meth_config.reference_genome or self.config.genome.name
+        spikein_genomes = meth_config.spikein_genomes or []
+        genomes = [ref_genome] + spikein_genomes
         methylation_files = MethylationFiles(
             assay=self.assay,
             names=self.samples.sample_names,
-            genomes=self.config.assay_config.methylation.spikein_genomes,
-            method=self.config.assay_config.methylation.method,
+            genomes=genomes,
+            ref_genome=ref_genome,
+            method=meth_config.method,
             output_dir=self.output_dir,
+            create_bigwigs=bool(self.config.assay_config.create_bigwigs),
         )
         self.file_collections.append(methylation_files)
 
@@ -1208,6 +1242,14 @@ class SeqnadoOutputFactory:
             case Assay.METH:
                 if self.assay_config.call_methylation:
                     builder.add_methylation_files()
+                if (
+                    self.assay_config.plot_with_plotnado
+                    and hasattr(self.assay_config, "plotting")
+                    and self.assay_config.plotting
+                    and hasattr(self.assay_config.plotting, "coordinates")
+                    and Path(str(self.assay_config.plotting.coordinates)).exists()
+                ):
+                    builder.add_plot_files()
             case Assay.MCC:
                 builder.add_mcc_sentinel_contact_files()
             case _:

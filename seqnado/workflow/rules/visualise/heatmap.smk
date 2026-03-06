@@ -1,5 +1,5 @@
+from seqnado import Assay, PileupMethod, DataScalingTechnique, SpikeInMethod
 from seqnado.workflow.helpers.common import define_memory_requested, define_time_requested
-from seqnado import PileupMethod, DataScalingTechnique, SpikeInMethod
 
 _spikein_cfg = getattr(CONFIG.assay_config, "spikein", None)
 _spikein_methods = _spikein_cfg.method if _spikein_cfg else []
@@ -9,9 +9,80 @@ _has_spikein_withinput = SpikeInMethod.WITH_INPUT in _spikein_methods
 # Heatmap and metaplot generation from bigWig files.
 # One set of rules per (pileup method) × (scale) × (merged) combination.
 # Compatible combinations:
-#   deeptools  : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
-#   bamnado    : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
-#   homer      : individual → unscaled              ; merged → unscaled
+#   deeptools    : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
+#   bamnado      : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
+#   homer        : individual → unscaled              ; merged → unscaled
+#   methyldackel : individual → unscaled (METH assay only, reads from bigwigs/taps or bigwigs/wgbs)
+
+
+# ─── methyldackel · individual · unscaled (METH assay only) ──────────────────
+if ASSAY == Assay.METH:
+    _meth_method = CONFIG.assay_config.methylation.method.value  # "taps" or "wgbs"
+
+    _deeptools_matrix_options = str(CONFIG.third_party_tools.deeptools.compute_matrix.command_line_arguments) if CONFIG.third_party_tools.deeptools else ""
+    _deeptools_matrix_threads = CONFIG.third_party_tools.deeptools.compute_matrix.threads if CONFIG.third_party_tools.deeptools else 4
+    _deeptools_heatmap_options = str(CONFIG.third_party_tools.deeptools.plot_heatmap.command_line_arguments) if CONFIG.third_party_tools.deeptools else ""
+
+    rule heatmap_methyldackel_unscaled_matrix:
+        input:
+            bigwigs=OUTPUT.select_files(".bigWig", include=f"bigwigs/{_meth_method}/", exclude="geo_submission"),
+        output:
+            matrix=temp(OUTPUT.select_heatmap_matrix(
+                DataScalingTechnique.UNSCALED,
+                method=PileupMethod.METHYLDACKEL,
+            )),
+        params:
+            gtf=CONFIG.genome.gtf,
+            options=_deeptools_matrix_options,
+        threads: _deeptools_matrix_threads
+        resources:
+            runtime=lambda wildcards, attempt: f"{1 * 2**attempt}h",
+            mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
+        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        log: OUTPUT_DIR + "/logs/heatmap/methyldackel/unscaled/matrix.log"
+        benchmark: OUTPUT_DIR + "/.benchmark/heatmap/methyldackel/unscaled/matrix.tsv"
+        message: "Computing methylation heatmap matrix from bigWig files"
+        shell: """
+        computeMatrix scale-regions -p {threads} {params.options} --smartLabels --missingDataAsZero -S {input.bigwigs} -R {params.gtf} -o {output.matrix} >> {log} 2>&1
+        """
+
+    rule heatmap_methyldackel_unscaled_plot:
+        input:
+            matrix=rules.heatmap_methyldackel_unscaled_matrix.output.matrix,
+        output:
+            heatmap=OUTPUT.select_heatmap_plot(
+                DataScalingTechnique.UNSCALED,
+                method=PileupMethod.METHYLDACKEL,
+            ),
+        params:
+            options=_deeptools_heatmap_options,
+        resources:
+            mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
+        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        log: OUTPUT_DIR + "/logs/heatmap/methyldackel/unscaled/heatmap.log"
+        benchmark: OUTPUT_DIR + "/.benchmark/heatmap/methyldackel/unscaled/heatmap.tsv"
+        message: "Generating methylation heatmap from matrix"
+        shell: """
+        plotHeatmap -m {input.matrix} -out {output.heatmap} {params.options}
+        """
+
+    rule heatmap_methyldackel_unscaled_metaplot:
+        input:
+            matrix=rules.heatmap_methyldackel_unscaled_matrix.output.matrix,
+        output:
+            metaplot=OUTPUT.select_heatmap_metaplot(
+                DataScalingTechnique.UNSCALED,
+                method=PileupMethod.METHYLDACKEL,
+            ),
+        resources:
+            mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
+        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        log: OUTPUT_DIR + "/logs/heatmap/methyldackel/unscaled/metaplot.log"
+        benchmark: OUTPUT_DIR + "/.benchmark/heatmap/methyldackel/unscaled/metaplot.tsv"
+        message: "Generating methylation metaplot from heatmap matrix"
+        shell: """
+        plotProfile -m {input.matrix} -out {output.metaplot} --perGroup
+        """
 
 
 # ─── deeptools · individual · unscaled (base rules) ──────────────────────────

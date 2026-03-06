@@ -17,6 +17,7 @@ def snakemake_setup():
         raise RuntimeError("This script must be run via Snakemake.")
     log_file = snakemake.log[0]
     logger.remove()
+    logger.add(log_file, level="DEBUG")
     assay = snakemake.params.assay
     input_data = snakemake.input.data
     output_plots = snakemake.output.plots
@@ -187,7 +188,7 @@ def build_figure(df: pd.DataFrame, assay: str, genes_file: str = None) -> pn.Fig
 
     for track in df.itertuples():
         track_type, style, autoscaling_group = get_track_config(track, assay)
-
+        logger.info("ASSAY: {} TRACK: {} TYPE: {} STYLE: {} AUTOSCALE: {}", assay, track.track_name, track.type, style, autoscaling_group)
         t = pn.TrackWrapper(
             track_type,
             str(track.path),

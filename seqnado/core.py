@@ -81,7 +81,7 @@ class Assay(Enum):
 
 
 AssaysWithPeakCalling = (Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.MCC)
-AssaysWithHeatmaps = (Assay.ATAC, Assay.CHIP, Assay.RNA, Assay.CAT)
+AssaysWithHeatmaps = (Assay.ATAC, Assay.CHIP, Assay.RNA, Assay.CAT, Assay.METH)
 AssaysWithSpikein = (Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.RNA)
 
 

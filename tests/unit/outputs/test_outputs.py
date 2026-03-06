@@ -589,6 +589,7 @@ class TestMethylationFiles:
             assay=Assay.METH,
             names=["sample1"],
             genomes=["hg38", "spikein"],
+            ref_genome="hg38",
             method=MethylationMethod.TAPS,
         )
 
@@ -604,6 +605,7 @@ class TestMethylationFiles:
             assay=Assay.METH,
             names=["sample1"],
             genomes=["hg38"],
+            ref_genome="hg38",
             method=MethylationMethod.TAPS,
             output_dir="custom_output",
         )
@@ -616,6 +618,7 @@ class TestMethylationFiles:
             assay=Assay.METH,
             names=["sample1"],
             genomes=["hg38", "spikein"],
+            ref_genome="hg38",
             method=MethylationMethod.TAPS,
         )
 
@@ -629,6 +632,7 @@ class TestMethylationFiles:
             assay=Assay.METH,
             names=["sample1"],
             genomes=["hg38"],
+            ref_genome="hg38",
             method=MethylationMethod.TAPS,
         )
 
@@ -642,6 +646,7 @@ class TestMethylationFiles:
             assay=Assay.METH,
             names=["sample1"],
             genomes=["hg38"],
+            ref_genome="hg38",
             method=MethylationMethod.TAPS,
         )
 
