@@ -9,7 +9,7 @@ rule make_dataset:
         OUTPUT_DIR + "/multiomics_summary.txt",
         bam_files=BAM_FILES,
     output:
-        dataset=OUTPUT_DIR + "/multiomics/dataset.zarr",
+        dataset=directory(OUTPUT_DIR + "/multiomics/dataset.zarr"),
     params:
         chromosome_sizes=lambda wildcards: LOADED_CONFIGS[ASSAYS[0].clean_name]["genome"]["chromosome_sizes"],
         dataset=OUTPUT_DIR + "/multiomics/dataset",
