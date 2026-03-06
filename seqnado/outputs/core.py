@@ -1113,26 +1113,25 @@ class MultiomicsOutputBuilder:
     def dataset_vcf_files(self) -> list[str]:
         """Get VCF files from SNP assay for the multiomics dataset.
 
-        VCF paths follow the convention: {output_dir}/variants/{sample}.vcf.gz
+        VCF paths follow the convention: {output_dir}/variant/{sample}.vcf.gz
         """
         vcfs = []
         for assay, output_files in self.assay_outputs.items():
             if assay.clean_name == "snp":
                 for sample in output_files.sample_names:
-                    vcfs.append(f"{output_files.output_dir}/variants/{sample}.vcf.gz")
+                    vcfs.append(f"{output_files.output_dir}/variant/{sample}.vcf.gz")
         return vcfs
 
     @property
     def dataset_bedgraph_files(self) -> list[str]:
         """Get BEDGRAPH files from methylation assay for the multiomics dataset.
 
-        BEDGRAPH paths follow the convention: {output_dir}/methylation/{sample}.bedgraph
+        Gets bedgraph files from the METH assay outputs.
         """
         bedgraphs = []
         for assay, output_files in self.assay_outputs.items():
             if assay.clean_name == "meth":
-                for sample in output_files.sample_names:
-                    bedgraphs.append(f"{output_files.output_dir}/methylation/{sample}.bedgraph")
+                bedgraphs.extend(output_files.bedgraph_files)
         return bedgraphs
 
     def add_assay_outputs(self) -> None:
