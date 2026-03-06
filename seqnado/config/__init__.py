@@ -27,7 +27,6 @@ from .configs import (
     SNPCallingConfig,
     MCCConfig,
     MethylationConfig,
-    MLDatasetConfig,
 )
 
 from .user_input import (
@@ -71,7 +70,6 @@ __all__ = [
     "MCCAssayConfig",
     "MethylationAssayConfig",
     "CRISPRAssayConfig",
-    "MLDatasetConfig",
     "AssaySpecificConfig",
     "load_genome_configs",
     "MultiomicsConfig",

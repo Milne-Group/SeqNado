@@ -16,7 +16,6 @@ from seqnado.config.configs import (
     BigwigConfig,
     PlottingConfig,
     PileupMethod,
-    MLDatasetConfig,
 )
 
 
@@ -243,57 +242,3 @@ class TestPlottingConfig:
         assert config.coordinates == "chr1:1000-2000"
 
 
-class TestMLDatasetConfig:
-    """Tests for MLDatasetConfig."""
-
-    def test_ml_dataset_config_with_regions(self, tmp_path):
-        """Test ML dataset config with regions BED file."""
-        regions_bed = tmp_path / "regions.bed"
-        regions_bed.write_text("chr1\t1000\t2000\n")
-
-        config = MLDatasetConfig(regions_bed=regions_bed)
-        assert config.regions_bed == regions_bed
-        assert config.binsize is None
-
-    def test_ml_dataset_config_with_binsize(self):
-        """Test ML dataset config with binsize."""
-        config = MLDatasetConfig(binsize=1000)
-        assert config.binsize == 1000
-        assert config.regions_bed is None
-
-    def test_ml_dataset_config_both_regions_and_binsize(self, tmp_path):
-        """Test ML dataset config with both regions and binsize."""
-        regions_bed = tmp_path / "regions.bed"
-        regions_bed.write_text("chr1\t1000\t2000\n")
-
-        config = MLDatasetConfig(regions_bed=regions_bed, binsize=1000)
-        assert config.regions_bed == regions_bed
-        assert config.binsize == 1000
-
-    def test_ml_dataset_config_neither_regions_nor_binsize_fails(self):
-        """Test that ML dataset config requires at least one of regions_bed or binsize."""
-        with pytest.raises(ValueError, match="At least one of regions_bed or binsize"):
-            MLDatasetConfig()
-
-    def test_ml_dataset_config_invalid_binsize(self):
-        """Test that negative binsize raises error."""
-        with pytest.raises(ValidationError, match="positive integer"):
-            MLDatasetConfig(binsize=-100)
-
-    def test_ml_dataset_config_zero_binsize(self):
-        """Test that zero binsize raises error."""
-        with pytest.raises(ValidationError, match="positive integer"):
-            MLDatasetConfig(binsize=0)
-
-    def test_ml_dataset_config_missing_regions_file(self, tmp_path):
-        """Test that missing regions BED file raises error."""
-        missing_file = tmp_path / "missing.bed"
-
-        with pytest.raises(ValidationError):
-            MLDatasetConfig(regions_bed=missing_file)
-
-    def test_ml_dataset_config_none_string_coerced(self):
-        """Test that 'None' string is coerced to None for regions_bed."""
-        config = MLDatasetConfig(regions_bed="None", binsize=1000)
-        assert config.regions_bed is None
-        assert config.binsize == 1000

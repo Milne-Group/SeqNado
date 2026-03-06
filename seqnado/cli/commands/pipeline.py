@@ -113,7 +113,11 @@ def _run_multiomics_pipeline(
             # Add top-level opts to builder
             if top_level_opts:
                 builder.add_pass_through_args(top_level_opts)
-            
+
+            # Add queue to outer builder so module-imported rules use the correct partition
+            if queue and preset and preset.startswith("s"):
+                builder.add_queue(queue, preset)
+
             # Add workflow_args config for nested runs
             builder.add_workflow_args(workflow_args)
             

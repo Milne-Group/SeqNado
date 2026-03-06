@@ -40,7 +40,6 @@ from seqnado.config import (
     MCCConfig,
     MethylationAssayConfig,
     MethylationConfig,
-    MLDatasetConfig,
     PeakCallingConfig,
     PlottingConfig,
     ProjectConfig,
@@ -442,34 +441,6 @@ def get_ucsc_hub_config() -> Optional[UCSCHubConfig]:
     )
 
 
-def get_ml_dataset_config(assay: Assay) -> Optional[MLDatasetConfig]:
-    """Get ML dataset configuration for supported assays."""
-    if assay not in [Assay.ATAC, Assay.CHIP, Assay.CAT]:
-        return None
-
-    make_dataset = get_user_input("Make dataset for ML?", default="no", is_boolean=True)
-
-    if not make_dataset:
-        return None
-
-    use_regions = get_user_input(
-        "Use regions BED file?", default="yes", is_boolean=True
-    )
-
-    if use_regions:
-        regions_bed = get_user_input(
-            "Path to regions BED file:", default="path/to/regions.bed", is_path=False
-        )
-        # Skip path validation for placeholder paths during interactive config
-        is_placeholder = regions_bed.startswith("path/to/")
-        return MLDatasetConfig.model_validate(
-            {"regions_bed": Path(regions_bed)},
-            context={"skip_path_validation": is_placeholder}
-        )
-    else:
-        binsize = int(get_user_input("Binsize for dataset:", default="1000"))
-        return MLDatasetConfig(binsize=binsize)
-
 
 def get_rna_quantification_config() -> Optional[RNAQuantificationConfig]:
     """Get RNA quantification configuration."""
@@ -611,6 +582,9 @@ def build_assay_config(
         geo_files = get_user_input(
             "Generate GEO submission files?", default="no", is_boolean=True
         )
+        create_dataset = get_user_input(
+            "Make QuantNado dataset?", default="no", is_boolean=True
+        )
 
         base_config = {
             "genome": genome_config,
@@ -619,6 +593,7 @@ def build_assay_config(
             "ucsc_hub": ucsc_hub,
             "create_heatmaps": create_heatmaps,
             "create_geo_submission_files": geo_files,
+            "create_dataset": create_dataset,
         }
     elif assay == Assay.METH:
         # METH uses methylation-specific bigwig generation, not pileup-based
@@ -639,25 +614,21 @@ def build_assay_config(
                 "Shift ATAC reads?", default="yes", is_boolean=True
             )
             peak_calling = get_peak_calling_config(assay)
-            dataset_for_ml = get_ml_dataset_config(assay)
 
             return ATACAssayConfig(
                 **base_config,
                 tn5_shift=tn5_shift,
                 peak_calling=peak_calling,
-                dataset_for_ml=dataset_for_ml,
             )
 
         case Assay.CHIP:
             spikein = get_spikein_config(assay)
             peak_calling = get_peak_calling_config(assay)
-            dataset_for_ml = get_ml_dataset_config(assay)
 
             return ChIPAssayConfig(
                 **base_config,
                 spikein=spikein,
                 peak_calling=peak_calling,
-                dataset_for_ml=dataset_for_ml,
             )
 
         case Assay.CAT:
@@ -666,14 +637,12 @@ def build_assay_config(
             )
             spikein = get_spikein_config(assay)
             peak_calling = get_peak_calling_config(assay)
-            dataset_for_ml = get_ml_dataset_config(assay)
 
             return CATAssayConfig(
                 **base_config,
                 tn5_shift=tn5_shift,
                 spikein=spikein,
                 peak_calling=peak_calling,
-                dataset_for_ml=dataset_for_ml,
             )
 
         case Assay.RNA:
@@ -775,13 +744,11 @@ def build_default_assay_config(
             peak_calling = PeakCallingConfig(
                 method=[PeakCallingMethod.LANCEOTRON], consensus_counts=False
             )
-            dataset_for_ml = MLDatasetConfig(binsize=1000)
 
             return ATACAssayConfig(
                 **base_config,
                 tn5_shift=tn5_shift,
                 peak_calling=peak_calling,
-                dataset_for_ml=dataset_for_ml,
             )
 
         case Assay.CHIP:
@@ -789,13 +756,11 @@ def build_default_assay_config(
             peak_calling = PeakCallingConfig(
                 method=[PeakCallingMethod.LANCEOTRON], consensus_counts=False
             )
-            dataset_for_ml = MLDatasetConfig(binsize=1000)
 
             return ChIPAssayConfig(
                 **base_config,
                 spikein=spikein,
                 peak_calling=peak_calling,
-                dataset_for_ml=dataset_for_ml,
             )
         
         case Assay.CAT:
@@ -804,13 +769,11 @@ def build_default_assay_config(
             peak_calling = PeakCallingConfig(
                 method=[PeakCallingMethod.SEACR], consensus_counts=False
             )
-            dataset_for_ml = MLDatasetConfig(binsize=1000)
             return CATAssayConfig(
                 **base_config,
                 tn5_shift=tn5_shift,
                 spikein=spikein,
                 peak_calling=peak_calling,
-                dataset_for_ml=dataset_for_ml,
             )
         
         case Assay.RNA:
@@ -1061,29 +1024,12 @@ def build_multiomics_config(
         )
 
         create_dataset = get_user_input(
-            "Generate ML-ready dataset?", default="yes", is_boolean=True
+            "Make QuantNado dataset?", default="yes", is_boolean=True
         )
 
         create_summary = get_user_input(
             "Generate summary report?", default="yes", is_boolean=True
         )
-
-        # Only ask for regions_bed and binsize if creating dataset
-        regions_bed = None
-        binsize = None
-        if create_dataset:
-            regions_bed = get_user_input(
-                "BED file with regions of interest (optional, press Enter to skip)",
-                required=False,
-                is_path=False,
-            )
-
-            binsize_input = get_user_input(
-                "Binsize for genome-wide analysis (optional, press Enter to skip)",
-                required=False,
-            )
-
-            binsize = int(binsize_input) if binsize_input and binsize_input.isdigit() else None
 
     else:
         # Non-interactive mode: still prompt for assay selection, but use defaults for everything else
@@ -1126,8 +1072,6 @@ def build_multiomics_config(
         create_heatmaps = True
         create_dataset = True
         create_summary = True
-        regions_bed = None
-        binsize = None
 
     # Build individual assay configs
     assay_configs = {}
@@ -1151,21 +1095,12 @@ def build_multiomics_config(
 
         assay_configs[assay_name] = config
 
-    # Get fasta_index from the first assay's genome config (needed for binsize mode)
-    first_assay_config = next(iter(assay_configs.values()))
-    fasta_index = None
-    if first_assay_config.genome and first_assay_config.genome.fasta:
-        fasta_index = Path(str(first_assay_config.genome.fasta) + ".fai")
-
     # Create MultiomicsConfig
     multiomics_config = MultiomicsConfig(
         assays=selected_assays,
         create_heatmaps=create_heatmaps,
         create_dataset=create_dataset,
         create_summary=create_summary,
-        regions_bed=Path(regions_bed) if regions_bed else None,
-        binsize=binsize,
-        fasta_index=fasta_index,
     )
 
     return multiomics_config, assay_configs

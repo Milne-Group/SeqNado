@@ -912,6 +912,11 @@ class SeqnadoOutputBuilder:
         )
         self.file_collections.append(crispr_files)
 
+    def add_dataset(self) -> None:
+        """Add dataset output file."""
+        path = str(Path(self.output_dir) / "dataset.zarr")
+        self.file_collections.append(BasicFileCollection(files=[path]))
+
     def add_quantification_files(self) -> None:
         """Add quantification files to the output collection."""
         # Get the consensus grouping if it exists, otherwise use empty SampleGroups
@@ -1033,18 +1038,28 @@ class MultiomicsOutputBuilder:
         path = str(Path(self.output_dir) / "multiomics" / "heatmap" / "metaplot.pdf")
         self.file_collections.append(BasicFileCollection(files=[path]))
 
-    def add_multiomics_dataset(self, use_binsize: bool = True) -> str:
+    def add_multiomics_dataset(self) -> str:
         """Add the multiomics dataset output file.
-
-        Args:
-            use_binsize: If True, adds dataset_bins.h5ad (binsize mode).
-                        If False, adds dataset_regions.h5ad (regions mode).
         """
-        filename = "dataset_bins.h5ad" if use_binsize else "dataset_regions.h5ad"
+        filename = "dataset.zarr"
         path = str(
-            Path(self.output_dir) / "multiomics" / "dataset" / filename
+            Path(self.output_dir) / "multiomics" / filename
         )
         self.file_collections.append(BasicFileCollection(files=[path]))
+
+    @property
+    def dataset_bam_files(self) -> list[str]:
+        """Get BAM files from all assays for the multiomics dataset.
+
+        For ChIP-like assays with IP samples, only IP samples are included.
+        BAM paths follow the convention: {output_dir}/aligned/{sample}.bam
+        """
+        bams = []
+        for assay, output_files in self.assay_outputs.items():
+            samples = output_files.ip_sample_names or output_files.sample_names
+            for sample in samples:
+                bams.append(f"{output_files.output_dir}/aligned/{sample}.bam")
+        return bams
 
     def add_assay_outputs(self) -> None:
         """Add all assay output files to the multiomics output collection."""
@@ -1168,6 +1183,9 @@ class SeqnadoOutputFactory:
 
         if getattr(self.assay_config, "create_quantification_files", False):
             builder.add_quantification_files()
+
+        if self.assay_config.create_dataset:
+            builder.add_dataset()
 
         # Add additional files based on the assay type
         match self.assay:

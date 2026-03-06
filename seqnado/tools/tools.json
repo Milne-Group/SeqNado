@@ -239,7 +239,7 @@
             "display_name": "MEME Suite",
             "usage": "DNA motif discovery and analysis",
             "description": "MEME Suite motif discovery and analysis tools",
-            "command": "meme",
+            "command": "meme-chip",
             "category": "Analysis",
             "container": "docker://quay.io/biocontainers/meme:5.5.9--pl5321h1ca524f_0",
             "citation": "meme",

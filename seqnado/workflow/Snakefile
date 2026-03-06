@@ -106,6 +106,9 @@ include: "rules/fastq/screen.smk"
 include: "rules/protocol/protocol.smk"
 include: "rules/qc/qc.smk"
 
+if CONFIG.assay_config.create_dataset:
+    include: "rules/dataset/dataset.smk"
+
 match ASSAY:
     case Assay.ATAC | Assay.CAT | Assay.CHIP:
         include: "rules/alignment/dna.smk"

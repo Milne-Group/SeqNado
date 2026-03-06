@@ -19,8 +19,8 @@ rule index_individual_peaks:
     input:
         peaks=OUTPUT.peak_files,
     output:
-        peaks_indexed=temp(expand("{peak}.gz", peak=OUTPUT.peak_files)),
-        peaks_tbi=temp(expand("{peak}.gz.tbi", peak=OUTPUT.peak_files)),
+        peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
+        peaks_tbi=expand("{peak}.gz.tbi", peak=OUTPUT.peak_files),
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
@@ -40,8 +40,8 @@ rule index_genes_bed:
     input:
         genes=str(CONFIG.genome.genes) if hasattr(CONFIG.genome, 'genes') else [],
     output:
-        bed_gz=temp(OUTPUT_DIR + "/resources/genes_indexed.bed.gz"),
-        tbi=temp(OUTPUT_DIR + "/resources/genes_indexed.bed.gz.tbi"),
+        bed_gz=OUTPUT_DIR + "/resources/genes_indexed.bed.gz",
+        tbi=OUTPUT_DIR + "/resources/genes_indexed.bed.gz.tbi",
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),

@@ -24,6 +24,7 @@ seqnado_output/{assay}/       # Assay-specific directory
 ├── geo_submission/           # GEO submission-ready files (if enabled)
 ├── methylation/              # Methylation calls (METH only)
 ├── variant/                  # VCF files (SNP only)
+├── dataset.zarr/             # QuantNado multi-sample signal store (if enabled)
 └── logs/                     # Process execution logs
 ```
 
@@ -319,6 +320,60 @@ geo_submission/
 ├── {sample}_{method}.bed             # Renamed peak files
 └── {assay}/                          # Upload directory
 ```
+
+### QuantNado Dataset (`dataset.zarr`)
+
+When `create_dataset: true` is set in the config, SeqNado runs [QuantNado](https://milne-group.github.io/QuantNado/) to produce a multi-sample signal store from all aligned BAM files:
+
+```
+dataset.zarr/                   # Zarr v3 store (single-assay runs)
+multiomics/dataset.zarr/        # Zarr v3 store (multiomics runs)
+```
+
+**Structure:**
+
+The store contains one Zarr array per chromosome, each with shape `(n_samples × chromosome_length)` holding integer base-resolution (1 bp) read depth values. All samples are stored together in a single matrix per chromosome, making joint access across samples efficient.
+
+```
+dataset.zarr/
+├── chr1/                       # Array: (n_samples, chrom_length), uint16/uint32
+├── chr2/
+├── ...
+└── metadata/
+    ├── completed               # Boolean mask: which samples are fully processed
+    ├── sparsity                # Per-sample sparsity (% zero-coverage positions)
+    └── sample_hashes           # MD5 hash of each BAM header for integrity checks
+```
+
+Root-level Zarr attributes store sample names, chromosome sizes, chunk length, and any sample metadata columns (assay, cell type, etc.) attached via QuantNado.
+
+**Key properties:**
+
+| Property | Value |
+|---|---|
+| Resolution | 1 bp |
+| Dtype | `uint16` (or `uint32` for high-depth samples) |
+| Chunking | `(1 sample × 65,536 bp)` |
+| Compression | Blosc/zstd |
+
+**Downstream use:**
+
+The dataset is designed for programmatic access via Python. See the [QuantNado documentation](https://milne-group.github.io/QuantNado/) for the full API, including lazy loading with xarray/dask and region extraction:
+
+```python
+from quantnado.dataset import QuantNadoDataset
+
+ds = QuantNadoDataset("seqnado_output/chip/dataset.zarr")
+
+# Extract a region as an xarray DataArray (lazy, dask-backed)
+region = ds.extract_region("chr9:77,418,764-78,339,335")
+
+# Load a full chromosome for all samples
+xr_dict = ds.to_xarray(chromosomes=["chr1"])
+```
+
+!!! note
+    Only canonical chromosomes (matching `chr*` without underscores) are included in the store by default. The dataset is built from the final processed BAMs, so it reflects all filtering and duplicate-removal steps applied upstream.
 
 ## Assay-Specific Outputs
 

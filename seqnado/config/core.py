@@ -18,7 +18,6 @@ from .configs import (
     GenomeConfig,
     MCCConfig,
     MethylationConfig,
-    MLDatasetConfig,
     PCRDuplicatesConfig,
     PeakCallingConfig,
     PlottingConfig,
@@ -45,7 +44,6 @@ class BaseAssayConfig(CommonComputedFieldsMixin):
     bigwigs: BigwigConfig | None = None
     plotting: PlottingConfig | None = None
     ucsc_hub: UCSCHubConfig | None = None
-    dataset_for_ml: MLDatasetConfig | None = None
 
     # Boolean flags for optional features
     create_geo_submission_files: bool = False

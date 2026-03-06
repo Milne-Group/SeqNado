@@ -84,9 +84,7 @@ if MULTIOMICS_CONFIG.create_heatmaps:
     multiomics_builder.add_heatmap()
     multiomics_builder.add_metaplot()
 if MULTIOMICS_CONFIG.create_dataset:
-    # Use binsize mode if binsize is provided, otherwise use regions mode
-    use_binsize = MULTIOMICS_CONFIG.binsize is not None
-    multiomics_builder.add_multiomics_dataset(use_binsize=use_binsize)
+    multiomics_builder.add_multiomics_dataset()
 if MULTIOMICS_CONFIG.create_summary:
     multiomics_builder.add_summary_report()
 
@@ -113,6 +111,8 @@ WORKFLOW_ARGS = workflow.config_settings.config.get(
 ################################
 include: "rules/multiomics/all.smk"
 
+if MULTIOMICS_CONFIG.create_dataset:
+    include: "rules/dataset/multiomics_dataset.smk"
 
 ########################################
 # Define workflow targets
