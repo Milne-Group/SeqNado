@@ -1,5 +1,5 @@
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
-from seqnado import DataScalingTechnique, PileupMethod, SpikeInMethod
+from seqnado import Assay, DataScalingTechnique, PileupMethod, SpikeInMethod
 
 _spikein_cfg = getattr(CONFIG.assay_config, "spikein", None)
 _spikein_methods = _spikein_cfg.method if _spikein_cfg else []
@@ -11,9 +11,10 @@ _has_spikein_withinput = SpikeInMethod.WITH_INPUT in _spikein_methods
 # Rules are only defined when the corresponding PlotFiles are registered in OUTPUT
 # (i.e. when the user has configured plotnado for that combination).
 # Compatible combinations:
-#   deeptools  : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
-#   bamnado    : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
-#   homer      : individual → unscaled              ; merged → unscaled
+#   deeptools    : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
+#   bamnado      : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
+#   homer        : individual → unscaled              ; merged → unscaled
+#   methyldackel : individual → unscaled (METH assay only, reads from bigwigs/taps or bigwigs/wgbs)
 
 rule index_individual_peaks:
     input:
@@ -76,7 +77,7 @@ rule plotnado_deeptools:
         plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED),
         template=OUTPUT_DIR + "/track_plots/deeptools/unscaled/template.toml",
     params:
-        assay=str(CONFIG.assay) if hasattr(CONFIG, 'assay') else None,
+        assay=CONFIG.assay.value if hasattr(CONFIG, 'assay') else None,
         peak_files=expand("{peak}.gz", peak=OUTPUT.peak_files),
         genes=OUTPUT_DIR + "/resources/genes_indexed.bed.gz" if CONFIG.assay_config.plot_with_plotnado and hasattr(CONFIG.genome, 'genes') else None,
         regions=str(CONFIG.assay_config.plotting.coordinates) if CONFIG.assay_config.plotting and hasattr(CONFIG.assay_config.plotting, 'coordinates') else None,
@@ -377,3 +378,33 @@ use rule plotnado_deeptools as plotnado_homer_merged with:
     log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_homer_unscaled.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_homer_unscaled.tsv",
     message: "Generating homer merged unscaled genome browser visualisations with Plotnado"
+
+
+# ─── methyldackel · individual · unscaled (METH assay only) ──────────────────
+if ASSAY == Assay.METH:
+    _meth_method = CONFIG.assay_config.methylation.method.value  # "taps" or "wgbs"
+
+    rule plotnado_methyldackel:
+        input:
+            data=OUTPUT.select_files(".bigWig", include=f"bigwigs/{_meth_method}/", exclude="geo_submission"),
+            genes_indexed=rules.index_genes_bed.output.bed_gz,
+            genes_indexed_tbi=rules.index_genes_bed.output.tbi,
+        output:
+            plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.METHYLDACKEL),
+            template=OUTPUT_DIR + "/track_plots/methyldackel/unscaled/template.toml",
+        params:
+            assay=CONFIG.assay.value if hasattr(CONFIG, 'assay') else None,
+            peak_files=[],
+            genes=OUTPUT_DIR + "/resources/genes_indexed.bed.gz" if CONFIG.assay_config.plot_with_plotnado and hasattr(CONFIG.genome, 'genes') else None,
+            regions=str(CONFIG.assay_config.plotting.coordinates) if CONFIG.assay_config.plotting and hasattr(CONFIG.assay_config.plotting, 'coordinates') else None,
+            plotting_format=str(CONFIG.assay_config.plotting.file_format) if CONFIG.assay_config.plotting and hasattr(CONFIG.assay_config.plotting, 'file_format') else None,
+            outdir=lambda wildcards, output: str(os.path.dirname(output.template)),
+        resources:
+            mem="1.5GB",
+            runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
+        container: "library://asmith151/plotnado/plotnado:latest"
+        log: OUTPUT_DIR + "/logs/visualise/plotnado_methyldackel_unscaled.log"
+        benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_methyldackel_unscaled.tsv"
+        message: "Generating methyldackel unscaled genome browser visualisations with Plotnado"
+        script:
+            "../../scripts/run_plotnado.py"

@@ -70,7 +70,7 @@ rule methyldackel_extract:
     input:
         bam=rules.methylation_bam_splits.output.bam
     output:
-        bdg=temp(OUTPUT_DIR + "/methylation/methyldackel/{sample}_{genome}_CpG.bedGraph")
+        bdg=OUTPUT_DIR + "/methylation/methyldackel/{sample}_{genome}_CpG.bedGraph"
     params:
         fasta=CONFIG.genome.fasta,
         options=CONFIG.third_party_tools.methyldackel.command_line_arguments,
@@ -108,7 +108,8 @@ rule make_bigwigs_meth_taps:
     input:
         bdg=rules.taps_inverted.output.taps
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/taps/{sample}_{genome}.bigWig"
+        bigwig=OUTPUT_DIR + "/bigwigs/taps/{sample}_{genome}.bigWig",
+        bdg=temp(OUTPUT_DIR + "/bigwigs/taps/{sample}_{genome}.bedGraph")
     params:
         chrom_sizes=CONFIG.genome.chromosome_sizes,
     resources:
@@ -119,15 +120,16 @@ rule make_bigwigs_meth_taps:
     benchmark: OUTPUT_DIR + "/.benchmark/methylation/taps/bigwig/{sample}_{genome}.tsv"
     message: "Converting to bigWig for sample {wildcards.sample} and genome {wildcards.genome}"
     shell: """
-    bedGraphToBigWig {input.bdg} {params.chrom_sizes} {output.bigwig} > {log} 2>&1
-    rm {input.bdg}
+    awk -v OFS="\t" '{{print $1, $2, $3, $4}}' {input.bdg} > {output.bdg} 2> {log}
+    bedGraphToBigWig {output.bdg} {params.chrom_sizes} {output.bigwig} > {log} 2>&1
     """
 
 rule make_bigwigs_meth_wgbs:
     input:
         bdg=rules.methyldackel_extract.output.bdg
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/wgbs/{sample}_{genome}.bigWig"
+        bigwig=OUTPUT_DIR + "/bigwigs/wgbs/{sample}_{genome}.bigWig",
+        bdg=temp(OUTPUT_DIR + "/bigwigs/wgbs/{sample}_{genome}.bedGraph")
     params:
         chrom_sizes=CONFIG.genome.chromosome_sizes,
     resources:
@@ -138,8 +140,8 @@ rule make_bigwigs_meth_wgbs:
     benchmark: OUTPUT_DIR + "/.benchmark/methylation/wgbs/bigwig/{sample}_{genome}.tsv"
     message: "Converting to bigWig for sample {wildcards.sample} and genome {wildcards.genome}"
     shell: """
-    bedGraphToBigWig {input.bdg} {params.chrom_sizes} {output.bigwig} > {log} 2>&1
-    rm {input.bdg}
+    awk -v OFS="\t" '{{print $1, $2, $3, $4}}' {input.bdg} > {output.bdg} 2> {log}
+    bedGraphToBigWig {output.bdg} {params.chrom_sizes} {output.bigwig} > {log} 2>&1
     """
 
 localrules:

@@ -507,8 +507,10 @@ class MethylationFiles(BaseModel):
     assay: Assay
     names: list[str]
     genomes: List[str]
+    ref_genome: str
     method: MethylationMethod
     output_dir: str = "seqnado_output"
+    create_bigwigs: bool = False
 
     @property
     def prefix(self) -> str:
@@ -535,7 +537,7 @@ class MethylationFiles(BaseModel):
         return expand(
             file_pattern,
             sample=self.names,
-            genome=self.genomes,
+            genome=self.ref_genome,
         )
 
     @property
@@ -552,6 +554,17 @@ class MethylationFiles(BaseModel):
         )
         return files
 
+    @property
+    def bigwig_files(self) -> List[str]:
+        """Return bigwig files for the reference genome only."""
+        if not self.create_bigwigs:
+            return []
+        method_dir = self.method.value  # "taps" or "wgbs"
+        return expand(
+            f"{self.output_dir}/bigwigs/{method_dir}/{{sample}}_{self.ref_genome}.bigWig",
+            sample=self.names,
+        )
+
     @computed_field
     @property
     def files(self) -> list[str]:
@@ -560,6 +573,7 @@ class MethylationFiles(BaseModel):
             *self.split_bams_files,
             *self.methyldackel_files,
             *self.methylation_bias,
+            *self.bigwig_files,
         ]
 
 

@@ -604,9 +604,16 @@ def build_assay_config(
             binsize=1,
             scale_methods=[DataScalingTechnique.UNSCALED.value]
         ) if make_bigwigs else None
-        plotting = None
-        create_heatmaps = False
-        geo_files = False
+        plotting = get_plotting_config()
+        create_heatmaps = get_user_input(
+            "Make heatmaps?", default="no", is_boolean=True
+        )
+        geo_files = get_user_input(
+            "Generate GEO submission files?", default="no", is_boolean=True
+        )
+        create_dataset = get_user_input(
+            "Make QuantNado dataset?", default="no", is_boolean=True
+        )
 
     match assay:
         case Assay.ATAC:
@@ -666,8 +673,10 @@ def build_assay_config(
                 genome=genome_config,
                 plotting=plotting,
                 ucsc_hub=None,
+                create_bigwigs=make_bigwigs,
                 create_heatmaps=create_heatmaps,
                 create_geo_submission_files=geo_files,
+                create_dataset=create_dataset,
                 methylation=methylation,
             )
 

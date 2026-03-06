@@ -149,6 +149,7 @@ match ASSAY:
         include: "rules/meth/calling.smk"
         include: "rules/pileup/common.smk"
         include: "rules/pileup/dna.smk"
+        include: "rules/visualise/browser.smk"
     case Assay.SNP:
         include: "rules/alignment/dna.smk"
         include: "rules/bam/all.smk"
