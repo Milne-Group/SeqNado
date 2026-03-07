@@ -329,11 +329,11 @@
             "display_name": "QuantNado",
             "usage": "Generate quantified datasets for ML analysis",
             "description": "SeqNado multiomics quantification and dataset creation tool",
-            "command": "quantnado-make-dataset",
+            "command": "create-dataset",
             "category": "Quantification",
-            "container": "oras://ghcr.io/alsmith151/seqnado_ml_cpu:latest",
+            "container": "docker://ghcr.io/milne-group/quantnado-ci:latest",
             "citation": "quantnado",
-            "version": "0.2.5"
+            "version": "0.4.0"
         },
         "salmon": {
             "display_name": "Salmon",

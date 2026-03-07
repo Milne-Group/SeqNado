@@ -5,3 +5,4 @@ project:
 assay_config:
   create_bigwigs: True
   plot_with_plotnado: True
+  create_dataset: True
