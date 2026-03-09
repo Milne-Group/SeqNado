@@ -75,7 +75,9 @@ OUTPUTS_PER_ASSAY = {
 ################################
 
 multiomics_builder = MultiomicsOutputBuilder(
-    output_dir=OUTPUT_DIR, assay_outputs=OUTPUTS_PER_ASSAY
+    output_dir=OUTPUT_DIR,
+    assay_outputs=OUTPUTS_PER_ASSAY,
+    configs_per_assay=CONFIGS_PER_ASSAY,
 )
 
 # Add desired multiomics outputs
