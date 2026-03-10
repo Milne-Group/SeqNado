@@ -219,13 +219,16 @@ This is useful on HPC clusters to ensure jobs have sufficient resources and redu
 
 Any snakemake command line options will automatically be passed through when you run `seqnado pipeline`. This allows you to easily customize the execution of the workflow. For example, you can specify `--rerun-incomplete` to automatically rerun any failed or incomplete jobs, or `--keep-going` to continue running independent jobs even if some fail.
 
-Very useful flags:
+**Very useful flags:**
 
-`--rerun-incomplete` - Automatically rerun any failed or incomplete jobs
-`--keep-going` - Continue running independent jobs even if some fail
-`--unlock` - Unlock the workflow if it becomes locked due to an error or interruption or the workflow was cancelled before completion. This allows you to fix the issue and then rerun the workflow without needing to manually delete the lock file.
+- `--rerun-incomplete` - Automatically rerun any failed or incomplete jobs
+- `--keep-going` - Continue running independent jobs even if some fail
+- `--unlock` - Unlock the workflow if it becomes locked due to an error or interruption or the workflow was cancelled before completion. This allows you to fix the issue and then rerun the workflow without needing to manually delete the lock file.
+
+Many issues with cancelled or failed workflows can be resolved by simply running `--unlock` and then rerunning the workflow with `--rerun-incomplete` to automatically rerun any failed or incomplete jobs.
 
 **Debugging & Testing:**
+
 - `-n` - Dry run to preview commands without executing
 
 → [All CLI options](https://Milne-Group.github.io/SeqNado/cli/) | [HPC cluster setup](https://Milne-Group.github.io/SeqNado/cluster_config/)
