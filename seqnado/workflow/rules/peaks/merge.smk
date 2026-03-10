@@ -98,7 +98,7 @@ rule call_peaks_seacr_consensus:
         "Calling peaks with SEACR for merged group {wildcards.group}"
     shell:
         """
-    if ! SEACR.sh {input.treatment} {params.threshold} {params.normalization} {params.stringency} {params.basename} > {log} 2>&1; then
+    if ! SEACR_1.3.sh {input.treatment} {params.threshold} {params.normalization} {params.stringency} {params.basename} > {log} 2>&1; then
         touch {output.peaks}
     else
         awk 'BEGIN{{OFS="\\t"}} {{print $1, $2, $3}}' {output.temp_peaks} > {output.peaks} 2>> {log}
