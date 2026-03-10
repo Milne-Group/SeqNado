@@ -1112,6 +1112,15 @@ class MultiomicsOutputBuilder:
         return bams
 
     @property
+    def dataset_bam_sample_names(self) -> list[str]:
+        """Sample names for BAM files, in the same order as dataset_bam_files."""
+        names = []
+        for assay, output_files in self.assay_outputs.items():
+            samples = output_files.ip_sample_names or output_files.sample_names
+            names.extend(samples)
+        return names
+
+    @property
     def dataset_vcf_files(self) -> list[str]:
         """Get VCF files from SNP assay for the multiomics dataset.
 

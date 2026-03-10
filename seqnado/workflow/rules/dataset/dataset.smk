@@ -51,32 +51,9 @@ rule make_dataset:
     message: "Making dataset from bam files using QuantNado."
     run:
         # Build command with repeated flags for each file
-        cmd_parts = ["quantnado create-dataset", f"--output {params.dataset}"]
-
-        # Add --bam for each BAM file
-        for bam_file in input.bam_files:
-            cmd_parts.append(f"--bam {bam_file}")
-
-        # Add --methylation for each bedgraph file, with sample name overrides
-        if input.bedgraph_files:
-            for bedgraph_file in input.bedgraph_files:
-                cmd_parts.append(f"--methylation {bedgraph_file}")
-            if params.methylation_sample_names:
-                cmd_parts.append(f"--methylation-sample-names {','.join(params.methylation_sample_names)}")
-
-        # Add --vcf for each VCF file, with sample name overrides
-        if input.vcf_files:
-            for vcf_file in input.vcf_files:
-                cmd_parts.append(f"--vcf {vcf_file}")
-            if params.vcf_sample_names:
-                cmd_parts.append(f"--vcf-sample-names {','.join(params.vcf_sample_names)}")
-
-        # Add --stranded for RNA samples with non-zero strandedness
-        if params.stranded_config:
-            cmd_parts.append(f"--stranded '{json.dumps(params.stranded_config)}'")
-
-        # Add remaining options
-        cmd_parts.extend([
+        cmd_basic = [
+            "quantnado create-dataset", 
+            f"--output {params.dataset}",
             f"--chromsizes {params.chromosome_sizes}",
             f"--max-workers {threads}",
             "--chr-workers 1",
@@ -86,7 +63,28 @@ rule make_dataset:
             f"--log-file {log}",
             "--verbose",
             "--overwrite"
-        ])
+        ]
+        # Add --bam for each BAM file
+        if input.bam_files:
+            cmd_basic.append(f"--bam {','.join(input.bam_files)}")
 
-        cmd = " ".join(cmd_parts)
+        # Add --methylation for each bedgraph file, with sample name overrides
+        if input.bedgraph_files:
+            cmd_basic.append(f"--methylation {','.join(input.bedgraph_files)}")
+            if params.methylation_sample_names:
+                cmd_basic.append(f"--methylation-sample-names {','.join(params.methylation_sample_names)}")
+
+        # Add --vcf for each VCF file, with sample name overrides
+        if input.vcf_files:
+            cmd_basic.append(f"--vcf {','.join(input.vcf_files)}")
+            if params.vcf_sample_names:
+                cmd_basic.append(f"--vcf-sample-names {','.join(params.vcf_sample_names)}")
+
+        # Add --stranded for RNA samples with non-zero strandedness
+        if params.stranded_config:
+            cmd_basic.append(f"--stranded '{json.dumps(params.stranded_config)}'")
+
+     
+
+        cmd = " ".join(cmd_basic)
         shell(cmd)
