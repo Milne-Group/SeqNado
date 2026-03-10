@@ -1050,9 +1050,11 @@ class MultiomicsOutputBuilder:
         self,
         output_dir: Path | None = None,
         assay_outputs: dict[Assay, SeqnadoOutputFiles] | None = None,
+        configs_per_assay: dict[Assay, SeqnadoConfig] | None = None,
     ):
         self.output_dir = output_dir or Path("seqnado_output")
         self.assay_outputs = assay_outputs or {}
+        self.configs_per_assay = configs_per_assay or {}
         self.file_collections: list[FileCollection] = []
 
     def add_assay_bigwigs(self) -> list[str]:
@@ -1110,6 +1112,15 @@ class MultiomicsOutputBuilder:
         return bams
 
     @property
+    def dataset_bam_sample_names(self) -> list[str]:
+        """Sample names for BAM files, in the same order as dataset_bam_files."""
+        names = []
+        for assay, output_files in self.assay_outputs.items():
+            samples = output_files.ip_sample_names or output_files.sample_names
+            names.extend(samples)
+        return names
+
+    @property
     def dataset_vcf_files(self) -> list[str]:
         """Get VCF files from SNP assay for the multiomics dataset.
 
@@ -1123,6 +1134,15 @@ class MultiomicsOutputBuilder:
         return vcfs
 
     @property
+    def dataset_vcf_sample_names(self) -> list[str]:
+        """Sample names for VCF files, in the same order as dataset_vcf_files."""
+        names = []
+        for assay, output_files in self.assay_outputs.items():
+            if assay.clean_name == "snp":
+                names.extend(output_files.sample_names)
+        return names
+
+    @property
     def dataset_bedgraph_files(self) -> list[str]:
         """Get BEDGRAPH files from methylation assay for the multiomics dataset.
 
@@ -1133,6 +1153,51 @@ class MultiomicsOutputBuilder:
             if assay.clean_name == "meth":
                 bedgraphs.extend(output_files.bedgraph_files)
         return bedgraphs
+
+    @property
+    def dataset_methylation_sample_names(self) -> list[str]:
+        """Sample names for methylation files, in the same order as dataset_bedgraph_files.
+
+        MethylDackel files are named {sample}_{genome}_CpG.bedGraph so QuantNado
+        cannot infer the correct sample name without this override.
+        """
+        names = []
+        for assay, output_files in self.assay_outputs.items():
+            if assay.clean_name == "meth":
+                names.extend(output_files.sample_names)
+        return names
+
+    @property
+    def dataset_stranded_config(self) -> dict[str, str]:
+        """Build the stranded config dict for QuantNado's --stranded flag.
+
+        Maps RNA sample names to their QuantNado library type:
+          SeqNado strandedness 1 (forward) → 'F' (ISF/ligation)
+          SeqNado strandedness 2 (reverse) → 'R' (ISR/dUTP/TruSeq)
+        Unstranded RNA samples (strandedness=0) are omitted; non-RNA assays
+        are always omitted (coverage is strand-agnostic for ChIP/ATAC/etc.).
+        Returns an empty dict if no stranded RNA samples are present.
+        """
+        _strand_map = {1: "F", 2: "R"}
+        stranded: dict[str, str] = {}
+        for assay, config in self.configs_per_assay.items():
+            if assay.clean_name != "rna":
+                continue
+            strandedness = getattr(
+                getattr(config.assay_config, "rna_quantification", None),
+                "strandedness",
+                0,
+            )
+            library_type = _strand_map.get(strandedness)
+            if library_type is None:
+                continue
+            output_files = self.assay_outputs.get(assay)
+            if output_files is None:
+                continue
+            samples = output_files.ip_sample_names or output_files.sample_names
+            for sample in samples:
+                stranded[sample] = library_type
+        return stranded
 
     def add_assay_outputs(self) -> None:
         """Add all assay output files to the multiomics output collection."""
