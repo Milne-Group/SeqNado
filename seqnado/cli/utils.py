@@ -65,7 +65,7 @@ def _read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def update_genome_config(config_file: Path, genome_name: str, genome_entry: dict) -> None:
+def update_genome_config(config_file: Path, genome_name: str, genome_entry: dict, remove_template_genome: bool = True) -> None:
     """Add or update a genome entry in genome_config.json, stripping any placeholder entries.
 
     Placeholder entries (where any path value contains 'PATH_TO') are removed before
@@ -80,12 +80,15 @@ def update_genome_config(config_file: Path, genome_name: str, genome_entry: dict
         except Exception:
             pass
 
-    # Drop template placeholder entries
     existing = {
         name: paths
         for name, paths in existing.items()
         if not any(isinstance(v, str) and "PATH_TO" in v for v in paths.values())
     }
+
+    # If the placeholder genome is in the file and remove_template_genome is True we just remove it (it's only a template entry)
+    if remove_template_genome:
+        existing.pop('genome', None )
 
     existing[genome_name] = genome_entry
     _write_json(config_file, existing)

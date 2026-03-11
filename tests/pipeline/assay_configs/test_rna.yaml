@@ -2,3 +2,7 @@ assay: RNA
 project:
   name: default_project
   description: "Test project for RNA-seq"
+assay_config:
+  rna_quantification:
+    method: feature_counts
+    strandedness: 2

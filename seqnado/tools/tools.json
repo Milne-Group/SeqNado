@@ -333,7 +333,7 @@
             "category": "Quantification",
             "container": "docker://ghcr.io/milne-group/quantnado-ci:latest",
             "citation": "quantnado",
-            "version": "0.4.0"
+            "version": "0.4.3"
         },
         "salmon": {
             "display_name": "Salmon",

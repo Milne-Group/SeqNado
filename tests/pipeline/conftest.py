@@ -371,13 +371,26 @@ def multiomics_configs(
         f"seqnado config (multiomics) failed:\nSTDERR: {result.stderr}\nSTDOUT: {result.stdout}"
     )
 
-    # Update generated configs to enable fastq_screen with correct paths
+    # Update generated configs with assay-specific overrides and runtime paths
+    assay_configs_dir = Path(__file__).parent / "assay_configs"
+
     for assay in multiomics:
         config_file = run_dir / f"config_{assay}.yaml"
         with open(config_file) as f:
             config = yaml.safe_load(f)
 
-        # Enable fastq_screen and set the config path
+        # Apply test overrides from assay_configs/test_{assay}.yaml (same as single-assay tests)
+        test_config_file = assay_configs_dir / f"test_{assay}.yaml"
+        if test_config_file.exists():
+            with open(test_config_file) as f:
+                test_overrides = yaml.safe_load(f)
+            for key, value in test_overrides.items():
+                if key in config and isinstance(config[key], dict) and isinstance(value, dict):
+                    config[key].update(value)
+                else:
+                    config[key] = value
+
+        # Apply runtime-specific patches (paths that can't live in static yamls)
         if "qc" in config:
             config["qc"]["run_fastq_screen"] = True
         if (
@@ -387,8 +400,6 @@ def multiomics_configs(
             config["third_party_tools"]["fastq_screen"]["config"] = str(
                 fastq_screen_dest
             )
-
-        # Fix plotting coordinates path to use test_output/data instead of package directory
         if "assay_config" in config and config["assay_config"] is not None:
             if (
                 "plotting" in config["assay_config"]
@@ -396,7 +407,6 @@ def multiomics_configs(
             ):
                 config["assay_config"]["plotting"]["coordinates"] = str(plot_coords)
 
-        # Write updated config
         with open(config_file, "w") as f:
             yaml.dump(config, f, sort_keys=False)
 
