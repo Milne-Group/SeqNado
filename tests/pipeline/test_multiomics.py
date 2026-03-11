@@ -118,7 +118,7 @@ def test_multiomics(
     )
 
     # ML dataset (using QuantNado)
-    dataset_zarr = output_dir / "multiomics" / "dataset.zarr"
+    dataset_zarr = output_dir / "multiomics" / "dataset"
     assert dataset_zarr.exists(), (
         f"Multiomics dataset not found at {dataset_zarr}"
     )

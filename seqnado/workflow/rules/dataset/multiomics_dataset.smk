@@ -18,9 +18,9 @@ rule multiomics_make_dataset:
         vcf_files=VCF_FILES,
         methylation_files=METHYLATION_FILES,
     output:
-        dataset=directory(OUTPUT_DIR + "/multiomics/dataset.zarr"),
+        dataset=directory(OUTPUT_DIR + "/multiomics/dataset"),
     params:
-        dataset=OUTPUT_DIR + "/multiomics/dataset.zarr",
+        dataset=OUTPUT_DIR + "/multiomics/dataset",
         bam_sample_names=BAM_SAMPLE_NAMES,
         vcf_sample_names=VCF_SAMPLE_NAMES,
         methylation_sample_names=METHYLATION_SAMPLE_NAMES,

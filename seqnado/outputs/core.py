@@ -962,7 +962,7 @@ class SeqnadoOutputBuilder:
 
     def add_dataset(self) -> None:
         """Add dataset output file."""
-        path = str(Path(self.output_dir) / "dataset.zarr")
+        path = str(Path(self.output_dir) / "dataset")
         self.file_collections.append(BasicFileCollection(files=[path]))
 
     def add_quantification_files(self) -> None:
@@ -1091,9 +1091,8 @@ class MultiomicsOutputBuilder:
     def add_multiomics_dataset(self) -> str:
         """Add the multiomics dataset output file.
         """
-        filename = "dataset.zarr"
         path = str(
-            Path(self.output_dir) / "multiomics" / filename
+            Path(self.output_dir) / "multiomics" / "dataset"
         )
         self.file_collections.append(BasicFileCollection(files=[path]))
 

@@ -34,10 +34,10 @@ rule make_dataset:
         bedgraph_files=BEDGRAPH_FILES,
         vcf_files=VCF_FILES,
     output:
-        dataset=directory(OUTPUT_DIR + "/dataset.zarr"),
+        dataset=directory(OUTPUT_DIR + "/dataset"),
     params:
         chromosome_sizes=CHROMOSOME_SIZES,
-        dataset=OUTPUT_DIR + "/dataset.zarr",
+        dataset=OUTPUT_DIR + "/dataset",
         vcf_sample_names=DATASET_VCF_SAMPLE_NAMES,
         methylation_sample_names=DATASET_METHYLATION_SAMPLE_NAMES,
         stranded_config=DATASET_STRANDED_CONFIG,
