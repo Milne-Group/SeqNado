@@ -883,8 +883,8 @@ class FastqCollectionForIP(BaseFastqCollection):
         _metadata: list[Metadata] = []
         for name, sides in buckets.items():
             # Sort by read_number
-            ip_list = sorted(sides["ip"], key=lambda x: x.read_number)
-            ctrl_list = sorted(sides["control"], key=lambda x: x.read_number)
+            ip_list = sorted(sides["ip"], key=lambda x: x.read_number or 0)
+            ctrl_list = sorted(sides["control"], key=lambda x: x.read_number or 0)
 
             if not ip_list and not ctrl_list:
                 raise ValueError(f"No valid FASTQ files found for sample '{name}'")
