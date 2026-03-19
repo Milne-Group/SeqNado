@@ -1758,3 +1758,191 @@ class TestSeqnadoOutputFactoryCore:
 
         # Just verify builder was created with plot files added
         assert builder is not None
+
+
+class TestConditionBigwigFiles:
+    """Tests for condition-based bigwig aggregation and comparison files."""
+
+    def test_add_condition_bigwig_files_disabled_by_default(self, tmp_path):
+        """Test that condition bigwig files are not added when perform_comparisons is False."""
+        # Setup config with perform_comparisons disabled
+        star = tmp_path / "star"
+        star.mkdir()
+        genome = GenomeConfig(name="hg38", index=STARIndex(prefix=star))
+        assay_cfg = ATACAssayConfig(
+            bigwigs=BigwigConfig(
+                pileup_method=[PileupMethod.BAMNADO],
+                perform_comparisons=False,  # Explicitly disabled
+            )
+        )
+        cfg = SeqnadoConfig(
+            assay=Assay.ATAC,
+            project=dict(name="p"),
+            genome=genome,
+            metadata=tmp_path / "m.csv",
+            assay_config=assay_cfg,
+        )
+
+        samples = _small_collection(tmp_path)
+        # Create sample groupings with multiple conditions
+        groups = SampleGroupings(
+            groupings={
+                "condition": SampleGroups(
+                    group_names=["ctrl", "treat"],
+                    groups=[
+                        SampleGroup(name="ctrl", samples=["s1"]),
+                        SampleGroup(name="treat", samples=["s2"]),
+                    ],
+                )
+            }
+        )
+
+        builder = SeqnadoOutputBuilder(Assay.ATAC, samples, cfg, sample_groupings=groups)
+        builder.add_condition_bigwig_files()
+        out = builder.build()
+
+        # Should not contain condition comparison files
+        assert not any("aggregated" in f and ".bigWig" in f for f in out.files)
+        assert not any("subtraction" in f and ".bigWig" in f for f in out.files)
+
+    def test_add_condition_bigwig_files_requires_multiple_conditions(self, tmp_path):
+        """Test that condition files require at least 2 condition groups."""
+        star = tmp_path / "star"
+        star.mkdir()
+        genome = GenomeConfig(name="hg38", index=STARIndex(prefix=star))
+        assay_cfg = ATACAssayConfig(
+            bigwigs=BigwigConfig(
+                pileup_method=[PileupMethod.BAMNADO],
+                perform_comparisons=True,
+            )
+        )
+        cfg = SeqnadoConfig(
+            assay=Assay.ATAC,
+            project=dict(name="p"),
+            genome=genome,
+            metadata=tmp_path / "m.csv",
+            assay_config=assay_cfg,
+        )
+
+        samples = _small_collection(tmp_path)
+        # Create sample groupings with only ONE condition
+        groups = SampleGroupings(
+            groupings={
+                "condition": SampleGroups(
+                    group_names=["ctrl"],
+                    groups=[SampleGroup(name="ctrl", samples=["s1"])],
+                )
+            }
+        )
+
+        builder = SeqnadoOutputBuilder(Assay.ATAC, samples, cfg, sample_groupings=groups)
+        builder.add_condition_bigwig_files()
+        out = builder.build()
+
+        # Should not contain condition comparison files (only 1 condition)
+        assert not any("aggregated" in f and ".bigWig" in f for f in out.files)
+        assert not any("subtraction" in f and ".bigWig" in f for f in out.files)
+
+    def test_add_condition_bigwig_files_generates_aggregated_and_subtractions(self, tmp_path):
+        """Test that condition files are generated when perform_comparisons is True."""
+        star = tmp_path / "star"
+        star.mkdir()
+        genome = GenomeConfig(name="hg38", index=STARIndex(prefix=star))
+        assay_cfg = ATACAssayConfig(
+            bigwigs=BigwigConfig(
+                pileup_method=[PileupMethod.BAMNADO],
+                perform_comparisons=True,
+            )
+        )
+        cfg = SeqnadoConfig(
+            assay=Assay.ATAC,
+            project=dict(name="p"),
+            genome=genome,
+            metadata=tmp_path / "m.csv",
+            assay_config=assay_cfg,
+        )
+
+        samples = _small_collection(tmp_path)
+        # Create sample groupings with 2 conditions
+        groups = SampleGroupings(
+            groupings={
+                "condition": SampleGroups(
+                    group_names=["ctrl", "treat"],
+                    groups=[
+                        SampleGroup(name="ctrl", samples=["s1"]),
+                        SampleGroup(name="treat", samples=["s2"]),
+                    ],
+                )
+            }
+        )
+
+        builder = SeqnadoOutputBuilder(
+            Assay.ATAC, samples, cfg, sample_groupings=groups, output_dir="test_output"
+        )
+        builder.add_condition_bigwig_files()
+        out = builder.build()
+
+        files_list = out.files
+
+        # Should contain aggregated condition bigwigs
+        assert any("bamnado/aggregated/ctrl.bigWig" in f for f in files_list)
+        assert any("bamnado/aggregated/treat.bigWig" in f for f in files_list)
+
+        # Should contain pairwise subtraction bigwigs
+        assert any("bamnado/subtraction/ctrl_vs_treat.bigWig" in f for f in files_list)
+        assert any("bamnado/subtraction/treat_vs_ctrl.bigWig" in f for f in files_list)
+
+    def test_add_condition_bigwig_files_with_spike_in(self, tmp_path):
+        """Test that spike-in variants are included when applicable."""
+        star = tmp_path / "star"
+        star.mkdir()
+        genome = GenomeConfig(name="hg38", index=STARIndex(prefix=star))
+        from seqnado.config.configs import SpikeInConfig
+
+        assay_cfg = ATACAssayConfig(
+            bigwigs=BigwigConfig(
+                pileup_method=[PileupMethod.BAMNADO],
+                perform_comparisons=True,
+            ),
+            spike_in=SpikeInConfig(method=[SpikeInMethod.ORLANDO]),
+            has_spikein=True,
+        )
+        cfg = SeqnadoConfig(
+            assay=Assay.CHIP,  # Use CHIP since it supports spike-in
+            project=dict(name="p"),
+            genome=genome,
+            metadata=tmp_path / "m.csv",
+            assay_config=assay_cfg,
+        )
+
+        samples = _small_collection(tmp_path)
+        # Create sample groupings with 2 conditions
+        groups = SampleGroupings(
+            groupings={
+                "condition": SampleGroups(
+                    group_names=["ctrl", "treat"],
+                    groups=[
+                        SampleGroup(name="ctrl", samples=["s1"]),
+                        SampleGroup(name="treat", samples=["s2"]),
+                    ],
+                )
+            }
+        )
+
+        builder = SeqnadoOutputBuilder(
+            Assay.CHIP, samples, cfg, sample_groupings=groups, output_dir="test_output"
+        )
+        builder.add_condition_bigwig_files()
+        out = builder.build()
+
+        files_list = out.files
+
+        # Should contain unscaled aggregated and subtraction files
+        assert any("bamnado/aggregated/ctrl.bigWig" in f for f in files_list)
+        assert any("bamnado/subtraction/ctrl_vs_treat.bigWig" in f for f in files_list)
+
+        # Should contain spike-in variants
+        assert any("spikein/orlando/aggregated/ctrl.bigWig" in f for f in files_list)
+        assert any("spikein/orlando/aggregated/treat.bigWig" in f for f in files_list)
+        assert any("spikein/orlando/subtraction/ctrl_vs_treat.bigWig" in f for f in files_list)
+        assert any("spikein/orlando/subtraction/treat_vs_ctrl.bigWig" in f for f in files_list)

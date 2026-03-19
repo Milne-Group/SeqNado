@@ -301,6 +301,7 @@ class BigwigConfig(BaseModel):
     pileup_method: list[PileupMethod] | None = None
     binsize: int | None = None
     scale_methods: list[str] | None = None  # e.g., ["unscaled", "spikein"]
+    perform_comparisons: bool = False
 
 
 class PlottingConfig(BaseModel):
@@ -520,6 +521,10 @@ class MCCConfig(BaseModel, PathValidatorMixin):
     create_replicate_contact_files: bool = Field(
         default=False,
         description="Whether to create contact files for individual replicates",
+    )
+    perform_comparisons: bool = Field(
+        default=False,
+        description="Whether to generate condition-based comparisons (aggregated and subtraction bigwigs)",
     )
 
     @field_validator("viewpoints")

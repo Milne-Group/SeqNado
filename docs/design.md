@@ -136,6 +136,36 @@ This will generate a design CSV file with the appropriate control pairings. e.g.
 | ChIP  | SAMPLE1   | H3K27ac | sf-input | SAMPLE1_H3K27ac_R1.fastq.gz | SAMPLE1_H3K27ac_R2.fastq.gz | SAMPLE1_sf-input_R1.fastq.gz | SAMPLE1_sf-input_R2.fastq.gz | default       |
 | ChIP  | SAMPLE1   | Menin   | df-input | SAMPLE1_Menin_R1.fastq.gz   | SAMPLE1_Menin_R2.fastq.gz   | SAMPLE1_df-input_R1.fastq.gz | SAMPLE1_df-input_R2.fastq.gz | default       |
 
+#### Condition-Based Bigwig Comparisons (All Assays)
+
+For all assay types that support bigwigs (ATAC, ChIP, CUT&Tag, RNA), you can optionally add a `condition` column to your design file. When `perform_comparisons: true` is enabled in the configuration, the pipeline will automatically generate:
+
+- **Aggregated condition bigwigs**: Mean signal tracks for each condition group
+- **Subtraction bigwigs**: All pairwise condition comparisons (condition1 - condition2)
+
+The `condition` column should contain the biological condition or treatment group name (e.g., control, treated, vehicle, drug). Each unique value creates one condition group. The pipeline requires **at least 2 unique condition values** to generate comparisons.
+
+**Example design file with condition column:**
+
+| assay | sample_id | r1 | r2 | scaling_group | condition |
+|-------|-----------|----|----|---------------|-----------|
+| ATAC | sample-ctrl-rep1 | ... | ... | default | control |
+| ATAC | sample-ctrl-rep2 | ... | ... | default | control |
+| ATAC | sample-treat-rep1 | ... | ... | default | treated |
+| ATAC | sample-treat-rep2 | ... | ... | default | treated |
+
+With `perform_comparisons: true`, this will generate:
+- `bigwigs/{method}/aggregated/control.bigWig`
+- `bigwigs/{method}/aggregated/treated.bigWig`
+- `bigwigs/{method}/subtraction/control_vs_treated.bigWig`
+- `bigwigs/{method}/subtraction/treated_vs_control.bigWig`
+
+!!! note
+    The `condition` column is independent of consensus groups. You can use both simultaneously:
+    - Use `consensus_group` to merge samples for consensus peak calling (consensus)
+    - Use `condition` to compare across conditions (comparison)
+    - For RNA-seq, use `group`/`deseq2` for differential expression analysis in addition to condition-based bigwig comparisons
+
 #### RNA-seq grouping for DESeq2
 
 For RNA-seq experiments using spike-in normalization with DESeq2, the design command automatically detects experimental groups from sample names. Two columns are generated:
