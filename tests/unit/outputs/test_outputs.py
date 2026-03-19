@@ -16,7 +16,7 @@ from seqnado import (
     SpikeInMethod,
 )
 from seqnado.config.configs import BigwigConfig, GenomeConfig, STARIndex, QCConfig
-from seqnado.config.core import ATACAssayConfig, SeqnadoConfig
+from seqnado.config.core import ATACAssayConfig, ChIPAssayConfig, SeqnadoConfig
 from seqnado.inputs.bam import BamCollection, BamFile
 from seqnado.inputs.bigwigs import BigWigCollection, BigWigFile
 from seqnado.inputs.core import Metadata
@@ -1899,7 +1899,7 @@ class TestConditionBigwigFiles:
         genome = GenomeConfig(name="hg38", index=STARIndex(prefix=star))
         from seqnado.config.configs import SpikeInConfig
 
-        assay_cfg = ATACAssayConfig(
+        assay_cfg = ChIPAssayConfig(
             bigwigs=BigwigConfig(
                 pileup_method=[PileupMethod.BAMNADO],
                 perform_comparisons=True,
