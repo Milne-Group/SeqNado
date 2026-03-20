@@ -1,4 +1,5 @@
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
+from seqnado.config import RNAAssayConfig
 import json
 
 SCALE_RESOURCES = 1
@@ -17,8 +18,10 @@ DATASET_METHYLATION_SAMPLE_NAMES = OUTPUT.sample_names if BEDGRAPH_FILES else []
 
 # Strandedness: only applies to RNA assay with non-zero strandedness
 _STRAND_MAP = {1: "F", 2: "R"}
-_strandedness = getattr(
-    getattr(CONFIG.assay_config, "rna_quantification", None), "strandedness", 0
+_strandedness = (
+    CONFIG.assay_config.rna_quantification.strandedness
+    if isinstance(CONFIG.assay_config, RNAAssayConfig) and CONFIG.assay_config.rna_quantification
+    else 0
 )
 _library_type = _STRAND_MAP.get(_strandedness)
 _bam_sample_names = OUTPUT.ip_sample_names or OUTPUT.sample_names

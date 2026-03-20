@@ -1,7 +1,7 @@
 from seqnado import Assay, PileupMethod, DataScalingTechnique, SpikeInMethod
 from seqnado.workflow.helpers.common import define_memory_requested, define_time_requested
 
-_spikein_cfg = getattr(CONFIG.assay_config, "spikein", None)
+_spikein_cfg = CONFIG.assay_config.spikein
 _spikein_methods = _spikein_cfg.method if _spikein_cfg else []
 _has_spikein_orlando = SpikeInMethod.ORLANDO in _spikein_methods
 _has_spikein_withinput = SpikeInMethod.WITH_INPUT in _spikein_methods

@@ -57,8 +57,8 @@ rule calculate_conversion:
         conversion=OUTPUT_DIR + "/methylation/methylation_conversion.tsv",
         plot=OUTPUT_DIR + "/methylation/methylation_conversion.png"
     params:
-        assay=str(CONFIG.assay_config.methylation.method) if CONFIG.assay_config.methylation and hasattr(CONFIG.assay_config.methylation, 'method') else None,
-        method=str(CONFIG.assay_config.methylation.method) if CONFIG.assay_config.methylation and hasattr(CONFIG.assay_config.methylation, 'method') else None
+        assay=CONFIG.assay_config.methylation.method.value if CONFIG.assay_config.methylation else None,
+        method=CONFIG.assay_config.methylation.method.value if CONFIG.assay_config.methylation else None
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
     log: OUTPUT_DIR + "/logs/methylation/conversion.log"
     benchmark: OUTPUT_DIR + "/.benchmark/methylation/calculate_conversion.tsv"
