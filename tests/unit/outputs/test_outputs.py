@@ -1904,7 +1904,7 @@ class TestConditionBigwigFiles:
                 pileup_method=[PileupMethod.BAMNADO],
                 perform_comparisons=True,
             ),
-            spike_in=SpikeInConfig(method=[SpikeInMethod.ORLANDO]),
+            spikein=SpikeInConfig(method=[SpikeInMethod.ORLANDO]),
             has_spikein=True,
         )
         cfg = SeqnadoConfig(

@@ -628,7 +628,7 @@ class SeqnadoOutputBuilder:
 
             # Add spike-in normalized files if applicable
             if getattr(self.config.assay_config, "has_spikein", False):
-                spikein_config = getattr(self.config.assay_config, "spike_in", None)
+                spikein_config = getattr(self.config.assay_config, "spikein", None)
                 spikein_methods = spikein_config.method if spikein_config else []
                 for spikein_method in spikein_methods:
                     spikein_name = spikein_method.value
