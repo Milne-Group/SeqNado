@@ -1946,3 +1946,58 @@ class TestConditionBigwigFiles:
         assert any("spikein/orlando/aggregated/treat.bigWig" in f for f in files_list)
         assert any("spikein/orlando/subtraction/ctrl_vs_treat.bigWig" in f for f in files_list)
         assert any("spikein/orlando/subtraction/treat_vs_ctrl.bigWig" in f for f in files_list)
+
+    def test_add_condition_bigwig_files_rna_stranded(self, tmp_path):
+        """Test that RNA condition bigwig files include _plus and _minus strand suffixes."""
+        from seqnado.config.core import RNAAssayConfig
+
+        star = tmp_path / "star"
+        star.mkdir()
+        genome = GenomeConfig(name="hg38", index=STARIndex(prefix=star))
+        assay_cfg = RNAAssayConfig(
+            bigwigs=BigwigConfig(
+                pileup_method=[PileupMethod.BAMNADO],
+                perform_comparisons=True,
+            )
+        )
+        cfg = SeqnadoConfig(
+            assay=Assay.RNA,
+            project=dict(name="p"),
+            genome=genome,
+            metadata=tmp_path / "m.csv",
+            assay_config=assay_cfg,
+        )
+
+        samples = _small_collection(tmp_path)
+        groups = SampleGroupings(
+            groupings={
+                "condition": SampleGroups(
+                    group_names=["ctrl", "treat"],
+                    groups=[
+                        SampleGroup(name="ctrl", samples=["s1"]),
+                        SampleGroup(name="treat", samples=["s2"]),
+                    ],
+                )
+            }
+        )
+
+        builder = SeqnadoOutputBuilder(
+            Assay.RNA, samples, cfg, sample_groupings=groups, output_dir="test_output"
+        )
+        builder.add_condition_bigwig_files()
+        out = builder.build()
+
+        files_list = out.files
+
+        # Should contain stranded aggregated condition bigwigs
+        assert any("bamnado/aggregated/ctrl_plus.bigWig" in f for f in files_list)
+        assert any("bamnado/aggregated/ctrl_minus.bigWig" in f for f in files_list)
+        assert any("bamnado/aggregated/treat_plus.bigWig" in f for f in files_list)
+        assert any("bamnado/aggregated/treat_minus.bigWig" in f for f in files_list)
+
+        # Should contain stranded pairwise subtraction bigwigs
+        assert any("bamnado/subtraction/ctrl_vs_treat_plus.bigWig" in f for f in files_list)
+        assert any("bamnado/subtraction/ctrl_vs_treat_minus.bigWig" in f for f in files_list)
+
+        # Should NOT contain unstranded files
+        assert not any("aggregated/ctrl.bigWig" in f for f in files_list)

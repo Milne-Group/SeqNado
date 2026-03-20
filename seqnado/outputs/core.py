@@ -616,15 +616,18 @@ class SeqnadoOutputBuilder:
 
         pileup_methods = bigwigs_config.pileup_method or []
         files = []
+        strands = ["_plus", "_minus"] if self.assay == Assay.RNA else [""]
 
         for method in pileup_methods:
             method_name = method.value  # e.g., "bamnado", "deeptools"
             # Add aggregated condition bigwigs (unscaled)
             for cond in condition_groups.group_names:
-                files.append(f"{self.output_dir}/bigwigs/{method_name}/aggregated/{cond}.bigWig")
+                for strand in strands:
+                    files.append(f"{self.output_dir}/bigwigs/{method_name}/aggregated/{cond}{strand}.bigWig")
             # Add pairwise subtractions
             for c1, c2 in permutations(condition_groups.group_names, 2):
-                files.append(f"{self.output_dir}/bigwigs/{method_name}/subtraction/{c1}_vs_{c2}.bigWig")
+                for strand in strands:
+                    files.append(f"{self.output_dir}/bigwigs/{method_name}/subtraction/{c1}_vs_{c2}{strand}.bigWig")
 
             # Add spike-in normalized files if applicable
             if getattr(self.config.assay_config, "has_spikein", False):
@@ -634,14 +637,16 @@ class SeqnadoOutputBuilder:
                     spikein_name = spikein_method.value
                     # Add aggregated spike-in normalized condition bigwigs
                     for cond in condition_groups.group_names:
-                        files.append(
-                            f"{self.output_dir}/bigwigs/{method_name}/spikein/{spikein_name}/aggregated/{cond}.bigWig"
-                        )
+                        for strand in strands:
+                            files.append(
+                                f"{self.output_dir}/bigwigs/{method_name}/spikein/{spikein_name}/aggregated/{cond}{strand}.bigWig"
+                            )
                     # Add pairwise spikein subtractions
                     for c1, c2 in permutations(condition_groups.group_names, 2):
-                        files.append(
-                            f"{self.output_dir}/bigwigs/{method_name}/spikein/{spikein_name}/subtraction/{c1}_vs_{c2}.bigWig"
-                        )
+                        for strand in strands:
+                            files.append(
+                                f"{self.output_dir}/bigwigs/{method_name}/spikein/{spikein_name}/subtraction/{c1}_vs_{c2}{strand}.bigWig"
+                            )
 
         if files:
             self.file_collections.append(BasicFileCollection(files=files))
