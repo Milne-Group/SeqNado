@@ -1,7 +1,6 @@
-from warnings import warn
 from pydantic import BaseModel, Field
 import pandas as pd
-from loguru import logger
+from seqnado.utils import warn_once
 
 class SampleGroup(BaseModel):
     """A single group of samples with an optional reference sample."""
@@ -33,7 +32,7 @@ class SampleGroups(BaseModel):
         Build multiple SampleGroups from a DataFrame based on a grouping column.
         """
         if subset_column not in df.columns:
-            logger.warning(f"Column '{subset_column}' not found in DataFrame. Returning empty SampleGroups.")
+            warn_once(f"Column '{subset_column}' not found in DataFrame. Returning empty SampleGroups.")
             return cls(groups=[])
 
         groups = []

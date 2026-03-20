@@ -90,8 +90,8 @@ class RNAAssayConfig(BaseAssayConfig):
         RNA-seq supports only ORLANDO, DESEQ2, and EDGER.
         """
         if v is not None and SpikeInMethod.WITH_INPUT in v.method:
-            from loguru import logger
-            logger.warning(
+            from seqnado.utils import warn_once
+            warn_once(
                 "The 'with_input' spike-in method is not compatible with RNA-seq and will be skipped. "
                 "RNA-seq supports: 'orlando', 'deseq2', 'edger'. "
                 "WITH_INPUT requires paired input/control samples (ChIP-seq concept)."

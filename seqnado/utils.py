@@ -1,9 +1,19 @@
 """Utility functions for SeqNado CLI and general operations."""
+import hashlib
+import os
 import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Pattern, Tuple, Union
 
 from loguru import logger
+
+
+def warn_once(msg: str) -> None:
+    """Emit a loguru warning only once, even across Snakemake subprocesses."""
+    key = "SEQNADO_WARNED_" + hashlib.md5(msg.encode()).hexdigest()[:12]
+    if not os.environ.get(key):
+        os.environ[key] = "1"
+        logger.warning(msg)
 
 # Compatible typing for compiled regex across Python versions
 try:
