@@ -222,3 +222,5 @@ Config models live in `seqnado/config/`. Follow these patterns:
 
 - For a quick development setup, recommend just creating a uv virtual environment and installing the package with `uv pip install -e .`.
 - Run tests with `uv run pytest` to ensure the correct environment is used.
+- To run pipeline tests (anything in `tests/pipeline/`), use `--run-pipeline` when invoking pytest.
+- If having issues with `uv`, use `conda activate base` first to ensure the base conda environment is active.

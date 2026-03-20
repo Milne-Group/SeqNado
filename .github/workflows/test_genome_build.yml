@@ -90,7 +90,7 @@ jobs:
         shell: bash -el {0}
         run: |
           python -m pytest tests/pipeline/test_genome_build.py -vv \
-            -k "DryRun" --run-pipeline --maxfail=3
+            -k "DryRun" --run-genome-tests --maxfail=3
 
   test-build:
     name: Genome Build (Full)
@@ -148,4 +148,4 @@ jobs:
           APPTAINER_TMPDIR: "${{ github.workspace }}/.apptainer/tmp"
         run: |
           python -m pytest tests/pipeline/test_genome_build.py -vv \
-            -k "not DryRun" --run-pipeline --maxfail=1
+            -k "not DryRun" --run-genome-tests --maxfail=1

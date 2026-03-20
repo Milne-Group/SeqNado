@@ -610,6 +610,8 @@ class SeqnadoOutputBuilder:
         if not self.sample_groupings:
             return
 
+        if "condition" not in self.sample_groupings:
+            return
         condition_groups = self.sample_groupings.get_grouping("condition")
         if not condition_groups or len(condition_groups.group_names) < 2:
             return
