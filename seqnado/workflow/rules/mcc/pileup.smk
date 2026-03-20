@@ -121,7 +121,7 @@ rule confirm_bigwigs_generated:
             if group1 != group2
             for viewpoint_group in VIEWPOINT_TO_GROUPED_VIEWPOINT.values()
         ] if (
-            getattr(CONFIG.assay_config.mcc, "perform_comparisons", False)
+            getattr(CONFIG.assay_config.bigwigs, "perform_comparisons", False)
             and len(SAMPLE_GROUPINGS.get_grouping("condition").group_names) >= 2
         ) else [],
     output:

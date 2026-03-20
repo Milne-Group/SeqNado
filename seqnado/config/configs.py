@@ -522,10 +522,6 @@ class MCCConfig(BaseModel, PathValidatorMixin):
         default=False,
         description="Whether to create contact files for individual replicates",
     )
-    perform_comparisons: bool = Field(
-        default=False,
-        description="Whether to generate condition-based comparisons (aggregated and subtraction bigwigs)",
-    )
 
     @field_validator("viewpoints")
     def validate_viewpoints(cls, v: Path, info: ValidationInfo) -> Path:

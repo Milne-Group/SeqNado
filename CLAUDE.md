@@ -214,3 +214,11 @@ Config models live in `seqnado/config/`. Follow these patterns:
 | `SpikeInMethod` | Orlando, WITH_INPUT, DESeq2, edgeR |
 | `DataScalingTechnique` | Unscaled, CSAW, CPM, RPKM, SPIKEIN |
 | `PileupMethod` | deeptools, HOMER, BAMNADO, METHYLDACKEL |
+
+
+## Development and conventions
+
+- Seqnado only requires Python packages to run. Conda is only needed if users wants to run the Snakemake workflows locally without containers. We discourage this because it can lead to dependency conflicts and reproducibility issues, but it is supported for users who prefer it.
+
+- For a quick development setup, recommend just creating a uv virtual environment and installing the package with `uv pip install -e .`.
+- Run tests with `uv run pytest` to ensure the correct environment is used.
