@@ -22,7 +22,7 @@ dependencies = [
     "cookiecutter<=2.6.0",
     "numpy>=1.24,<=2.2.6",
     "pandas>=2.0,<=2.3.3",
-    "pandera<=0.29.0",
+    "pandera<=0.30.1",
     "pexpect<=4.9.0",
     "pip",
     "pulp<=3.3.0",
