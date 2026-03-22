@@ -48,6 +48,9 @@ class BaseAssayConfig(CommonComputedFieldsMixin):
     # Boolean flags for optional features
     create_geo_submission_files: bool = False
 
+    # Lifted from ChIPAssayConfig / CATAssayConfig / RNAAssayConfig
+    spikein: Annotated[SpikeInConfig | None, BeforeValidator(none_str_to_none)] = None
+
 
 class ATACAssayConfig(BaseAssayConfig, PeakCallingMixin):
     """Configuration specific to ATAC-seq assays."""
