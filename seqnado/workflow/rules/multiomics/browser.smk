@@ -11,11 +11,11 @@ rule plotnado_multiomics_deeptools:
         plots=plot_files,
         template=OUTPUT_DIR + "/multiomics/track_plots/template.toml",
     params:
-        assay=str(CONFIG.assay) if hasattr(CONFIG, 'assay') else None,
-        genes=str(CONFIG.genome.genes) if CONFIG.assay_config.plot_with_plotnado and hasattr(CONFIG.genome, 'genes') else None,
+        assay=CONFIG.assay.value,
+        genes=str(CONFIG.genome.genes) if CONFIG.assay_config.plot_with_plotnado and CONFIG.genome.genes else None,
         outdir=OUTPUT_DIR + "/multiomics/track_plots/",
-        regions=str(CONFIG.assay_config.plotting.coordinates) if CONFIG.assay_config.plotting and hasattr(CONFIG.assay_config.plotting, 'coordinates') else None,
-        plotting_format=str(CONFIG.assay_config.plotting.file_format) if CONFIG.assay_config.plotting and hasattr(CONFIG.assay_config.plotting, 'file_format') else None,
+        regions=CONFIG.assay_config.plotting.coordinates if CONFIG.assay_config.plotting else None,
+        plotting_format=CONFIG.assay_config.plotting.file_format if CONFIG.assay_config.plotting else None,
     resources:
         mem="1.5GB",
          runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),

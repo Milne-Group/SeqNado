@@ -324,3 +324,80 @@ pcr_duplicates:
         assert config.assay == Assay.RNA
         assert config.pcr_duplicates.strategy == PCRDuplicateHandling.REMOVE
         assert config.pcr_duplicates.tool == PCRDuplicateTool.SAMTOOLS
+
+
+class TestSpikeinConfig:
+    """Tests for spikein field in BaseAssayConfig."""
+
+    def test_spikein_none_default_for_atac(self, tmp_metadata, tmp_bowtie_index):
+        """Test spikein defaults to None for ATAC assay."""
+        config = SeqnadoConfig(
+            assay=Assay.ATAC,
+            project=ProjectConfig(name="test"),
+            genome=GenomeConfig(name="hg38", index=BowtieIndex(prefix=str(tmp_bowtie_index))),
+            metadata=tmp_metadata,
+            assay_config=ATACAssayConfig(),
+        )
+
+        assert config.assay_config.spikein is None
+
+    def test_spikein_none_default_for_snp(self, tmp_metadata, tmp_bowtie_index):
+        """Test spikein defaults to None for SNP assay."""
+        config = SeqnadoConfig(
+            assay=Assay.SNP,
+            project=ProjectConfig(name="test"),
+            genome=GenomeConfig(name="hg38", index=BowtieIndex(prefix=str(tmp_bowtie_index))),
+            metadata=tmp_metadata,
+            assay_config=SNPAssayConfig(),
+        )
+
+        assert config.assay_config.spikein is None
+
+    def test_spikein_none_default_for_methylation(self, tmp_metadata, tmp_bowtie_index):
+        """Test spikein defaults to None for Methylation assay."""
+        config = SeqnadoConfig(
+            assay=Assay.METH,
+            project=ProjectConfig(name="test"),
+            genome=GenomeConfig(name="hg38", index=BowtieIndex(prefix=str(tmp_bowtie_index))),
+            metadata=tmp_metadata,
+            assay_config=MethylationAssayConfig(ucsc_hub=None),
+        )
+
+        assert config.assay_config.spikein is None
+
+    def test_spikein_none_default_for_crispr(self, tmp_metadata, tmp_bowtie_index):
+        """Test spikein defaults to None for CRISPR assay."""
+        config = SeqnadoConfig(
+            assay=Assay.CRISPR,
+            project=ProjectConfig(name="test"),
+            genome=GenomeConfig(name="hg38", index=BowtieIndex(prefix=str(tmp_bowtie_index))),
+            metadata=tmp_metadata,
+            assay_config=CRISPRAssayConfig(),
+        )
+
+        assert config.assay_config.spikein is None
+
+    def test_has_spikein_false_when_spikein_none(self, tmp_metadata, tmp_bowtie_index):
+        """Test has_spikein computed field is False when spikein is None."""
+        config = SeqnadoConfig(
+            assay=Assay.CHIP,
+            project=ProjectConfig(name="test"),
+            genome=GenomeConfig(name="hg38", index=BowtieIndex(prefix=str(tmp_bowtie_index))),
+            metadata=tmp_metadata,
+            assay_config=ChIPAssayConfig(spikein=None),
+        )
+
+        assert config.assay_config.spikein is None
+        assert config.assay_config.has_spikein is False
+
+    def test_has_spikein_false_for_atac(self, tmp_metadata, tmp_bowtie_index):
+        """Test has_spikein is False for ATAC with no spike-in config."""
+        config = SeqnadoConfig(
+            assay=Assay.ATAC,
+            project=ProjectConfig(name="test"),
+            genome=GenomeConfig(name="hg38", index=BowtieIndex(prefix=str(tmp_bowtie_index))),
+            metadata=tmp_metadata,
+            assay_config=ATACAssayConfig(),
+        )
+
+        assert config.assay_config.has_spikein is False

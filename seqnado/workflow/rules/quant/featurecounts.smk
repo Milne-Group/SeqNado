@@ -13,7 +13,7 @@ rule feature_counts:
         options=str(CONFIG.third_party_tools.subread.feature_counts.command_line_arguments),
         annotation_format= "SAF" if CONFIG.genome.gtf.suffix == ".saf" else "GTF",
         paired= "-p --countReadPairs" if INPUT_FILES.is_paired_end(SAMPLE_NAMES[0]) else "",
-        stranded="-s " + str(getattr(CONFIG.assay_config.rna_quantification, "strandedness", 0)),
+        stranded="-s " + str(CONFIG.assay_config.rna_quantification.strandedness if CONFIG.assay_config.rna_quantification else 0),
     threads: 
         CONFIG.third_party_tools.subread.feature_counts.threads
     resources:

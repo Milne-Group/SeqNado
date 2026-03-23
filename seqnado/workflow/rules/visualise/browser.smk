@@ -1,7 +1,7 @@
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
 from seqnado import Assay, DataScalingTechnique, PileupMethod, SpikeInMethod
 
-_spikein_cfg = getattr(CONFIG.assay_config, "spikein", None)
+_spikein_cfg = CONFIG.assay_config.spikein
 _spikein_methods = _spikein_cfg.method if _spikein_cfg else []
 _has_spikein_orlando = SpikeInMethod.ORLANDO in _spikein_methods
 _has_spikein_withinput = SpikeInMethod.WITH_INPUT in _spikein_methods
@@ -39,7 +39,7 @@ rule index_individual_peaks:
 
 rule index_genes_bed:
     input:
-        genes=str(CONFIG.genome.genes) if hasattr(CONFIG.genome, 'genes') else [],
+        genes=str(CONFIG.genome.genes) if CONFIG.genome.genes else [],
     output:
         bed_gz=OUTPUT_DIR + "/resources/genes_indexed.bed.gz",
         tbi=OUTPUT_DIR + "/resources/genes_indexed.bed.gz.tbi",
@@ -77,11 +77,11 @@ rule plotnado_deeptools:
         plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED),
         template=OUTPUT_DIR + "/track_plots/deeptools/unscaled/template.toml",
     params:
-        assay=CONFIG.assay.value if hasattr(CONFIG, 'assay') else None,
+        assay=CONFIG.assay.value,
         peak_files=expand("{peak}.gz", peak=OUTPUT.peak_files),
-        genes=OUTPUT_DIR + "/resources/genes_indexed.bed.gz" if CONFIG.assay_config.plot_with_plotnado and hasattr(CONFIG.genome, 'genes') else None,
-        regions=str(CONFIG.assay_config.plotting.coordinates) if CONFIG.assay_config.plotting and hasattr(CONFIG.assay_config.plotting, 'coordinates') else None,
-        plotting_format=str(CONFIG.assay_config.plotting.file_format) if CONFIG.assay_config.plotting and hasattr(CONFIG.assay_config.plotting, 'file_format') else None,
+        genes=OUTPUT_DIR + "/resources/genes_indexed.bed.gz" if CONFIG.assay_config.plot_with_plotnado and CONFIG.genome.genes else None,
+        regions=CONFIG.assay_config.plotting.coordinates if CONFIG.assay_config.plotting else None,
+        plotting_format=CONFIG.assay_config.plotting.file_format if CONFIG.assay_config.plotting else None,
         outdir=lambda wildcards, output: str(os.path.dirname(output.template)),
     resources:
         mem="1.5GB",
@@ -393,11 +393,11 @@ if ASSAY == Assay.METH:
             plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.METHYLDACKEL),
             template=OUTPUT_DIR + "/track_plots/methyldackel/unscaled/template.toml",
         params:
-            assay=CONFIG.assay.value if hasattr(CONFIG, 'assay') else None,
+            assay=CONFIG.assay.value,
             peak_files=[],
-            genes=OUTPUT_DIR + "/resources/genes_indexed.bed.gz" if CONFIG.assay_config.plot_with_plotnado and hasattr(CONFIG.genome, 'genes') else None,
-            regions=str(CONFIG.assay_config.plotting.coordinates) if CONFIG.assay_config.plotting and hasattr(CONFIG.assay_config.plotting, 'coordinates') else None,
-            plotting_format=str(CONFIG.assay_config.plotting.file_format) if CONFIG.assay_config.plotting and hasattr(CONFIG.assay_config.plotting, 'file_format') else None,
+            genes=OUTPUT_DIR + "/resources/genes_indexed.bed.gz" if CONFIG.assay_config.plot_with_plotnado and CONFIG.genome.genes else None,
+            regions=CONFIG.assay_config.plotting.coordinates if CONFIG.assay_config.plotting else None,
+            plotting_format=CONFIG.assay_config.plotting.file_format if CONFIG.assay_config.plotting else None,
             outdir=lambda wildcards, output: str(os.path.dirname(output.template)),
         resources:
             mem="1.5GB",
