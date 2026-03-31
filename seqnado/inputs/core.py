@@ -29,7 +29,17 @@ INPUT_CONTROL_SUBSTRINGS = ["input", "mock", "igg", "control"]
 # =============================================================================
 
 class Metadata(BaseModel):
-    """Metadata for samples. Optional fields can be set to None."""
+    """
+    Metadata for samples. Optional fields can be set to None.
+
+    Field relationships:
+    - `consensus_group`: Groups samples for BAM merging (e.g., replicates)
+    - `condition`: Groups samples for bigwig comparisons when perform_comparisons=true
+    - `group`/`deseq2`: Used for differential expression analysis (RNA-seq)
+    - `scaling_group`: Groups samples for normalization factor calculation
+
+    These fields can be used independently or in combination.
+    """
     assay: Assay | None = Field(
         default=None,
         description="Assay type, should be one of the Assay enum values"
@@ -52,7 +62,7 @@ class Metadata(BaseModel):
     )
     condition: str | None = Field(
         default=None,
-        description="Biological condition or experimental group (e.g., control, treated, WT, KO) for differential analysis"
+        description="Biological condition or experimental group (e.g., control, treated, WT, KO). When perform_comparisons is enabled, samples with the same condition are aggregated into condition-level bigwigs, and pairwise subtractions are generated across conditions. Requires at least 2 unique condition values."
     )
 
     @field_validator("group", "deseq2", mode="before")
