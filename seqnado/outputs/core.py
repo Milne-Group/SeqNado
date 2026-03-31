@@ -359,6 +359,8 @@ class SeqNadoReportFiles:
             and self.config.assay_config.rna_quantification
         ):
             builder.add_quantification_files()
+            if self.config.assay_config.rna_quantification.run_deseq2:
+                builder.add_deseq2_files()
         elif (
             "create_quantification_files" in self.config.assay_config
             and self.config.assay_config.create_quantification_files
@@ -985,6 +987,12 @@ class SeqnadoOutputBuilder:
             output_dir=self.output_dir,
         )
         self.file_collections.append(quantification_files)
+
+    def add_deseq2_files(self) -> None:
+        """Add DESeq2 HTML report to the output collection."""
+        project_name = self.config.project.name.replace(" ", "")
+        deseq2_html = f"deseq2_{project_name}.html"
+        self.file_collections.append(BasicFileCollection(files=[deseq2_html]))
 
     def add_geo_submission_files(self) -> None:
         """Add files for GEO submission.

@@ -29,6 +29,7 @@ CONFIG = SeqnadoConfig(**config)  # pyright: ignore[reportUndefinedVariable]
 ASSAY = CONFIG.assay
 INPUT_FILES = get_sample_collection(assay=ASSAY, path=CONFIG.metadata, config=CONFIG)
 OUTPUT_DIR = config.get("output_dir", f"seqnado_output/{ASSAY.clean_name}")
+PROJECT_NAME = CONFIG.project.name
 
 ################################
 # Define Sample Groupings
@@ -134,6 +135,12 @@ match ASSAY:
         include: "rules/quant/salmon.smk"
         include: "rules/visualise/browser.smk"
         include: "rules/visualise/hub.smk"
+        if (
+            hasattr(CONFIG.assay_config, "rna_quantification")
+            and CONFIG.assay_config.rna_quantification
+            and CONFIG.assay_config.rna_quantification.run_deseq2
+        ):
+            include: "rules/differential/rna.smk"
     case Assay.MCC:
         include: "rules/bam/all.smk"
         include: "rules/fastq/manipulate.smk"
