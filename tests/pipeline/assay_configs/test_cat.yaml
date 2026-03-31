@@ -2,3 +2,10 @@ assay: CUT&TAG
 project:
   name: default_project
   description: "Test project for CUT&TAG"
+assay_config:
+  create_bigwigs: True
+  bigwigs:
+    pileup_method:
+      - deeptools
+    binsize: 10
+    scale_methods: null

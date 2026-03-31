@@ -281,10 +281,17 @@ def get_bigwig_config(assay: Assay) -> Optional[BigwigConfig]:
     if isinstance(scale_methods, str):
         scale_methods = [scale_methods]
 
+    perform_comparisons = get_user_input(
+        "Perform condition-based bigwig comparisons (aggregated mean + subtraction)?",
+        default="no",
+        is_boolean=True,
+    )
+
     return BigwigConfig(
         pileup_method=[PileupMethod(m) for m in pileup_methods],
         binsize=binsize,
         scale_methods=scale_methods,
+        perform_comparisons=perform_comparisons,
     )
 
 
