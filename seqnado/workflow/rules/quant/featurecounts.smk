@@ -23,17 +23,8 @@ rule feature_counts:
     log: OUTPUT_DIR + "/logs/readcounts/featurecounts/featurecounts.log",
     benchmark: OUTPUT_DIR + "/.benchmark/readcounts/featurecounts/featurecounts.tsv",
     message: "Running featureCounts to quantify reads for all samples"
-    shell: """
-    # Determine annotation format from file extension
-    annotation="{input.annotation}"
-    if [[ "$annotation" == *.saf ]]; then
-        format_flag="-F SAF"
-    else
-        format_flag="-F GTF"
-    fi
-    
+    shell: """    
     featureCounts \
-    $format_flag \
     -a {input.annotation} \
     -F {params.annotation_format} \
     -T {threads} \
