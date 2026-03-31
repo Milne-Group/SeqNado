@@ -76,6 +76,7 @@ rule deseq2_params:
         size_factors_out=OUTPUT_DIR + "/resources/all_normalisation_factors.json",
         de_dir=str(Path(rules.deseq2_report_rnaseq.output.deseq2).parent),
         counts=rules.deseq2_report_rnaseq.input.counts,
+        metadata=str(CONFIG.metadata),
     message:
         "Preparing DESeq2 parameters for RNA-seq analysis"
     run:
@@ -88,6 +89,7 @@ rule deseq2_params:
                     "size_factors_out": params.size_factors_out,
                     "de_dir": params.de_dir,
                     "counts": params.counts,
+                    "metadata": params.metadata,
                 },
                 f,
             )
