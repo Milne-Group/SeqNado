@@ -6,6 +6,8 @@ rule deseq2_create_qmd:
         qmd=f"deseq2_{PROJECT_NAME}.qmd".replace(" ", ""),
     log:
         OUTPUT_DIR + "/logs/deseq2/deseq2_create_qmd.log",
+    benchmark:
+        OUTPUT_DIR + "/.benchmark/deseq2/deseq2_create_qmd.tsv"
     params:
         project_name=PROJECT_NAME,
         username=os.environ.get("USER", "unknown"),
