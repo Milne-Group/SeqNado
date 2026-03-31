@@ -8,6 +8,8 @@ rule deseq2_create_qmd:
         OUTPUT_DIR + "/logs/deseq2/deseq2_create_qmd.log",
     benchmark:
         OUTPUT_DIR + "/.benchmark/deseq2/deseq2_create_qmd.tsv"
+    message:
+        "Writing template for DESeq2 report for RNA-seq data"
     params:
         project_name=PROJECT_NAME,
         username=os.environ.get("USER", "unknown"),
