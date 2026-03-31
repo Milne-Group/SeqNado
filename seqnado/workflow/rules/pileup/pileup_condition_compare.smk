@@ -54,7 +54,7 @@ if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
                 spikein_method=None,
                 output_dir=OUTPUT_DIR,
                 sample_groupings=SAMPLE_GROUPINGS,
-                strand=wildcards.strand if _IS_RNA else None,
+                strand=wildcards.strand.lstrip("_") if (_IS_RNA and wildcards.strand) else None,
             ),
         output:
             bigwig=OUTPUT_DIR + "/bigwigs/{pileup_method}/aggregated/{condition}{strand}.bigWig",
@@ -152,7 +152,7 @@ if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
                     spikein_method=wildcards.spikein_method,
                     output_dir=OUTPUT_DIR,
                     sample_groupings=SAMPLE_GROUPINGS,
-                    strand=wildcards.strand if _IS_RNA else None,
+                    strand=wildcards.strand.lstrip("_") if (_IS_RNA and wildcards.strand) else None,
                 ),
             output:
                 bigwig=OUTPUT_DIR + "/bigwigs/{pileup_method}/spikein/{spikein_method}/aggregated/{condition}{strand}.bigWig",
