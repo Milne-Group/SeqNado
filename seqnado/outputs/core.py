@@ -595,6 +595,66 @@ class SeqnadoOutputBuilder:
             )
             self.file_collections.append(bigwig_files)
 
+    def add_condition_bigwig_files(self) -> None:
+        """Add condition-based aggregated and subtraction bigwig files to the output collection."""
+        from itertools import permutations
+
+        # Skip if assay doesn't support bigwigs
+        bigwigs_config = self.config.assay_config.bigwigs
+        if bigwigs_config is None:
+            return
+
+        # Skip if perform_comparisons is not enabled
+        if not getattr(bigwigs_config, "perform_comparisons", False):
+            return
+
+        # Skip if no sample groupings or fewer than 2 condition groups
+        if not self.sample_groupings:
+            return
+
+        if "condition" not in self.sample_groupings:
+            return
+        condition_groups = self.sample_groupings.get_grouping("condition")
+        if not condition_groups or len(condition_groups.group_names) < 2:
+            return
+
+        pileup_methods = bigwigs_config.pileup_method or []
+        files = []
+        strands = ["_plus", "_minus"] if self.assay == Assay.RNA else [""]
+
+        for method in pileup_methods:
+            method_name = method.value  # e.g., "bamnado", "deeptools"
+            # Add aggregated condition bigwigs (unscaled)
+            for cond in condition_groups.group_names:
+                for strand in strands:
+                    files.append(f"{self.output_dir}/bigwigs/{method_name}/aggregated/{cond}{strand}.bigWig")
+            # Add pairwise subtractions
+            for c1, c2 in permutations(condition_groups.group_names, 2):
+                for strand in strands:
+                    files.append(f"{self.output_dir}/bigwigs/{method_name}/subtraction/{c1}_vs_{c2}{strand}.bigWig")
+
+            # Add spike-in normalized files if applicable
+            if getattr(self.config.assay_config, "has_spikein", False):
+                spikein_config = getattr(self.config.assay_config, "spikein", None)
+                spikein_methods = spikein_config.method if spikein_config else []
+                for spikein_method in spikein_methods:
+                    spikein_name = spikein_method.value
+                    # Add aggregated spike-in normalized condition bigwigs
+                    for cond in condition_groups.group_names:
+                        for strand in strands:
+                            files.append(
+                                f"{self.output_dir}/bigwigs/{method_name}/spikein/{spikein_name}/aggregated/{cond}{strand}.bigWig"
+                            )
+                    # Add pairwise spikein subtractions
+                    for c1, c2 in permutations(condition_groups.group_names, 2):
+                        for strand in strands:
+                            files.append(
+                                f"{self.output_dir}/bigwigs/{method_name}/spikein/{spikein_name}/subtraction/{c1}_vs_{c2}{strand}.bigWig"
+                            )
+
+        if files:
+            self.file_collections.append(BasicFileCollection(files=files))
+
     def add_mcc_sentinel_pileup_files(self) -> None:
         """Add MCC sentinel files to the output collection.
         The issue with MCC bigwig files is that they are generated per viewpoint group.
@@ -1284,6 +1344,7 @@ class SeqnadoOutputFactory:
                 if self.sample_groupings:
                     builder.add_grouped_bigwig_files()
                     builder.add_grouped_normalized_bigwig_files()
+                    builder.add_condition_bigwig_files()
             elif self.assay == Assay.MCC:
                 builder.add_mcc_sentinel_pileup_files()
 

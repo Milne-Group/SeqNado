@@ -45,7 +45,8 @@ These questions appear for ATAC, ChIP, CAT, RNA, MCC, and Methylation:
 Make Bigwigs? (default: yes)
   ├─ Bigwig method(s) — comma-separated (default: deeptools; options: deeptools, bamnado)
   ├─ Binsize for bigwigs (default: 10)
-  └─ Bigwig scaling method(s) — comma-separated (default: unscaled; options: unscaled, csaw)
+  ├─ Bigwig scaling method(s) — comma-separated (default: unscaled; options: unscaled, csaw)
+  └─ Perform condition-based bigwig comparisons? (default: no)
 
 Perform plotting? (default: no)
   ├─ Path to coordinates BED file (optional)
@@ -306,6 +307,13 @@ Below is a comprehensive list of tools integrated into SeqNado, organized by fun
   
   
 - **bamnado** — Alternative tool for BigWig generation and BAM manipulation
+  - **Condition-based comparisons** — When enabled via `perform_comparisons: true`, bamnado automatically generates:
+    - **Aggregated condition bigwigs**: Mean signal tracks for each condition group (averaging all replicates within that condition)
+    - **Subtraction bigwigs**: All pairwise condition contrasts (condition1 - condition2)
+    - Both outputs available for unscaled and spike-in normalized bigwigs
+    - Requires: `condition` column in design file with ≥2 unique values; `bamnado` as pileup method
+    - For **MCC assays**, condition comparisons are handled separately (see [Configuration guide](configuration.md) for MCC-specific options)
+    - Useful for quick visual comparison of condition effects without downstream analysis tools
 
 - **deeptools heatmap** — Creates heatmaps from BigWig files around genomic coordinates
 
