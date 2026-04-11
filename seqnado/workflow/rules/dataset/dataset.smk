@@ -175,5 +175,9 @@ rule finalize_dataset:
         OUTPUT_DIR + "/dataset.zarr"
     output:
         touch(OUTPUT_DIR + "/dataset.zarr.complete")
+    log:
+        OUTPUT_DIR + "/logs/dataset/dataset_finalize.log"
+    benchmark:
+        OUTPUT_DIR + "/.benchmark/dataset/dataset_finalize.tsv"
     message:
         "Finalizing assay dataset at {output}."
