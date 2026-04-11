@@ -2,3 +2,5 @@ assay: CUT&TAG
 project:
   name: default_project
   description: "Test project for CUT&TAG"
+assay_config:
+  create_dataset: True 
