@@ -28,6 +28,61 @@ Presets control where and how jobs are executed. Pick the one that matches your 
 !!! tip
     **Not sure which to pick?** Use `le` if you're running on your own machine or a login node. Use `ss` if you're on an HPC cluster with SLURM. See the [HPC Clusters](cluster_config.md) guide for cluster setup.
 
+
+#### Editing Presets for your Cluster/Machine
+
+Presets are just snakemake profiles that define how jobs are executed. On running `seqnado init`, SeqNado copies the default profiles into `~/.config/snakemake/profiles/` e.g.
+
+```bash
+tree ~/.config/snakemake/profile_*
+
+/home/a/asmith/.config/snakemake/profile_local_conda
+└── config.yaml
+/home/a/asmith/.config/snakemake/profile_local_environment
+└── config.yaml
+/home/a/asmith/.config/snakemake/profile_local_singularity
+└── config.yaml
+/home/a/asmith/.config/snakemake/profile_slurm_singularity
+└── config.yaml
+/home/a/asmith/.config/snakemake/profile_test
+└── config.v8+.yaml
+```
+
+All profiles used by seqnado start with `profile_` to avoid conflicts with any existing profiles you may have. You can edit the `config.yaml` files in these directories to customise the execution settings for each preset. For example, to change the SLURM partition used by the `ss` preset, edit `~/.config/snakemake/profile_slurm_singularity/config.yaml` and modify the `slurm_partition` setting under `cluster` fron our default of "short" to whatever partition you have available. e.g.
+
+```yaml
+__use_yte__: true
+executor: slurm
+jobs: 100
+
+software-deployment-method: 
+    - "apptainer"
+use-apptainer: true
+
+show-failed-logs: true
+printshellcmds: true
+retries: 3
+
+
+default-resources: 
+    slurm_partition: "SOME_PARTITION_NAME"
+    runtime: "1h"
+    mem: "3G"
+
+set-resources:
+    call_mcc_peaks:
+        slurm_partition: "gpu"
+        runtime: 30  # in minutes
+        mem_mb_per_cpu: 3000
+        cpus_per_task: 8
+        gpus: 1
+```
+
+See the [Snakemake documentation](https://snakemake.readthedocs.io/en/stable/executing/cli.html#executing-profiles) for more details on how to customise profiles.
+
+You can also create your own profile and point to it with `--profile` in any seqnado command, which will override the `--preset` setting. This is useful if you want to have a custom profile for your cluster or machine without modifying the default presets.
+
+
 ### Common Options
 
 | Option | Short | Description |

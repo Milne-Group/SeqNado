@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Optional, Any
 
 from pydantic import BaseModel, field_validator, model_validator, ValidationInfo
-from seqnado import Assay
 
 
 # -----------------------------------------------------------------------------
@@ -117,23 +116,11 @@ class CommonComputedFieldsMixin(BaseModel):
     def validate_create_quantification_files(
         cls,
         v: Any,
-        info: ValidationInfo,
+        _info: ValidationInfo,
     ) -> bool:
-        
         if v is not None:
             return bool(v)
-
-        # Check to see if we need to create quantification files
-        # For RNA-seq this is always True
-        # For other assays, this will be left to False unless explicitly set to True
-        if info.data.get('assay') == Assay.RNA:
-            return True
-
-        elif info.data.get("consensus_counts") is not None:
-            return True
-        
-
-       
+        return False
 
 
     @model_validator(mode="after")
@@ -156,6 +143,23 @@ class CommonComputedFieldsMixin(BaseModel):
 
         if model.has_spikein is None:
             model.has_spikein = getattr(model, "spikein", None) is not None
+
+        # Force quantification files when they are required by assay features.
+        peak_calling = getattr(model, "peak_calling", None)
+        consensus_counts_enabled = False
+        if peak_calling is not None:
+            if isinstance(peak_calling, dict):
+                consensus_counts_enabled = bool(peak_calling.get("consensus_counts", False))
+            else:
+                consensus_counts_enabled = bool(
+                    getattr(peak_calling, "consensus_counts", False)
+                )
+
+        # RNA assay configs expose `rna_quantification`; if present, quantification
+        # outputs should always be generated.
+        is_rna_assay_config = hasattr(model, "rna_quantification")
+        if is_rna_assay_config or consensus_counts_enabled:
+            model.create_quantification_files = True
 
         return model
 

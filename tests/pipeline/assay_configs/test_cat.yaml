@@ -4,3 +4,9 @@ project:
   description: "Test project for CUT&TAG"
 assay_config:
   create_dataset: True 
+  create_bigwigs: True
+  bigwigs:
+    pileup_method:
+      - deeptools
+    binsize: 10
+    scale_methods: null

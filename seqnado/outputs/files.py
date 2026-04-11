@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, List, Literal, Protocol
 
 from loguru import logger
+from seqnado.utils import warn_once
 from pydantic import BaseModel, Field, computed_field, field_validator
 from snakemake.io import expand
 
@@ -200,7 +201,7 @@ class BigWigFiles(BaseModel):
         """Check if a method-scale-assay combination is compatible."""
         if scale in self.incompatible_methods.get(method, []):
             context = "merged " if self.is_merged else ""
-            logger.warning(
+            warn_once(
                 f"{method.value} does not support {scale.value} scaling for {context}bigWigs "
                 f"and will be skipped. Use deeptools or bamnado instead."
             )

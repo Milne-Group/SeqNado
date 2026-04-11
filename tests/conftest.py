@@ -58,6 +58,9 @@ def pytest_configure(config):
         "markers", "snakemake: tests that invoke Snakemake via subprocess"
     )
     config.addinivalue_line(
+        "markers", "genome_build: tests for the genome-build workflow (skipped by default)"
+    )
+    config.addinivalue_line(
         "markers", "requires_apptainer: tests that require Apptainer/Singularity"
     )
 
@@ -94,6 +97,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help="Number of CPU cores to allocate to pipeline tests (default: 2)",
     )
     group.addoption(
+        "--run-genome-tests",
+        action="store_true",
+        default=False,
+        help="Run genome-build pipeline tests (disabled by default)",
+    )
+    group.addoption(
         "--preset",
         action="store",
         default="t",
@@ -124,8 +133,17 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         ):
             item.add_marker(pytest.mark.requires_data)
 
+        # If tests are marked as genome_build and user did not opt in, skip them
+        if any(m.name == "genome_build" for m in item.iter_markers()):
+            if not config.getoption("--run-genome-tests"):
+                item.add_marker(
+                    pytest.mark.skip(
+                        reason="Use --run-genome-tests to enable genome build tests"
+                    )
+                )
+
         # If tests are marked as pipeline and user did not opt in, skip them
-        if any(m.name == "pipeline" for m in item.iter_markers()):
+        elif any(m.name == "pipeline" for m in item.iter_markers()):
             if not config.getoption("--run-pipeline"):
                 item.add_marker(
                     pytest.mark.skip(

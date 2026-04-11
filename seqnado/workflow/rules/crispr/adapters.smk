@@ -1,5 +1,5 @@
-CUTADAPT_MODE = getattr(CONFIG.third_party_tools.cutadapt, 'mode', None)
-CUTADAPT_MODE_VALUE = getattr(CUTADAPT_MODE, 'value', CUTADAPT_MODE) if CUTADAPT_MODE else None
+CUTADAPT_MODE = CONFIG.third_party_tools.cutadapt.mode if CONFIG.third_party_tools.cutadapt else None
+CUTADAPT_MODE_VALUE = CUTADAPT_MODE.value if CUTADAPT_MODE else None
 AUTO_DETECT_ADAPTERS = CUTADAPT_MODE_VALUE == 'crispr'
 
 

@@ -13,7 +13,7 @@ from helpers import GenomeResources
 GENOME_NAME = "chr21"
 
 
-@pytest.mark.pipeline
+@pytest.mark.genome_build
 @pytest.mark.snakemake
 class TestGenomeBuildDryRun:
     """Verify the genome build Snakefile produces a valid DAG via dry-run."""
@@ -151,6 +151,7 @@ def _stage_genome(resources: GenomeResources, out_dir: Path, genome_name: str) -
 
 
 @pytest.mark.pipeline
+@pytest.mark.genome_build
 @pytest.mark.snakemake
 @pytest.mark.slow
 class TestGenomeBuild:
