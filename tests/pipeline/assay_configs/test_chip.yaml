@@ -19,4 +19,5 @@ assay_config:
     scale_methods:
       - unscaled
       - csaw
+  create_dataset: True 
     perform_comparisons: True

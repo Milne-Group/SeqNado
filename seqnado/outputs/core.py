@@ -22,6 +22,7 @@ from seqnado.outputs.files import (
     BigWigFiles,
     ContactFiles,
     CRISPRFiles,
+    DatasetFiles,
     FileCollection,
     GeoSubmissionFiles,
     HeatmapFiles,
@@ -186,6 +187,37 @@ class SeqnadoOutputFiles(BaseModel):
     @property
     def bedgraph_files(self):
         return self.select_files(".bedgraph")
+
+    @property
+    def meth_files(self):
+        """Return QuantNado-compatible methylation bedGraphs for the reference genome."""
+        return [
+            f
+            for f in self.files
+            if "/methylation/methyldackel/" in f
+            and (
+                f.endswith("_CpG.bedGraph")
+                or f.endswith("_CpG_inverted.bedGraph")
+            )
+        ]
+
+    @property
+    def meth_file_map(self) -> dict[str, str]:
+        """Map sample names to their QuantNado-compatible methylation bedGraph."""
+        file_map: dict[str, str] = {}
+        for sample in self.sample_names:
+            prefix = f"{sample}_"
+            match = next(
+                (
+                    f
+                    for f in self.meth_files
+                    if Path(f).name.startswith(prefix)
+                ),
+                None,
+            )
+            if match is not None:
+                file_map[sample] = match
+        return file_map
 
     @property
     def bigbed_files(self):
@@ -1022,8 +1054,7 @@ class SeqnadoOutputBuilder:
 
     def add_dataset(self) -> None:
         """Add dataset output file."""
-        path = str(Path(self.output_dir) / "dataset.zarr")
-        self.file_collections.append(BasicFileCollection(files=[path]))
+        self.file_collections.append(DatasetFiles(output_dir=self.output_dir))
 
     def add_quantification_files(self) -> None:
         """Add quantification files to the output collection."""
@@ -1149,13 +1180,10 @@ class MultiomicsOutputBuilder:
         self.file_collections.append(BasicFileCollection(files=[path]))
 
     def add_multiomics_dataset(self) -> str:
-        """Add the multiomics dataset output file.
-        """
-        filename = "dataset.zarr"
-        path = str(
-            Path(self.output_dir) / "multiomics" / filename
+        """Add the multiomics dataset output file."""
+        self.file_collections.append(
+            DatasetFiles(output_dir=str(self.output_dir), relative_path="dataset/.complete")
         )
-        self.file_collections.append(BasicFileCollection(files=[path]))
 
     @property
     def dataset_bam_files(self) -> list[str]:

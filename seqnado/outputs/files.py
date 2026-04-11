@@ -37,6 +37,20 @@ class BasicFileCollection(BaseModel):
     files: List[str] = Field(default_factory=list)
 
 
+class DatasetFiles(BaseModel):
+    output_dir: str = "seqnado_output"
+    relative_path: str = "dataset.zarr"
+
+    @property
+    def dataset_file(self) -> str:
+        return str(Path(self.output_dir) / self.relative_path)
+
+    @computed_field
+    @property
+    def files(self) -> List[str]:
+        return [self.dataset_file]
+
+
 class QCFiles(BaseModel):
     assay: Assay
     samples: FastqCollection | FastqCollectionForIP | BamCollection | BigWigCollection

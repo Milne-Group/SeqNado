@@ -24,7 +24,7 @@ seqnado_output/{assay}/       # Assay-specific directory
 ├── geo_submission/           # GEO submission-ready files (if enabled)
 ├── methylation/              # Methylation calls (METH only)
 ├── variant/                  # VCF files (SNP only)
-├── dataset.zarr/             # QuantNado multi-sample signal store (if enabled)
+├── dataset/             # QuantNado multi-sample signal store (if enabled)
 └── logs/                     # Process execution logs
 ```
 
@@ -353,13 +353,13 @@ geo_submission/
 └── {assay}/                          # Upload directory
 ```
 
-### QuantNado Dataset (`dataset.zarr`)
+### QuantNado Dataset (`dataset`)
 
 When `create_dataset: true` is set in the config, SeqNado runs [QuantNado](https://milne-group.github.io/QuantNado/) to produce a multi-sample signal store from all aligned BAM files:
 
 ```
-dataset.zarr/                   # Zarr v3 store (single-assay runs)
-multiomics/dataset.zarr/        # Zarr v3 store (multiomics runs)
+dataset/                   # Zarr v3 store (single-assay runs)
+multiomics/dataset/        # Zarr v3 store (multiomics runs)
 ```
 
 **Structure:**
@@ -367,7 +367,7 @@ multiomics/dataset.zarr/        # Zarr v3 store (multiomics runs)
 The store contains one Zarr array per chromosome, each with shape `(n_samples × chromosome_length)` holding integer base-resolution (1 bp) read depth values. All samples are stored together in a single matrix per chromosome, making joint access across samples efficient.
 
 ```
-dataset.zarr/
+dataset/
 ├── chr1/                       # Array: (n_samples, chrom_length), uint16/uint32
 ├── chr2/
 ├── ...
@@ -393,15 +393,41 @@ Root-level Zarr attributes store sample names, chromosome sizes, chunk length, a
 The dataset is designed for programmatic access via Python. See the [QuantNado documentation](https://milne-group.github.io/QuantNado/) for the full API, including lazy loading with xarray/dask and region extraction:
 
 ```python
-from quantnado.dataset import QuantNadoDataset
+from quantnado.analysis.core import QuantNadoDataset
 
-ds = QuantNadoDataset("seqnado_output/chip/dataset.zarr")
+qn = QuantNadoDataset(DATASET, annotation=GTF_FILE)
+qn.info
 
-# Extract a region as an xarray DataArray (lazy, dask-backed)
-region = ds.extract_region("chr9:77,418,764-78,339,335")
+# Extract a region as an xarray DataArray
+region = qn.sel(chrom=GENE_CHROM, start=GENE_START, end=GENE_END)
+region.info
 
-# Load a full chromosome for all samples
-xr_dict = ds.to_xarray(chromosomes=["chr1"])
+# Cache reusable sample-group namespaces. With match="contains",
+# each label can match one or many sample-name patterns.
+qn.group_by(
+    ip="ip",
+    treatment={
+        "control": ["control"],
+        "treated": ["treated"],
+    },
+    replicate={
+        "rep1": ["rep1"],
+        "rep2": ["rep2"],
+    },
+    spikein={
+        "spikein": ["spikein", "rx"],
+    },
+    match="contains",
+)
+
+chip_qn = qn.subset(
+    assay="CHIP",
+    ip="MLL",
+    group={
+        "spikein": "spikein",
+    },
+)
+chip_qn.info
 ```
 
 !!! note
