@@ -8,24 +8,24 @@ All SeqNado analysis results are organized within the `seqnado_output/` director
 
 ```
 seqnado_output/{assay}/       # Assay-specific directory
-├── seqnado_report.html       # Main interactive QC report (MultiQC)
-├── protocol.txt              # Auto-generated data processing protocol
 ├── aligned/                  # Final BAM alignment files
 ├── bigwigs/                  # BigWig coverage tracks
-├── peaks/                    # Peak calling results (ATAC, ChIP, CUT&Tag)
-├── readcounts/               # Quantification files (RNA, CRISPR)
-├── qc/                       # Quality control metrics
-├── hub/                      # UCSC Genome Browser hub
-├── heatmap/                  # DeepTools heatmap and metaplot PDFs
-├── motifs/                   # Motif analysis results (if enabled)
-├── tag_dirs/                 # HOMER tag directories
-├── resources/                # Normalisation factors (spike-in and CSAW)
-├── track_plots/     # PlotNado visualisations (if configured)
-├── geo_submission/           # GEO submission-ready files (if enabled)
-├── methylation/              # Methylation calls (METH only)
-├── variant/                  # VCF files (SNP only)
 ├── dataset/             # QuantNado multi-sample signal store (if enabled)
-└── logs/                     # Process execution logs
+├── geo_submission/           # GEO submission-ready files (if enabled)
+├── heatmap/                  # DeepTools heatmap and metaplot PDFs
+├── hub/                      # UCSC Genome Browser hub
+├── logs/                     # Process execution logs
+├── methylation/              # Methylation calls (METH only)
+├── motifs/                   # Motif analysis results (if enabled)
+├── peaks/                    # Peak calling results (ATAC, ChIP, CUT&Tag)
+├── qc/                       # Quality control metrics
+├── readcounts/               # Quantification files (RNA, CRISPR)
+├── resources/                # Normalisation factors (spike-in and CSAW)
+├── tag_dirs/                 # HOMER tag directories
+├── track_plots/     # PlotNado visualisations (if configured)
+├── variant/                  # VCF files (SNP only)
+├── protocol.txt              # Auto-generated data processing protocol
+└── seqnado_report.html       # Main interactive QC report (MultiQC)
 ```
 
 !!! note
