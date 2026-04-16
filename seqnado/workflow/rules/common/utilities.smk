@@ -11,7 +11,7 @@ rule save_design:
         INPUT_FILES.to_dataframe().to_csv(OUTPUT_DIR + "/metadata.csv", index=False)
 
 
-rule make_genomic_bins:
+rule genomic_bins:
     input:
         chrom_sizes=CONFIG.genome.chromosome_sizes,
     params:

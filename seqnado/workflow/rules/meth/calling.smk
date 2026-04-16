@@ -104,7 +104,7 @@ rule taps_inverted:
     rm {input.bdg}
     """
 
-rule make_bigwigs_meth_taps:
+rule bigwigs_meth_taps:
     input:
         bdg=rules.taps_inverted.output.taps
     output:
@@ -124,7 +124,7 @@ rule make_bigwigs_meth_taps:
     bedGraphToBigWig {output.bdg} {params.chrom_sizes} {output.bigwig} > {log} 2>&1
     """
 
-rule make_bigwigs_meth_wgbs:
+rule bigwigs_meth_wgbs:
     input:
         bdg=rules.methyldackel_extract.output.bdg
     output:

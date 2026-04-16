@@ -183,7 +183,7 @@ if CONFIG.assay_config.has_spikein:
         case _:
             ruleorder: align_paired_spikein > align_single_spikein
             ruleorder: bam_move_ref > align_paired > align_single
-            ruleorder: make_bigwigs_deeptools_spikein > make_bigwigs_deeptools
+            ruleorder: bigwigs_deeptools_spikein > bigwigs_deeptools
 else:
     match ASSAY:
         case Assay.RNA:

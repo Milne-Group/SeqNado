@@ -71,7 +71,7 @@ def _get_dataset_args(wildcards):
     raise ValueError(f"Unsupported assay type: {assay}")
 
 
-rule create_dataset:
+rule dataset_create:
     input:
         bam=lambda wc: _get_dataset_args(wc)["bam"],
         bai=lambda wc: _get_dataset_args(wc)["bai"],
@@ -110,7 +110,7 @@ rule create_dataset:
     """
 
 
-rule combine_dataset:
+rule dataset_combine:
     input:
         stores=lambda wildcards: expand(
             OUTPUT_DIR + "/dataset/{sample_id}.zarr",

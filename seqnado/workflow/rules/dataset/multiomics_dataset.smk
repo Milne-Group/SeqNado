@@ -33,7 +33,7 @@ DATASET_PATH = (
     f"{EXAMPLE_CONFIG.project.date}_{EXAMPLE_CONFIG.project.name}.zarr"
 )
 
-rule combine_multiomics_dataset:
+rule multiomics_dataset:
     input: 
         stores = lambda wildcards: _get_multiomics_store_paths(),
     output: 
@@ -48,8 +48,8 @@ rule combine_multiomics_dataset:
             initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
         ),
     container: "docker://ghcr.io/milne-group/quantnado-ci:latest"
-    log: OUTPUT_DIR + "/logs/dataset/dataset_combine.log"
-    benchmark: OUTPUT_DIR + "/.benchmark/dataset/dataset_combine.tsv"
+    log: OUTPUT_DIR + "/logs/dataset/multiomics_dataset.log"
+    benchmark: OUTPUT_DIR + "/.benchmark/dataset/multiomics_dataset.tsv"
     message: "Combining multi-omics datasets using QuantNado."
     shell: """
     quantnado dataset combine \

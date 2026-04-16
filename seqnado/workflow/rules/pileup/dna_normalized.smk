@@ -11,7 +11,7 @@ from seqnado.workflow.helpers.normalization import (
 
 
 if CONFIG.third_party_tools.deeptools is not None:
-    rule make_bigwigs_deeptools_scale:
+    rule bigwigs_deeptools_scale:
         input:
             bam=OUTPUT_DIR + "/aligned/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -36,7 +36,7 @@ if CONFIG.third_party_tools.deeptools is not None:
             bamCoverage -b {input.bam} -o {output.bigwig} --scaleFactor {params.scale} -p {threads} {params.options} > {log} 2>&1
             """
 
-    use rule make_bigwigs_deeptools_scale as make_bigwigs_deeptools_spikein with:
+    use rule bigwigs_deeptools_scale as make_bigwigs_deeptools_spikein with:
         input:
             bam=OUTPUT_DIR + "/aligned/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -52,7 +52,7 @@ if CONFIG.third_party_tools.deeptools is not None:
 
 
 if CONFIG.third_party_tools.bamnado is not None:
-    rule make_bigwigs_bamnado_scale:
+    rule bigwigs_bamnado_scale:
         input:
             bam=OUTPUT_DIR + "/aligned/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -79,7 +79,7 @@ if CONFIG.third_party_tools.bamnado is not None:
             bamnado bam-coverage {params.options} --scale-factor {params.scale} -b {input.bam} -o {output.bigwig} > {log} 2>&1
             """
 
-    rule make_bigwigs_bamnado_spikein:
+    rule bigwigs_bamnado_spikein:
         input:
             bam=OUTPUT_DIR + "/aligned/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -105,7 +105,7 @@ if CONFIG.third_party_tools.bamnado is not None:
 
 
 if CONFIG.third_party_tools.deeptools is not None:
-    rule make_bigwigs_deeptools_rna_spikein_plus:
+    rule bigwigs_deeptools_rna_spikein_plus:
         input:
             bam=OUTPUT_DIR + "/aligned/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -127,7 +127,7 @@ if CONFIG.third_party_tools.deeptools is not None:
             bamCoverage -b {input.bam} -o {output.bigwig} -p {threads} --scaleFactor {params.scale} {params.options} --filterRNAstrand forward > {log} 2>&1
             """
 
-    rule make_bigwigs_deeptools_rna_spikein_minus:
+    rule bigwigs_deeptools_rna_spikein_minus:
         input:
             bam=OUTPUT_DIR + "/aligned/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
