@@ -33,13 +33,15 @@ def _build_rna_config(tmp_path: Path) -> SeqnadoConfig:
 def test_create_bigwigs_roundtrip_toggle(tmp_path: Path) -> None:
     config = _build_rna_config(tmp_path)
     out_file = tmp_path / "config_rna.yaml"
+    seqnado_version = "9.9.9"
 
     template = resources.files("seqnado.data").joinpath("config_template.jinja")
     with resources.as_file(template) as tpl_path:
-        render_config(Path(tpl_path), config, out_file)
+        render_config(Path(tpl_path), config, out_file, seqnado_version=seqnado_version)
 
     config_data = yaml.safe_load(out_file.read_text())
     assert "assay_config" in config_data
+    assert config_data["seqnado_version"] == seqnado_version
 
     for value in (True, False):
         config_data["assay_config"]["create_bigwigs"] = value
