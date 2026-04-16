@@ -36,7 +36,7 @@ if CONFIG.third_party_tools.deeptools is not None:
             bamCoverage -b {input.bam} -o {output.bigwig} --scaleFactor {params.scale} -p {threads} {params.options} > {log} 2>&1
             """
 
-    use rule bigwigs_deeptools_scale as make_bigwigs_deeptools_spikein with:
+    use rule bigwigs_deeptools_scale as bigwigs_deeptools_spikein with:
         input:
             bam=OUTPUT_DIR + "/aligned/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",

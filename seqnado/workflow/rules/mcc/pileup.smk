@@ -44,7 +44,7 @@ rule bigwigs_mcc_replicates:
     """
 
 
-use rule bigwigs_mcc_replicates as make_bigwigs_mcc_grouped_norm with:
+use rule bigwigs_mcc_replicates as bigwigs_mcc_grouped_norm with:
     input:
         bam=OUTPUT_DIR + "/mcc/{group}/{group}.bam",
         bai=OUTPUT_DIR + "/mcc/{group}/{group}.bam.bai",
@@ -70,7 +70,7 @@ use rule bigwigs_mcc_replicates as make_bigwigs_mcc_grouped_norm with:
         "docker://ghcr.io/alsmith151/bamnado:latest",
 
 
-use rule bigwigs_mcc_replicates as make_bigwigs_mcc_grouped_raw with:
+use rule bigwigs_mcc_replicates as bigwigs_mcc_grouped_raw with:
     input:
         bam=OUTPUT_DIR + "/mcc/{group}/{group}.bam",
         bai=OUTPUT_DIR + "/mcc/{group}/{group}.bam.bai",
