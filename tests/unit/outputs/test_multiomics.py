@@ -87,7 +87,7 @@ class TestMultiomicsOutputBuilder:
         builder.add_multiomics_dataset()
         
         assert len(builder.file_collections) == 1
-        assert str(Path("out/dataset/.complete")) in builder.file_collections[0].files
+        assert str(Path("out/dataset/dataset.zarr")) in builder.file_collections[0].files
 
     def test_add_assay_outputs(self):
         """Test adding all assay outputs."""

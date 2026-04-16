@@ -152,3 +152,4 @@ update_test_data.ipynb
 seqnado/workflow/rules/genomes/scripts
 .snakemake/
 .claude/settings.json
+quantnado.ipynb

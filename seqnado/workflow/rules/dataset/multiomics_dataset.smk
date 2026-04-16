@@ -28,11 +28,17 @@ def _get_multiomics_store_paths():
         )
     return stores
 
+DATASET_PATH = (
+    f"{OUTPUT_DIR}/dataset/"
+    f"{EXAMPLE_CONFIG.project.date}_{EXAMPLE_CONFIG.project.name}.zarr"
+)
+
 rule combine_multiomics_dataset:
     input: 
         stores = lambda wildcards: _get_multiomics_store_paths(),
     output: 
-        dataset=directory(OUTPUT_DIR + "/dataset/dataset.zarr"),
+        dataset=directory(DATASET_PATH),
+        json=DATASET_PATH + "/zarr.json",
     threads: 1
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(
@@ -52,16 +58,3 @@ rule combine_multiomics_dataset:
     --overwrite \
     --log-file {log}
     """
-
-
-rule finalize_multiomics_dataset:
-    input:
-        OUTPUT_DIR + "/dataset/dataset.zarr"
-    output:
-        touch(OUTPUT_DIR + "/dataset/.complete")
-    log:
-        OUTPUT_DIR + "/logs/dataset/dataset_finalize.log"
-    benchmark:
-        OUTPUT_DIR + "/.benchmark/dataset/dataset_finalize.tsv"
-    message:
-        "Finalizing multiomics dataset at {output}."

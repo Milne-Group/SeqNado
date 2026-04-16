@@ -1054,7 +1054,14 @@ class SeqnadoOutputBuilder:
 
     def add_dataset(self) -> None:
         """Add dataset output file."""
-        self.file_collections.append(DatasetFiles(output_dir=self.output_dir))
+        self.file_collections.append(
+            DatasetFiles(
+                output_dir=self.output_dir,
+                relative_path=(
+                    f"dataset/{self.config.project.date}_{self.config.project.name}.zarr"
+                ),
+            )
+        )
 
     def add_quantification_files(self) -> None:
         """Add quantification files to the output collection."""
@@ -1181,8 +1188,15 @@ class MultiomicsOutputBuilder:
 
     def add_multiomics_dataset(self) -> str:
         """Add the multiomics dataset output file."""
+        if self.configs_per_assay:
+            example_config = next(iter(self.configs_per_assay.values()))
+            relative_path = (
+                f"dataset/{example_config.project.date}_{example_config.project.name}.zarr"
+            )
+        else:
+            relative_path = "dataset/dataset.zarr"
         self.file_collections.append(
-            DatasetFiles(output_dir=str(self.output_dir), relative_path="dataset/.complete")
+            DatasetFiles(output_dir=str(self.output_dir), relative_path=relative_path)
         )
 
     @property
