@@ -1,7 +1,7 @@
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested, format_deeptools_options
 
 if CONFIG.third_party_tools.bamnado is not None:
-    rule make_bigwigs_bamnado_merged:
+    rule bigwigs_bamnado_merged:
         input:
             bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
             bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -30,7 +30,7 @@ if CONFIG.third_party_tools.bamnado is not None:
 
 
 if CONFIG.third_party_tools.deeptools is not None:
-    rule make_bigwigs_deeptools_merged:
+    rule bigwigs_deeptools_merged:
         input:
             bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
             bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -61,7 +61,7 @@ if CONFIG.third_party_tools.deeptools is not None:
 
 
 if CONFIG.third_party_tools.homer is not None:
-    rule make_bigwigs_homer_merged:
+    rule bigwigs_homer_merged:
         input:
             homer_tag_directory=OUTPUT_DIR + "/tag_dirs/merged/unscaled/{group}",
         output:

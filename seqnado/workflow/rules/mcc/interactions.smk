@@ -128,7 +128,7 @@ use rule bgzip_pairs as bgzip_pairs_replicates with:
     message: "Bgzipping pairs file for viewpoint {wildcards.viewpoint} in sample {wildcards.sample}",
 
 
-rule make_cooler:
+rule cooler:
     input:
         pairs=OUTPUT_DIR + "/mcc/{group}/ligation_junctions/{viewpoint}.pairs.gz",
         bins=OUTPUT_DIR + "/resources/genomic_bins.bed",

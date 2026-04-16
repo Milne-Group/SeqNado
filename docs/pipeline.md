@@ -36,15 +36,15 @@ Presets are just snakemake profiles that define how jobs are executed. On runnin
 ```bash
 tree ~/.config/snakemake/profile_*
 
-/home/a/asmith/.config/snakemake/profile_local_conda
+/home/.config/snakemake/profile_local_conda
 └── config.yaml
-/home/a/asmith/.config/snakemake/profile_local_environment
+/home/.config/snakemake/profile_local_environment
 └── config.yaml
-/home/a/asmith/.config/snakemake/profile_local_singularity
+/home/.config/snakemake/profile_local_singularity
 └── config.yaml
-/home/a/asmith/.config/snakemake/profile_slurm_singularity
+/home/.config/snakemake/profile_slurm_singularity
 └── config.yaml
-/home/a/asmith/.config/snakemake/profile_test
+/home/.config/snakemake/profile_test
 └── config.v8+.yaml
 ```
 

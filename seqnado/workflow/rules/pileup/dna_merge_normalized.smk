@@ -10,7 +10,7 @@ from seqnado.workflow.helpers.normalization import (
 
 
 if CONFIG.third_party_tools.deeptools is not None:
-    rule make_bigwigs_deeptools_merged_scale:
+    rule bigwigs_deeptools_merged_scale:
         input:
             bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
             bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -40,7 +40,7 @@ if CONFIG.third_party_tools.deeptools is not None:
             bamCoverage -b {input.bam} -o {output.bigwig} --scaleFactor {params.scale} -p {threads} {params.options} > {log} 2>&1
             """
 
-    rule make_bigwigs_deeptools_merged_spikein:
+    rule bigwigs_deeptools_merged_spikein:
         input:
             bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
             bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -72,7 +72,7 @@ if CONFIG.third_party_tools.deeptools is not None:
 
 
 if CONFIG.third_party_tools.bamnado is not None:
-    rule make_bigwigs_bamnado_merged_scale:
+    rule bigwigs_bamnado_merged_scale:
         input:
             bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
             bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -98,7 +98,7 @@ if CONFIG.third_party_tools.bamnado is not None:
             bamnado bam-coverage {params.options} --scale-factor {params.scale} -b {input.bam} -o {output.bigwig} > {log} 2>&1
             """
 
-    rule make_bigwigs_bamnado_merged_spikein:
+    rule bigwigs_bamnado_merged_spikein:
         input:
             bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
             bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",

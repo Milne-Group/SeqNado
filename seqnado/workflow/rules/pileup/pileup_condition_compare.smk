@@ -42,7 +42,7 @@ _STRANDS = ["plus", "minus"] if _IS_RNA else [""]
 
 if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
 
-    rule make_bigwigs_aggregated:
+    rule bigwigs_aggregated:
         """
         Aggregate per-sample unscaled bigwigs to condition-level means.
         For RNA-seq, handles stranded bigwigs (plus/minus).
@@ -88,7 +88,7 @@ if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
             > {log} 2>&1
             """
 
-    rule make_bigwigs_subtraction:
+    rule bigwigs_subtraction:
         """
         Generate pairwise subtraction bigwigs from condition-level aggregates (unscaled source).
         For RNA-seq, handles stranded bigwigs (plus/minus).
@@ -140,7 +140,7 @@ if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
 
     if _HAS_SPIKEIN and _SPIKEIN_METHODS:
 
-        rule make_bigwigs_spikein_aggregated:
+        rule bigwigs_spikein_aggregated:
             """
             Aggregate per-sample spike-in normalized bigwigs to condition-level means.
             For RNA-seq, handles stranded bigwigs (plus/minus).
@@ -187,7 +187,7 @@ if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
                 > {log} 2>&1
                 """
 
-        rule make_bigwigs_spikein_subtraction:
+        rule bigwigs_spikein_subtraction:
             """
             Generate pairwise subtraction bigwigs from spike-in normalized condition aggregates.
             For RNA-seq, handles stranded bigwigs (plus/minus).

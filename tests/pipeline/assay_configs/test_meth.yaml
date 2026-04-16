@@ -1,6 +1,6 @@
 assay: METH
 project:
-  name: default_project
+  name: test
   description: "Test project for METH"
 assay_config:
   create_bigwigs: True

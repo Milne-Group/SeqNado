@@ -28,11 +28,17 @@ def _get_multiomics_store_paths():
         )
     return stores
 
-rule combine_multiomics_dataset:
+DATASET_PATH = (
+    f"{OUTPUT_DIR}/dataset/"
+    f"{EXAMPLE_CONFIG.project.date}_{EXAMPLE_CONFIG.project.name}.zarr"
+)
+
+rule multiomics_dataset:
     input: 
         stores = lambda wildcards: _get_multiomics_store_paths(),
     output: 
-        dataset=directory(OUTPUT_DIR + "/dataset/dataset.zarr"),
+        dataset=directory(DATASET_PATH),
+        json=DATASET_PATH + "/zarr.json",
     threads: 1
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(
@@ -42,8 +48,8 @@ rule combine_multiomics_dataset:
             initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
         ),
     container: "docker://ghcr.io/milne-group/quantnado-ci:latest"
-    log: OUTPUT_DIR + "/logs/dataset/dataset_combine.log"
-    benchmark: OUTPUT_DIR + "/.benchmark/dataset/dataset_combine.tsv"
+    log: OUTPUT_DIR + "/logs/dataset/multiomics_dataset.log"
+    benchmark: OUTPUT_DIR + "/.benchmark/dataset/multiomics_dataset.tsv"
     message: "Combining multi-omics datasets using QuantNado."
     shell: """
     quantnado dataset combine \
@@ -52,16 +58,3 @@ rule combine_multiomics_dataset:
     --overwrite \
     --log-file {log}
     """
-
-
-rule finalize_multiomics_dataset:
-    input:
-        OUTPUT_DIR + "/dataset/dataset.zarr"
-    output:
-        touch(OUTPUT_DIR + "/dataset/.complete")
-    log:
-        OUTPUT_DIR + "/logs/dataset/dataset_finalize.log"
-    benchmark:
-        OUTPUT_DIR + "/.benchmark/dataset/dataset_finalize.tsv"
-    message:
-        "Finalizing multiomics dataset at {output}."

@@ -1,16 +1,16 @@
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
 import shutil
 
-localrules: copy_fastq_screen_config
+localrules: fastq_screen_config
 
 
-rule copy_fastq_screen_config:
+rule fastq_screen_config:
     input:
         conf=CONFIG.third_party_tools.fastq_screen.config,
     output:
         conf=temp(OUTPUT_DIR + "/qc/fastq_screen/fastq_screen.conf"),
-    log: OUTPUT_DIR + "/logs/fastq_screen/copy_fastq_screen_config.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/fastq_screen/copy_fastq_screen_config.tsv",
+    log: OUTPUT_DIR + "/logs/fastq_screen/fastq_screen_config.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/fastq_screen/fastq_screen_config.tsv",
     message: "Copying fastq_screen configuration file to output directory",
     run:
         shutil.copy(input.conf, output.conf)
