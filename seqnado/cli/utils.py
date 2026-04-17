@@ -45,6 +45,7 @@ class ExitCode:
 TOP_LEVEL_PASS_THROUGH = (
     "-n",
     "--dry-run",
+    "--benchmark-extended",
     "--printshellcmds",
     "--unlock",
     "--rerun-incomplete",

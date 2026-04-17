@@ -143,6 +143,3 @@ rule bigwigs_meth_wgbs:
     awk -v OFS="\t" '{{print $1, $2, $3, $4}}' {input.bdg} > {output.bdg} 2> {log}
     bedGraphToBigWig {output.bdg} {params.chrom_sizes} {output.bigwig} > {log} 2>&1
     """
-
-localrules:
-    calculate_conversion

@@ -32,7 +32,3 @@ if CONFIG.assay_config.create_ucsc_hub and (OUTPUT.bigwig_files or OUTPUT.bigbed
         benchmark: OUTPUT_DIR + f"/.benchmark/visualise/{CONFIG.assay_config.ucsc_hub.name}_hub.tsv",
         message: f"Generating UCSC Genome Browser hub: {CONFIG.assay_config.ucsc_hub.name}"
         script: "../../scripts/create_hub_with_tracknado.py"
-
-
-    localrules:
-        generate_hub

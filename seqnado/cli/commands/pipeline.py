@@ -33,6 +33,13 @@ from seqnado.utils import (
 )
 
 
+def _ensure_default_snakemake_flag(options: List[str], flag: str) -> List[str]:
+    """Return options with a default Snakemake flag present exactly once."""
+    if flag in options:
+        return options
+    return [flag, *options]
+
+
 def _run_multiomics_pipeline(
     config_files: List[Path],
     preset: str,
@@ -254,6 +261,7 @@ def pipeline(
 
     # Extract cores and produce cleaned options
     cleaned_opts, cores = extract_cores_from_options(raw_extra_args)
+    cleaned_opts = _ensure_default_snakemake_flag(cleaned_opts, "--benchmark-extended")
 
     # Sensible default cores logic for multiomics: at least one core per assay unless user requested more.
     if use_multiomics:

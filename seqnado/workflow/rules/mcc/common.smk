@@ -38,6 +38,9 @@ use rule bam_index as bam_index_merged with:
         bam=OUTPUT_DIR + "/mcc/{group}/{group}.bam",
     output:
         bai=OUTPUT_DIR + "/mcc/{group}/{group}.bam.bai",
+    params:
+        read_log=read_log_shared_path(OUTPUT_DIR, "{group}", "bam_index_merged"),
+        log_entity="{group}",
     wildcard_constraints:
         group="|".join(SAMPLE_GROUPINGS.get_grouping("consensus").group_names),
     log:

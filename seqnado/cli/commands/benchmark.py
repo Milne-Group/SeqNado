@@ -13,6 +13,7 @@ from seqnado.cli.benchmark_helpers import (
     discover_snakemake_logs,
     format_compact_number,
     load_benchmark_table,
+    parse_alignment_processing_logs,
     parse_snakemake_logs_timeline,
     summarize_benchmarks,
     write_html_report,
@@ -154,6 +155,7 @@ def benchmark(
     output_root = _infer_output_root(resolved_benchmark_dir)
     run_root = _infer_run_root(resolved_benchmark_dir)
     assay_sizes = compute_assay_output_sizes(output_root) if output_root is not None else None
+    read_counts_df = parse_alignment_processing_logs(output_root) if output_root is not None else None
     log_candidates = discover_snakemake_logs(run_root) if run_root is not None else []
     timeline_df = parse_snakemake_logs_timeline(log_candidates) if log_candidates else None
 
@@ -166,17 +168,17 @@ def benchmark(
         top_n=top_n,
         assay_sizes=assay_sizes,
         timeline_df=timeline_df,
+        read_counts_df=read_counts_df,
     )
 
     summary = summarize_benchmarks(table)
     rows = [
         ["Jobs", f"{summary.jobs:,d}"],
-        ["Groups", f"{summary.groups:,d}"],
-        ["Total Runtime (s)", f"{summary.total_runtime_seconds:,.2f}"],
-        ["Total CPU Time (s)", f"{summary.total_cpu_time_seconds:,.2f}"],
-        ["Peak RSS (MB)", f"{summary.peak_rss_mb:,.2f}"],
-        ["Total IO In", format_compact_number(summary.total_io_in)],
-        ["Total IO Out", format_compact_number(summary.total_io_out)],
+        ["Total Runtime (min)", f"{summary.total_runtime_seconds / 60:,.2f}"],
+        ["Total CPU Time (min)", f"{summary.total_cpu_time_seconds / 60:,.2f}"],
+        ["Peak RSS (GB)", f"{summary.peak_rss_mb / 1000:,.2f}"],
+        ["Total I/O In (GB)", f"{summary.total_io_in / 1_000_000_000:,.2f}"],
+        ["Total I/O Out (GB)", f"{summary.total_io_out / 1_000_000_000:,.2f}"],
     ]
     cli_print_table(["Metric", "Value"], rows)
 

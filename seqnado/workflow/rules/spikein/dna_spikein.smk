@@ -8,6 +8,8 @@ use rule align_paired as align_paired_spikein with:
         options="--no-mixed --no-discordant",
         index=CONFIG.genome.index.prefix,
         rg="--rg-id {sample} --rg SM:{sample}",
+        read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
+        rule_label="align_paired_spikein",
     output:
         bam=temp(OUTPUT_DIR + "/aligned/spikein/raw/{sample}.bam"),
     resources:
@@ -20,6 +22,9 @@ use rule align_paired as align_paired_spikein with:
 
 
 use rule align_single as align_single_spikein with:
+    params:
+        read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
+        rule_label="align_single_spikein",
     output:
         bam=temp(OUTPUT_DIR + "/aligned/spikein/raw/{sample}.bam"),
     resources:
@@ -29,4 +34,3 @@ use rule align_single as align_single_spikein with:
     log: OUTPUT_DIR + "/logs/aligned_spikein/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/aligned_spikein/{sample}.tsv",
     message: "Aligning spike-in reads for sample {wildcards.sample} using Bowtie2"
-

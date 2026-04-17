@@ -14,6 +14,7 @@ if CONFIG.pcr_duplicates.tool == PCRDuplicateTool.PICARD:
         threads: 8
         params:
             options=str(CONFIG.third_party_tools.picard.duplicate_removal.command_line_arguments),
+            read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=5, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
@@ -21,10 +22,12 @@ if CONFIG.pcr_duplicates.tool == PCRDuplicateTool.PICARD:
         log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_remove_duplicates.log",
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_remove_duplicates.tsv",
         message: "Removing duplicates from aligned BAM for sample {wildcards.sample} using Picard",
-        shell: """
-        picard MarkDuplicates -I {input.bam} -O {output.bam} -M {output.metrics} --REMOVE_DUPLICATES true --CREATE_INDEX true {params.options} 2> {log} &&
-        mv seqnado_output/aligned/duplicates_removed/{wildcards.sample}.bai {output.bai} &&
-        echo -e "duplicate removal\t$(samtools view -c {output.bam})" >> {output.read_log} 2>&1 | tee -a {log}
+        shell: f"""
+        before=$(samtools view -c {{input.bam}}) &&
+        picard MarkDuplicates -I {{input.bam}} -O {{output.bam}} -M {{output.metrics}} --REMOVE_DUPLICATES true --CREATE_INDEX true {{params.options}} >> {{log}} 2>&1 &&
+        mv seqnado_output/aligned/duplicates_removed/{{wildcards.sample}}.bai {{output.bai}} &&
+        after=$(samtools view -c {{output.bam}}) &&
+        {emit_read_logs("Remove Duplicates", "{wildcards.sample}", "{params.read_log}", "{output.read_log}")}
         """
 
 elif CONFIG.pcr_duplicates.tool == PCRDuplicateTool.SAMTOOLS:
@@ -36,6 +39,8 @@ elif CONFIG.pcr_duplicates.tool == PCRDuplicateTool.SAMTOOLS:
             bam=temp(OUTPUT_DIR + "/aligned/duplicates_removed/{sample}.bam"),
             bai=temp(OUTPUT_DIR + "/aligned/duplicates_removed/{sample}.bam.bai"),
             read_log=temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_remove_duplicates.tsv"),
+        params:
+            read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         threads: CONFIG.third_party_tools.samtools.duplicate_removal.threads
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=5, attempts=attempt, scale=SCALE_RESOURCES),
@@ -44,10 +49,12 @@ elif CONFIG.pcr_duplicates.tool == PCRDuplicateTool.SAMTOOLS:
         log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_remove_duplicates.log",
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_remove_duplicates.tsv",
         message: "Removing duplicates from aligned BAM for sample {wildcards.sample} using samtools",
-        shell: """
-        samtools rmdup -@ {threads} {input.bam} {output.bam} &&
-        samtools index {output.bam} &&
-        echo -e "duplicate removal\t$(samtools view -c {output.bam})" >> {output.read_log} 2>&1 | tee -a {log}
+        shell: f"""
+        before=$(samtools view -c {{input.bam}}) &&
+        samtools rmdup -@ {{threads}} {{input.bam}} {{output.bam}} >> {{log}} 2>&1 &&
+        samtools index {{output.bam}} >> {{log}} 2>&1 &&
+        after=$(samtools view -c {{output.bam}}) &&
+        {emit_read_logs("Remove Duplicates", "{wildcards.sample}", "{params.read_log}", "{output.read_log}")}
         """
 else:
     rule bam_ignore_duplicates:
@@ -58,6 +65,8 @@ else:
             bam=temp(OUTPUT_DIR + "/aligned/duplicates_removed/{sample}.bam"),
             bai=temp(OUTPUT_DIR + "/aligned/duplicates_removed/{sample}.bam.bai"),
             read_log=temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_remove_duplicates.tsv"),
+        params:
+            read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         threads: 8
         resources:
             mem="500MB",
@@ -65,8 +74,10 @@ else:
         log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_remove_duplicates.log",
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_remove_duplicates.tsv",
         message: "Skipping duplicate removal for sample {wildcards.sample}",
-        shell: """
-        mv {input.bam} {output.bam} &&
-        mv {input.bai} {output.bai} &&
-        echo -e "duplicate removal\t$(samtools view -c {output.bam})" >> {output.read_log} 2>&1 | tee -a {log}
+        shell: f"""
+        before=$(samtools view -c {{input.bam}}) &&
+        cp {{input.bam}} {{output.bam}} >> {{log}} 2>&1 &&
+        cp {{input.bai}} {{output.bai}} >> {{log}} 2>&1 &&
+        after=$(samtools view -c {{output.bam}}) &&
+        {emit_read_logs("Remove Duplicates", "{wildcards.sample}", "{params.read_log}", "{output.read_log}")}
         """

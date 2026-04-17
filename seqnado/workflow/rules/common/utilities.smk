@@ -96,11 +96,3 @@ rule bed_to_bigbed:
         bedToBigBed {input.bed}.tmp {params.chrom_sizes} {output.bigbed} 2> {log} &&
         rm {input.bed}.tmp
         """
-
-
-
-localrules:
-    save_design,
-    make_genomic_bins,
-    bed_to_saf,
-    validate_peaks,

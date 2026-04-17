@@ -1,8 +1,6 @@
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
 import shutil
 
-localrules: fastq_screen_config
-
 
 rule fastq_screen_config:
     input:

@@ -13,6 +13,7 @@ if CONFIG.remove_blacklist:
         threads: 1
         params:
             blacklist=CONFIG.genome.blacklist,
+            read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
@@ -20,10 +21,12 @@ if CONFIG.remove_blacklist:
         log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_blacklist.log",
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_blacklist.tsv",
         message: "Removing blacklisted regions from aligned BAM for sample {wildcards.sample} using bedtools",
-        shell: """
-        bedtools intersect -v -b {params.blacklist} -a {input.bam} > {output.bam} &&
-        samtools index -b {output.bam} -o {output.bai} &&
-        echo -e "blacklisted regions removal\t$(samtools view -c {output.bam})" >> {output.read_log} 2>&1 | tee -a {log}
+        shell: f"""
+        before=$(samtools view -c {{input.bam}}) &&
+        bedtools intersect -v -b {{params.blacklist}} -a {{input.bam}} > {{output.bam}} 2>> {{log}} &&
+        samtools index -b {{output.bam}} -o {{output.bai}} >> {{log}} 2>&1 &&
+        after=$(samtools view -c {{output.bam}}) &&
+        {emit_read_logs("Blacklist", "{wildcards.sample}", "{params.read_log}", "{output.read_log}")}
         """
 
 else:
@@ -36,6 +39,8 @@ else:
             bam=temp(OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam"),
             bai=temp(OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam.bai"),
             read_log=temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_blacklist.tsv"),
+        params:
+            read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         threads: 1
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
@@ -44,8 +49,11 @@ else:
         log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_blacklist.log",
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_blacklist.tsv",
         message: "Skipping blacklisted regions removal for sample {wildcards.sample}",
-        shell: """
-        mv {input.bam} {output.bam} &&
-        mv {input.bam}.bai {output.bai} &&
-        echo -e "blacklisted regions removal\t$(samtools view -c {output.bam})" >> {output.read_log} 2>&1 | tee -a {log}
+        shell: f"""
+        before=$(samtools view -c {{input.bam}}) &&
+        mkdir -p $(dirname {{output.bam}}) &&
+        cp {{input.bam}} {{output.bam}} >> {{log}} 2>&1 &&
+        cp {{input.bai}} {{output.bai}} >> {{log}} 2>&1 &&
+        after=$(samtools view -c {{output.bam}}) &&
+        {emit_read_logs("Blacklist", "{wildcards.sample}", "{params.read_log}", "{output.read_log}")}
         """

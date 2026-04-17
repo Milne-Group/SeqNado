@@ -6,12 +6,14 @@ from pathlib import Path
 
 from seqnado.cli.benchmark_helpers import (
     compute_assay_output_sizes,
+    discover_alignment_processing_logs,
     discover_benchmark_files,
     discover_snakemake_logs,
     format_bytes,
     format_seconds,
     format_compact_number,
     load_benchmark_table,
+    parse_alignment_processing_logs,
     parse_snakemake_log_timeline,
     parse_snakemake_logs_timeline,
     summarize_benchmarks,
@@ -62,6 +64,52 @@ def test_load_benchmark_table_adds_metadata_and_sorts(tmp_path: Path) -> None:
     assert list(table["job"]) == ["sample_b", "sample_a"]
 
 
+def test_load_benchmark_table_prefers_extended_rule_name(tmp_path: Path) -> None:
+    benchmark_file = tmp_path / ".benchmark" / "qc" / "sample_a.tsv"
+    benchmark_file.parent.mkdir(parents=True, exist_ok=True)
+    benchmark_file.write_text(
+        "\t".join(
+            [
+                "s",
+                "max_rss",
+                "cpu_time",
+                "io_in",
+                "io_out",
+                "jobid",
+                "rule_name",
+                "threads",
+                "cpu_usage",
+                "input_size_mb",
+            ]
+        )
+        + "\n"
+        + "\t".join(
+            [
+                "10",
+                "100",
+                "20",
+                "5",
+                "7",
+                "1",
+                "atac_fastqc_raw_paired",
+                "4",
+                "774.03",
+                "0.18",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    table = load_benchmark_table(tmp_path)
+
+    assert list(table["assay"]) == ["atac"]
+    assert list(table["display_rule"]) == ["fastqc_raw_paired"]
+    assert list(table["jobid"]) == [1]
+    assert list(table["cpu_usage"]) == [774.03]
+    assert list(table["input_size_mb"]) == [0.18]
+
+
 def test_summarize_benchmarks(tmp_path: Path) -> None:
     _write_benchmark(tmp_path / ".benchmark" / "align" / "sample_a.tsv", 10, 20, 100, 5, 7)
     _write_benchmark(tmp_path / ".benchmark" / "peaks" / "sample_b.tsv", 30, 40, 200, 11, 13)
@@ -80,19 +128,46 @@ def test_summarize_benchmarks(tmp_path: Path) -> None:
 def test_write_html_report(tmp_path: Path) -> None:
     _write_benchmark(tmp_path / ".benchmark" / "align" / "sample_a.tsv", 10, 20, 100, 121254.87, 1740695.35)
     _write_benchmark(tmp_path / ".benchmark" / "peaks" / "sample_b.tsv", 30, 40, 200, 11, 13)
+    alignment_log = tmp_path / "seqnado_output" / "chip" / "logs" / "alignment_post_process" / "chip-rx_MLL.log"
+    alignment_log.parent.mkdir(parents=True, exist_ok=True)
+    alignment_log.write_text(
+        "Step\tSample\tReads Before\tReads After\n"
+        "Aligned (align_paired)\tchip-rx_MLL\t0\t29346\n"
+        "Sort\tchip-rx_MLL\t29346\t29346\n",
+        encoding="utf-8",
+    )
     table = load_benchmark_table(tmp_path)
     output_html = tmp_path / "benchmark_report.html"
 
-    write_html_report(table, benchmark_dir=tmp_path, output_file=output_html, top_n=5)
+    write_html_report(
+        table,
+        benchmark_dir=tmp_path,
+        output_file=output_html,
+        top_n=5,
+        read_counts_df=parse_alignment_processing_logs(tmp_path / "seqnado_output"),
+    )
 
     html = output_html.read_text(encoding="utf-8")
     assert "SeqNado Benchmark Report" in html
+    assert "Contents" in html
+    assert "report-toc" in html
+    assert "href='#run-timeline'" in html
+    assert "<details class='report-section' id='run-timeline'>" in html
     assert "Run Timeline" in html
     assert "Runtime By Rule Box Plot" in html
     assert "Max RSS By Rule Box Plot" in html
-    assert "IO In By Rule Box Plot" in html
-    assert "IO Out By Rule Box Plot" in html
+    assert "Read Counts By Rule Box Plot" in html
+    assert "href='#read-counts'" in html
+    assert "<details class='report-section' id='read-counts'>" in html
+    assert "href='#io'" in html
+    assert "<details class='report-section' id='io'>" in html
+    assert "I/O By Rule Box Plot" in html
+    assert "input/output volume" in html
     assert "Output Size By Assay" in html
+    assert "Samples Per Assay" in html
+    assert "RNA-seq" in html
+    assert "Report Provenance" in html
+    assert "generated this report with SeqNado version" in html
     assert "Total IO In" in html
     assert "Total IO Out" in html
     assert "Export CSV" in html
@@ -100,11 +175,112 @@ def test_write_html_report(tmp_path: Path) -> None:
     assert "gantt-legend" in html
     assert "gantt-bar" in html
     assert "Timeline of logged jobs parsed from Snakemake run logs." in html
+    assert "maximum resident set size (peak memory use) in megabytes" in html
+    assert "input/output read volume" in html
+    assert "input/output write volume" in html
     assert "data:text/csv" in html
     assert "121.3k" in html
     assert "1.74M" in html
     assert "align" in html
     assert "All Benchmarks" not in html
+
+
+def test_parse_alignment_processing_logs(tmp_path: Path) -> None:
+    log_file = tmp_path / "seqnado_output" / "chip" / "logs" / "alignment_post_process" / "chip-rx_MLL.log"
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    log_file.write_text(
+        "\n".join(
+            [
+                "Step\tSample\tReads Before\tReads After",
+                "Aligned (align_paired)\tchip-rx_MLL\t0\t29346",
+                "Sort\tchip-rx_MLL\t29346\t29346",
+                "Blacklist\tchip-rx_MLL\t29346\t29346",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    logs = discover_alignment_processing_logs(tmp_path / "seqnado_output")
+    assert logs == [log_file]
+
+    parsed = parse_alignment_processing_logs(tmp_path / "seqnado_output")
+    assert list(parsed["assay"]) == ["chip", "chip", "chip"]
+    assert list(parsed["sample"]) == ["chip-rx_MLL", "chip-rx_MLL", "chip-rx_MLL"]
+    assert list(parsed["display_rule"]) == [
+        "Aligned (align_paired)",
+        "Sort",
+        "Blacklist",
+    ]
+    assert list(parsed["read_count"]) == [29346, 29346, 29346]
+
+
+def test_write_html_report_includes_extended_benchmark_sections(tmp_path: Path) -> None:
+    benchmark_file = tmp_path / ".benchmark" / "qc" / "sample_a.tsv"
+    benchmark_file.parent.mkdir(parents=True, exist_ok=True)
+    benchmark_file.write_text(
+        "\t".join(
+            [
+                "s",
+                "h:m:s",
+                "max_rss",
+                "max_vms",
+                "max_uss",
+                "max_pss",
+                "io_in",
+                "io_out",
+                "mean_load",
+                "cpu_time",
+                "jobid",
+                "rule_name",
+                "wildcards",
+                "params",
+                "threads",
+                "cpu_usage",
+                "resources",
+                "input_size_mb",
+            ]
+        )
+        + "\n"
+        + "\t".join(
+            [
+                "6.13",
+                "0:00:06",
+                "327.00",
+                "6225.16",
+                "303.58",
+                "306.89",
+                "0.00",
+                "4.63",
+                "126.24",
+                "9.02",
+                "1",
+                "atac_fastqc_raw_paired",
+                "{'sample': 'atac'}",
+                "{'extra': '--quiet'}",
+                "4",
+                "774.03",
+                "{'_cores': 4}",
+                "0.18",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    table = load_benchmark_table(tmp_path)
+    output_html = tmp_path / "benchmark_report.html"
+
+    write_html_report(table, benchmark_dir=tmp_path, output_file=output_html, top_n=5)
+
+    html = output_html.read_text(encoding="utf-8")
+    assert "Max USS" in html
+    assert "Max PSS" in html
+    assert "CPU Usage" in html
+    assert "Input Size" in html
+    assert "maximum unique set size in megabytes" in html
+    assert "maximum proportional set size in megabytes" in html
+    assert "CPU usage percentage" in html
+    assert "input size in megabytes" in html
 
 
 def test_format_seconds() -> None:
