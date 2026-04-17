@@ -109,7 +109,7 @@ def test_download_resources_reuses_existing_bt2_index_when_refresh_fails(
     index_dir.mkdir(parents=True)
 
     for suffix in GenomeResources._BT2_SUFFIXES:
-        (index_dir / f"bt2_chr21.{suffix}").write_text("index\n")
+        (index_dir / f"bt2_chr21.{suffix}.bt2").write_text("index\n")
 
     real_has_complete = GenomeResources._has_complete_bt2_index
     calls = {"count": 0}
