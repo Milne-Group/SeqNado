@@ -2,6 +2,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
 
 @pytest.mark.pipeline
@@ -118,7 +119,13 @@ def test_multiomics(
     )
 
     # ML dataset (using QuantNado)
-    dataset_zarr = output_dir / "multiomics" / "dataset.zarr"
+    with open(multiomics_configs[multiomics[0]]["config"]) as fh:
+        config_data = yaml.safe_load(fh)
+    dataset_zarr = (
+        output_dir
+        / "dataset"
+        / f"{config_data['project']['date']}_{config_data['project']['name']}.zarr"
+    )
     assert dataset_zarr.exists(), (
         f"Multiomics dataset not found at {dataset_zarr}"
     )

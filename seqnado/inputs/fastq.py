@@ -330,15 +330,15 @@ class BaseFastqCollection(BaseCollection):
             # For single-end data, don't add read number suffix
             if pd.isna(row["r2"]):
                 symlink_path = output_dir / f"{uid}.fastq.gz"
-                if not symlink_path.exists():
+                if not symlink_path.exists() and not symlink_path.is_symlink():
                     symlink_path.symlink_to(Path(row["r1"]).resolve().absolute())
             else:
                 # For paired-end data, add _1 and _2 suffixes
                 symlink_path_r1 = output_dir / f"{uid}_1.fastq.gz"
-                if not symlink_path_r1.exists():
+                if not symlink_path_r1.exists() and not symlink_path_r1.is_symlink():
                     symlink_path_r1.symlink_to(Path(row["r1"]).resolve().absolute())
                 symlink_path_r2 = output_dir / f"{uid}_2.fastq.gz"
-                if not symlink_path_r2.exists():
+                if not symlink_path_r2.exists() and not symlink_path_r2.is_symlink():
                     symlink_path_r2.symlink_to(Path(row["r2"]).resolve().absolute())
 
 
@@ -883,8 +883,8 @@ class FastqCollectionForIP(BaseFastqCollection):
         _metadata: list[Metadata] = []
         for name, sides in buckets.items():
             # Sort by read_number
-            ip_list = sorted(sides["ip"], key=lambda x: x.read_number)
-            ctrl_list = sorted(sides["control"], key=lambda x: x.read_number)
+            ip_list = sorted(sides["ip"], key=lambda x: x.read_number or 0)
+            ctrl_list = sorted(sides["control"], key=lambda x: x.read_number or 0)
 
             if not ip_list and not ctrl_list:
                 raise ValueError(f"No valid FASTQ files found for sample '{name}'")
@@ -1084,14 +1084,18 @@ class FastqCollectionForIP(BaseFastqCollection):
                 symlink_path_ctrl_r1 = output_dir / f"{row['sample_id']}_{row['control']}_1.fastq.gz"
                 symlink_path_ctrl_r2 = output_dir / f"{row['sample_id']}_{row['control']}_2.fastq.gz"
 
-                if not symlink_path_ctrl_r1.exists():
+                if not symlink_path_ctrl_r1.exists() and not symlink_path_ctrl_r1.is_symlink():
                     symlink_path_ctrl_r1.symlink_to(
                         Path(row["r1_control"]).resolve().absolute()
                     )
-                if not symlink_path_ctrl_r2.exists():
+                if not symlink_path_ctrl_r2.exists() and not symlink_path_ctrl_r2.is_symlink():
                     symlink_path_ctrl_r2.symlink_to(
                         Path(row["r2_control"]).resolve().absolute()
                     )
             # single-end control data needs only R1 - no _[12] suffix
             elif pd.notna(row["r1_control"]):
                 symlink_path_ctrl_r1 = output_dir / f"{row['sample_id']}_{row['control']}.fastq.gz"
+                if not symlink_path_ctrl_r1.exists() and not symlink_path_ctrl_r1.is_symlink():
+                    symlink_path_ctrl_r1.symlink_to(
+                        Path(row["r1_control"]).resolve().absolute()
+                    )

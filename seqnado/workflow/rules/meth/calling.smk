@@ -57,8 +57,8 @@ rule calculate_conversion:
         conversion=OUTPUT_DIR + "/methylation/methylation_conversion.tsv",
         plot=OUTPUT_DIR + "/methylation/methylation_conversion.png"
     params:
-        assay=str(CONFIG.assay_config.methylation.method) if CONFIG.assay_config.methylation and hasattr(CONFIG.assay_config.methylation, 'method') else None,
-        method=str(CONFIG.assay_config.methylation.method) if CONFIG.assay_config.methylation and hasattr(CONFIG.assay_config.methylation, 'method') else None
+        assay=CONFIG.assay_config.methylation.method.value if CONFIG.assay_config.methylation else None,
+        method=CONFIG.assay_config.methylation.method.value if CONFIG.assay_config.methylation else None
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
     log: OUTPUT_DIR + "/logs/methylation/conversion.log"
     benchmark: OUTPUT_DIR + "/.benchmark/methylation/calculate_conversion.tsv"
@@ -104,7 +104,7 @@ rule taps_inverted:
     rm {input.bdg}
     """
 
-rule make_bigwigs_meth_taps:
+rule bigwigs_meth_taps:
     input:
         bdg=rules.taps_inverted.output.taps
     output:
@@ -124,7 +124,7 @@ rule make_bigwigs_meth_taps:
     bedGraphToBigWig {output.bdg} {params.chrom_sizes} {output.bigwig} > {log} 2>&1
     """
 
-rule make_bigwigs_meth_wgbs:
+rule bigwigs_meth_wgbs:
     input:
         bdg=rules.methyldackel_extract.output.bdg
     output:

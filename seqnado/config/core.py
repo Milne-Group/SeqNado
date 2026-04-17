@@ -11,7 +11,7 @@ from pydantic import (
     model_validator,
 )
 
-from seqnado import Assay, SpikeInMethod
+from seqnado import Assay, PeakCallingMethod, SpikeInMethod
 
 from .configs import (
     BigwigConfig,
@@ -35,7 +35,7 @@ from .mixins import (
     PeakCallingMixin,
     SNPCallingMixin,
 )
-from .third_party_tools import ThirdPartyToolsConfig
+from .third_party_tools import Seacr, ThirdPartyToolsConfig
 
 
 class BaseAssayConfig(CommonComputedFieldsMixin):
@@ -47,6 +47,9 @@ class BaseAssayConfig(CommonComputedFieldsMixin):
 
     # Boolean flags for optional features
     create_geo_submission_files: bool = False
+
+    # Lifted from ChIPAssayConfig / CATAssayConfig / RNAAssayConfig
+    spikein: Annotated[SpikeInConfig | None, BeforeValidator(none_str_to_none)] = None
 
 
 class ATACAssayConfig(BaseAssayConfig, PeakCallingMixin):
@@ -90,8 +93,8 @@ class RNAAssayConfig(BaseAssayConfig):
         RNA-seq supports only ORLANDO, DESEQ2, and EDGER.
         """
         if v is not None and SpikeInMethod.WITH_INPUT in v.method:
-            from loguru import logger
-            logger.warning(
+            from seqnado.utils import warn_once
+            warn_once(
                 "The 'with_input' spike-in method is not compatible with RNA-seq and will be skipped. "
                 "RNA-seq supports: 'orlando', 'deseq2', 'edger'. "
                 "WITH_INPUT requires paired input/control samples (ChIP-seq concept)."
@@ -213,6 +216,20 @@ class SeqnadoConfig(BaseModel):
                 values["pcr_duplicates"] = PCRDuplicatesConfig(strategy=PCRDuplicateHandling.NONE)
 
         return values
+
+    @model_validator(mode="after")
+    def sync_peak_caller_tool_defaults(self) -> "SeqnadoConfig":
+        """Ensure peak-caller-specific tool configs exist when those methods are selected."""
+        peak_calling = getattr(self.assay_config, "peak_calling", None)
+        methods = getattr(peak_calling, "method", None) or []
+
+        if self.third_party_tools is None:
+            self.third_party_tools = ThirdPartyToolsConfig.for_assay(self.assay)
+
+        if PeakCallingMethod.SEACR in methods and self.third_party_tools.seacr is None:
+            self.third_party_tools.seacr = Seacr()
+
+        return self
 
     @classmethod
     def from_yaml(cls, path: Path) -> "SeqnadoConfig":

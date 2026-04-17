@@ -34,6 +34,13 @@ def init_seqnado_project(
     Sets up environment, copies necessary files, runs seqnado init, and writes genome config.
     """
 
+    # Pipeline tests reuse a deterministic assay workspace under test_output/.
+    # Clear any stale state from prior runs so leftover Snakemake locks do not
+    # poison the next test invocation.
+    if run_directory.exists():
+        shutil.rmtree(run_directory)
+    run_directory.mkdir(parents=True, exist_ok=True)
+
     # Set environment variables
     monkeypatch.setenv("SEQNADO_CONFIG", str(run_directory))
     monkeypatch.setenv("HOME", str(run_directory))

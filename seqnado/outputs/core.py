@@ -22,6 +22,7 @@ from seqnado.outputs.files import (
     BigWigFiles,
     ContactFiles,
     CRISPRFiles,
+    DatasetFiles,
     FileCollection,
     GeoSubmissionFiles,
     HeatmapFiles,
@@ -186,6 +187,37 @@ class SeqnadoOutputFiles(BaseModel):
     @property
     def bedgraph_files(self):
         return self.select_files(".bedgraph")
+
+    @property
+    def meth_files(self):
+        """Return QuantNado-compatible methylation bedGraphs for the reference genome."""
+        return [
+            f
+            for f in self.files
+            if "/methylation/methyldackel/" in f
+            and (
+                f.endswith("_CpG.bedGraph")
+                or f.endswith("_CpG_inverted.bedGraph")
+            )
+        ]
+
+    @property
+    def meth_file_map(self) -> dict[str, str]:
+        """Map sample names to their QuantNado-compatible methylation bedGraph."""
+        file_map: dict[str, str] = {}
+        for sample in self.sample_names:
+            prefix = f"{sample}_"
+            match = next(
+                (
+                    f
+                    for f in self.meth_files
+                    if Path(f).name.startswith(prefix)
+                ),
+                None,
+            )
+            if match is not None:
+                file_map[sample] = match
+        return file_map
 
     @property
     def bigbed_files(self):
@@ -593,6 +625,66 @@ class SeqnadoOutputBuilder:
             )
             self.file_collections.append(bigwig_files)
 
+    def add_condition_bigwig_files(self) -> None:
+        """Add condition-based aggregated and subtraction bigwig files to the output collection."""
+        from itertools import permutations
+
+        # Skip if assay doesn't support bigwigs
+        bigwigs_config = self.config.assay_config.bigwigs
+        if bigwigs_config is None:
+            return
+
+        # Skip if perform_comparisons is not enabled
+        if not getattr(bigwigs_config, "perform_comparisons", False):
+            return
+
+        # Skip if no sample groupings or fewer than 2 condition groups
+        if not self.sample_groupings:
+            return
+
+        if "condition" not in self.sample_groupings:
+            return
+        condition_groups = self.sample_groupings.get_grouping("condition")
+        if not condition_groups or len(condition_groups.group_names) < 2:
+            return
+
+        pileup_methods = bigwigs_config.pileup_method or []
+        files = []
+        strands = ["_plus", "_minus"] if self.assay == Assay.RNA else [""]
+
+        for method in pileup_methods:
+            method_name = method.value  # e.g., "bamnado", "deeptools"
+            # Add aggregated condition bigwigs (unscaled)
+            for cond in condition_groups.group_names:
+                for strand in strands:
+                    files.append(f"{self.output_dir}/bigwigs/{method_name}/aggregated/{cond}{strand}.bigWig")
+            # Add pairwise subtractions
+            for c1, c2 in permutations(condition_groups.group_names, 2):
+                for strand in strands:
+                    files.append(f"{self.output_dir}/bigwigs/{method_name}/subtraction/{c1}_vs_{c2}{strand}.bigWig")
+
+            # Add spike-in normalized files if applicable
+            if getattr(self.config.assay_config, "has_spikein", False):
+                spikein_config = getattr(self.config.assay_config, "spikein", None)
+                spikein_methods = spikein_config.method if spikein_config else []
+                for spikein_method in spikein_methods:
+                    spikein_name = spikein_method.value
+                    # Add aggregated spike-in normalized condition bigwigs
+                    for cond in condition_groups.group_names:
+                        for strand in strands:
+                            files.append(
+                                f"{self.output_dir}/bigwigs/{method_name}/spikein/{spikein_name}/aggregated/{cond}{strand}.bigWig"
+                            )
+                    # Add pairwise spikein subtractions
+                    for c1, c2 in permutations(condition_groups.group_names, 2):
+                        for strand in strands:
+                            files.append(
+                                f"{self.output_dir}/bigwigs/{method_name}/spikein/{spikein_name}/subtraction/{c1}_vs_{c2}{strand}.bigWig"
+                            )
+
+        if files:
+            self.file_collections.append(BasicFileCollection(files=files))
+
     def add_mcc_sentinel_pileup_files(self) -> None:
         """Add MCC sentinel files to the output collection.
         The issue with MCC bigwig files is that they are generated per viewpoint group.
@@ -962,8 +1054,14 @@ class SeqnadoOutputBuilder:
 
     def add_dataset(self) -> None:
         """Add dataset output file."""
-        path = str(Path(self.output_dir) / "dataset.zarr")
-        self.file_collections.append(BasicFileCollection(files=[path]))
+        self.file_collections.append(
+            DatasetFiles(
+                output_dir=self.output_dir,
+                relative_path=(
+                    f"dataset/{self.config.project.date}_{self.config.project.name}.zarr"
+                ),
+            )
+        )
 
     def add_quantification_files(self) -> None:
         """Add quantification files to the output collection."""
@@ -1050,9 +1148,11 @@ class MultiomicsOutputBuilder:
         self,
         output_dir: Path | None = None,
         assay_outputs: dict[Assay, SeqnadoOutputFiles] | None = None,
+        configs_per_assay: dict[Assay, SeqnadoConfig] | None = None,
     ):
         self.output_dir = output_dir or Path("seqnado_output")
         self.assay_outputs = assay_outputs or {}
+        self.configs_per_assay = configs_per_assay or {}
         self.file_collections: list[FileCollection] = []
 
     def add_assay_bigwigs(self) -> list[str]:
@@ -1087,13 +1187,17 @@ class MultiomicsOutputBuilder:
         self.file_collections.append(BasicFileCollection(files=[path]))
 
     def add_multiomics_dataset(self) -> str:
-        """Add the multiomics dataset output file.
-        """
-        filename = "dataset.zarr"
-        path = str(
-            Path(self.output_dir) / "multiomics" / filename
+        """Add the multiomics dataset output file."""
+        if self.configs_per_assay:
+            example_config = next(iter(self.configs_per_assay.values()))
+            relative_path = (
+                f"dataset/{example_config.project.date}_{example_config.project.name}.zarr"
+            )
+        else:
+            relative_path = "dataset/dataset.zarr"
+        self.file_collections.append(
+            DatasetFiles(output_dir=str(self.output_dir), relative_path=relative_path)
         )
-        self.file_collections.append(BasicFileCollection(files=[path]))
 
     @property
     def dataset_bam_files(self) -> list[str]:
@@ -1110,6 +1214,15 @@ class MultiomicsOutputBuilder:
         return bams
 
     @property
+    def dataset_bam_sample_names(self) -> list[str]:
+        """Sample names for BAM files, in the same order as dataset_bam_files."""
+        names = []
+        for assay, output_files in self.assay_outputs.items():
+            samples = output_files.ip_sample_names or output_files.sample_names
+            names.extend(samples)
+        return names
+
+    @property
     def dataset_vcf_files(self) -> list[str]:
         """Get VCF files from SNP assay for the multiomics dataset.
 
@@ -1123,6 +1236,15 @@ class MultiomicsOutputBuilder:
         return vcfs
 
     @property
+    def dataset_vcf_sample_names(self) -> list[str]:
+        """Sample names for VCF files, in the same order as dataset_vcf_files."""
+        names = []
+        for assay, output_files in self.assay_outputs.items():
+            if assay.clean_name == "snp":
+                names.extend(output_files.sample_names)
+        return names
+
+    @property
     def dataset_bedgraph_files(self) -> list[str]:
         """Get BEDGRAPH files from methylation assay for the multiomics dataset.
 
@@ -1133,6 +1255,51 @@ class MultiomicsOutputBuilder:
             if assay.clean_name == "meth":
                 bedgraphs.extend(output_files.bedgraph_files)
         return bedgraphs
+
+    @property
+    def dataset_methylation_sample_names(self) -> list[str]:
+        """Sample names for methylation files, in the same order as dataset_bedgraph_files.
+
+        MethylDackel files are named {sample}_{genome}_CpG.bedGraph so QuantNado
+        cannot infer the correct sample name without this override.
+        """
+        names = []
+        for assay, output_files in self.assay_outputs.items():
+            if assay.clean_name == "meth":
+                names.extend(output_files.sample_names)
+        return names
+
+    @property
+    def dataset_stranded_config(self) -> dict[str, str]:
+        """Build the stranded config dict for QuantNado's --stranded flag.
+
+        Maps RNA sample names to their QuantNado library type:
+          SeqNado strandedness 1 (forward) → 'F' (ISF/ligation)
+          SeqNado strandedness 2 (reverse) → 'R' (ISR/dUTP/TruSeq)
+        Unstranded RNA samples (strandedness=0) are omitted; non-RNA assays
+        are always omitted (coverage is strand-agnostic for ChIP/ATAC/etc.).
+        Returns an empty dict if no stranded RNA samples are present.
+        """
+        _strand_map = {1: "F", 2: "R"}
+        stranded: dict[str, str] = {}
+        for assay, config in self.configs_per_assay.items():
+            if assay.clean_name != "rna":
+                continue
+            strandedness = getattr(
+                getattr(config.assay_config, "rna_quantification", None),
+                "strandedness",
+                0,
+            )
+            library_type = _strand_map.get(strandedness)
+            if library_type is None:
+                continue
+            output_files = self.assay_outputs.get(assay)
+            if output_files is None:
+                continue
+            samples = output_files.ip_sample_names or output_files.sample_names
+            for sample in samples:
+                stranded[sample] = library_type
+        return stranded
 
     def add_assay_outputs(self) -> None:
         """Add all assay output files to the multiomics output collection."""
@@ -1211,6 +1378,7 @@ class SeqnadoOutputFactory:
                 if self.sample_groupings:
                     builder.add_grouped_bigwig_files()
                     builder.add_grouped_normalized_bigwig_files()
+                    builder.add_condition_bigwig_files()
             elif self.assay == Assay.MCC:
                 builder.add_mcc_sentinel_pileup_files()
 

@@ -1,4 +1,5 @@
 .coverage
+.codex
 .DS_Store
 .ipynb_checkpoints/
 .pytest_cache
@@ -150,3 +151,5 @@ testing_dir/
 update_test_data.ipynb
 seqnado/workflow/rules/genomes/scripts
 .snakemake/
+.claude/settings.json
+quantnado.ipynb

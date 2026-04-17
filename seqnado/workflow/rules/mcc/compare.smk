@@ -1,6 +1,6 @@
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested 
 
-rule make_aggregate_bigwigs:
+rule aggregate_bigwigs:
     input:
         bigwigs=expand(
             OUTPUT_DIR + "/bigwigs/mcc/replicates/{sample}_{{viewpoint_group}}.bigWig",
@@ -38,7 +38,7 @@ rule make_aggregate_bigwigs:
     """
 
 
-rule make_comparison_bigwigs:
+rule comparison_bigwigs:
     input:
         bw1=OUTPUT_DIR
         + "/bigwigs/mcc/aggregated-using-mean/{group1}_{viewpoint_group}.bigWig",

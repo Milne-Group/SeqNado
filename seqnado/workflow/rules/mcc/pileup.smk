@@ -5,7 +5,7 @@ from seqnado.workflow.helpers.mcc import (
 )
 
 
-rule make_bigwigs_mcc_replicates:
+rule bigwigs_mcc_replicates:
     input:
         bam=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.bam",
         bai=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.bam.bai",
@@ -44,7 +44,7 @@ rule make_bigwigs_mcc_replicates:
     """
 
 
-use rule make_bigwigs_mcc_replicates as make_bigwigs_mcc_grouped_norm with:
+use rule bigwigs_mcc_replicates as bigwigs_mcc_grouped_norm with:
     input:
         bam=OUTPUT_DIR + "/mcc/{group}/{group}.bam",
         bai=OUTPUT_DIR + "/mcc/{group}/{group}.bam.bai",
@@ -70,7 +70,7 @@ use rule make_bigwigs_mcc_replicates as make_bigwigs_mcc_grouped_norm with:
         "docker://ghcr.io/alsmith151/bamnado:latest",
 
 
-use rule make_bigwigs_mcc_replicates as make_bigwigs_mcc_grouped_raw with:
+use rule bigwigs_mcc_replicates as bigwigs_mcc_grouped_raw with:
     input:
         bam=OUTPUT_DIR + "/mcc/{group}/{group}.bam",
         bai=OUTPUT_DIR + "/mcc/{group}/{group}.bam.bai",
@@ -120,9 +120,10 @@ rule confirm_bigwigs_generated:
             )
             if group1 != group2
             for viewpoint_group in VIEWPOINT_TO_GROUPED_VIEWPOINT.values()
-        ] if len(
-            SAMPLE_GROUPINGS.get_grouping("condition").group_names
-        ) >= 2 else [],
+        ] if (
+            getattr(CONFIG.assay_config.bigwigs, "perform_comparisons", False)
+            and len(SAMPLE_GROUPINGS.get_grouping("condition").group_names) >= 2
+        ) else [],
     output:
         touch(OUTPUT_DIR + "/bigwigs/mcc/.mcc_bigwigs_generated.txt"),
     message:

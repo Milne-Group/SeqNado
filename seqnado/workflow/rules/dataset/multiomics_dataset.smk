@@ -1,59 +1,60 @@
-from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
+import os
 
-SCALE_RESOURCES = 1
+from seqnado.workflow.helpers.common import define_memory_requested, define_time_requested
 
-MULTI_BAM_FILES = multiomics_builder.dataset_bam_files
-MULTI_VCF_FILES = multiomics_builder.dataset_vcf_files
-MULTI_BEDGRAPH_FILES = multiomics_builder.dataset_bedgraph_files
-CHROMOSOME_SIZES = CONFIGS_PER_ASSAY[ASSAYS[0]].genome.chromosome_sizes
+SCALE_RESOURCES = float(os.environ.get("SCALE_RESOURCES", "1"))
 
-rule multiomics_make_dataset:
-    """Create a dataset from bam files using QuantNado."""
-    input:
-        summary=OUTPUT_DIR + "/multiomics_summary.txt",
-    output:
-        dataset=directory(OUTPUT_DIR + "/multiomics/dataset.zarr"),
-    params:
-        chromosome_sizes=CHROMOSOME_SIZES,
-        dataset=OUTPUT_DIR + "/multiomics/dataset.zarr",
-        bam_files=MULTI_BAM_FILES,
-        vcf_files=MULTI_VCF_FILES,
-        bedgraph_files=MULTI_BEDGRAPH_FILES,
-    threads: 8
+
+def _get_multiomics_samples():
+    samples = []
+    for output_files in OUTPUTS_PER_ASSAY.values():
+        assay_samples = output_files.ip_sample_names or output_files.sample_names
+        samples.extend(assay_samples)
+    return sorted(set(samples))
+
+
+MULTIOMICS_SAMPLES = _get_multiomics_samples()
+
+
+def _get_multiomics_store_paths():
+    stores = []
+    for assay, output_files in OUTPUTS_PER_ASSAY.items():
+        assay_samples = output_files.ip_sample_names or output_files.sample_names
+        stores.extend(
+            [
+                f"{OUTPUT_DIR}/{assay.clean_name}/dataset/{sample_id}.zarr"
+                for sample_id in assay_samples
+            ]
+        )
+    return stores
+
+DATASET_PATH = (
+    f"{OUTPUT_DIR}/dataset/"
+    f"{EXAMPLE_CONFIG.project.date}_{EXAMPLE_CONFIG.project.name}.zarr"
+)
+
+rule multiomics_dataset:
+    input: 
+        stores = lambda wildcards: _get_multiomics_store_paths(),
+    output: 
+        dataset=directory(DATASET_PATH),
+        json=DATASET_PATH + "/zarr.json",
+    threads: 1
     resources:
-        mem=lambda wildcards, attempt: define_memory_requested(initial_value=32, attempts=attempt, scale=SCALE_RESOURCES),
-        runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "docker://ghcr.io/milne-group/quantnado-ci:latest",
-    log: OUTPUT_DIR + "/logs/multiomics/dataset/quantnado.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/multiomics/dataset/quantnado.tsv",
-    message: "Making dataset from bam files using QuantNado."
-    run:
-        # Build command with repeated flags for each file
-        cmd_parts = ["quantnado create-dataset", f"--output {params.dataset}"]
-        
-        # Add --bam for each BAM file
-        for bam_file in params.bam_files:
-            cmd_parts.append(f"--bam {bam_file}")
-        
-        # Add --bedgraph for each BEDGRAPH file
-        if params.bedgraph_files:
-            for bedgraph_file in params.bedgraph_files:
-                cmd_parts.append(f"--bedgraph {bedgraph_file}")
-        
-        # Add --vcf for each VCF file
-        if params.vcf_files:
-            for vcf_file in params.vcf_files:
-                cmd_parts.append(f"--vcf {vcf_file}")
-        
-        # Add remaining options
-        cmd_parts.extend([
-            f"--chromsizes {params.chromosome_sizes}",
-            f"--max-workers {threads}",
-            f"--log-file {log[0]}",
-            "--verbose",
-            "--overwrite",
-            "--resume"
-        ])
-        
-        cmd = " ".join(cmd_parts)
-        shell(cmd)
+        mem=lambda wildcards, attempt: define_memory_requested(
+            initial_value=32, attempts=attempt, scale=SCALE_RESOURCES
+        ),
+        runtime=lambda wildcards, attempt: define_time_requested(
+            initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
+        ),
+    container: "docker://ghcr.io/milne-group/quantnado-ci:latest"
+    log: OUTPUT_DIR + "/logs/dataset/multiomics_dataset.log"
+    benchmark: OUTPUT_DIR + "/.benchmark/dataset/multiomics_dataset.tsv"
+    message: "Combining multi-omics datasets using QuantNado."
+    shell: """
+    quantnado dataset combine \
+    --stores {input.stores} \
+    --output {output.dataset} \
+    --overwrite \
+    --log-file {log}
+    """

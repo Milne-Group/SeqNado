@@ -1,6 +1,6 @@
 assay: ChIP
 project:
-  name: default_project
+  name: test
   description: "Test project for ChIP-seq with spike in"
 assay_config:
   peak_calling:

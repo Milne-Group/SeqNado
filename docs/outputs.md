@@ -7,25 +7,25 @@ All SeqNado analysis results are organized within the `seqnado_output/` director
 ## General Output Structure
 
 ```
-seqnado_output/{assay}/       # Assay-specific directory
-├── seqnado_report.html       # Main interactive QC report (MultiQC)
-├── protocol.txt              # Auto-generated data processing protocol
-├── aligned/                  # Final BAM alignment files
-├── bigwigs/                  # BigWig coverage tracks
-├── peaks/                    # Peak calling results (ATAC, ChIP, CUT&Tag)
-├── readcounts/               # Quantification files (RNA, CRISPR)
-├── qc/                       # Quality control metrics
-├── hub/                      # UCSC Genome Browser hub
-├── heatmap/                  # DeepTools heatmap and metaplot PDFs
-├── motifs/                   # Motif analysis results (if enabled)
-├── tag_dirs/                 # HOMER tag directories
-├── resources/                # Normalisation factors (spike-in and CSAW)
-├── track_plots/     # PlotNado visualisations (if configured)
-├── geo_submission/           # GEO submission-ready files (if enabled)
-├── methylation/              # Methylation calls (METH only)
-├── variant/                  # VCF files (SNP only)
-├── dataset.zarr/             # QuantNado multi-sample signal store (if enabled)
-└── logs/                     # Process execution logs
+seqnado_output/{assay}/    # Assay-specific directory
+├── aligned/               # Final BAM alignment files
+├── bigwigs/               # BigWig coverage tracks
+├── dataset/               # QuantNado multi-sample signal store (if enabled)
+├── geo_submission/        # GEO submission-ready files (if enabled)
+├── heatmap/               # DeepTools heatmap and metaplot PDFs
+├── hub/                   # UCSC Genome Browser hub
+├── logs/                  # Process execution logs
+├── methylation/           # Methylation calls (METH only)
+├── motifs/                # Motif analysis results (if enabled)
+├── peaks/                 # Peak calling results (ATAC, ChIP, CUT&Tag)
+├── qc/                    # Quality control metrics
+├── readcounts/            # Quantification files (RNA, CRISPR)
+├── resources/             # Normalisation factors (spike-in and CSAW)
+├── tag_dirs/              # HOMER tag directories
+├── track_plots/           # PlotNado visualisations (if configured)
+├── variant/               # VCF files (SNP only)
+├── protocol.txt           # Auto-generated data processing protocol
+└── seqnado_report.html    # Main interactive QC report (MultiQC)
 ```
 
 !!! note
@@ -80,13 +80,24 @@ bigwigs/
 │   ├── spikein/                           # Spike-in normalised (if applicable)
 │   │   └── {spikein_method}/
 │   │       └── {sample}.bigWig
-│   └── merged/                            # Consensus group merged tracks
-│       ├── {group}.bigWig                 # Unscaled merged
-│       ├── csaw/                          # CSAW-scaled merged (if enabled)
-│       │   └── {group}.bigWig
-│       └── spikein/                       # Spike-in scaled merged (if applicable)
-│           └── {spikein_method}/
-│               └── {group}.bigWig
+│   ├── aggregated/                        # Condition-based aggregations (if perform_comparisons enabled)
+│   │   └── {condition}.bigWig             # Mean bigwig across samples in condition
+│   ├── subtraction/                       # Condition pairwise subtractions
+│   │   └── {condition1}_vs_{condition2}.bigWig
+│   ├── merged/                            # Consensus group merged tracks
+│   │   ├── {group}.bigWig                 # Unscaled merged
+│   │   ├── csaw/                          # CSAW-scaled merged (if enabled)
+│   │   │   └── {group}.bigWig
+│   │   └── spikein/                       # Spike-in scaled merged (if applicable)
+│   │       └── {spikein_method}/
+│   │           └── {group}.bigWig
+│   └── spikein/                           # Spike-in normalised paths
+│       └── {spikein_method}/
+│           ├── {sample}.bigWig            # Individual spike-in samples
+│           ├── aggregated/                # Condition-based aggregations (spike-in source)
+│           │   └── {condition}.bigWig
+│           └── subtraction/               # Condition subtractions (spike-in source)
+│               └── {condition1}_vs_{condition2}.bigWig
 ```
 
 For **RNA-seq**, stranded bigwigs are produced with `_plus` and `_minus` suffixes:
@@ -111,6 +122,27 @@ bigwigs/{method}/{sample}_minus.bigWig
 **Merged Tracks** (when `consensus_group` is set in the design file):
 
 Individual-sample bigwigs are complemented by merged tracks for each consensus group, supporting all of the same scaling methods as individual tracks (where applicable). CSAW and spike-in scaled merged bigwigs require the corresponding normalization to be enabled.
+
+#### Condition-Based Bigwig Comparisons
+
+When `perform_comparisons: true` is set in the configuration **and** your design file contains a `condition` column with at least 2 unique condition groups, SeqNado generates condition-level aggregated and pairwise subtraction bigwigs using **bamnado** for averaging and comparison operations.
+
+**Generated files:**
+
+- **Aggregated bigwigs** (`aggregated/{condition}.bigWig`): Per-condition mean tracks generated by averaging all individual sample bigwigs within each condition group
+- **Subtraction bigwigs** (`subtraction/{cond1}_vs_{cond2}.bigWig`): Pairwise subtractions between condition-level aggregates, generated for all ordered condition pairs
+
+Both are generated for:
+- **Unscaled source** (default): `bigwigs/{method}/aggregated/` and `bigwigs/{method}/subtraction/`
+- **Spike-in normalized source** (if applicable): `bigwigs/{method}/spikein/{spikein_method}/aggregated/` and `bigwigs/{method}/spikein/{spikein_method}/subtraction/`
+
+!!! note
+    Condition-based comparisons require:
+    1. `perform_comparisons: true` in your assay configuration
+    2. A `condition` column in your design file with ≥2 unique values
+    3. `bamnado` configured as one of your pileup methods
+
+    These are only available for non-MCC assays (ATAC, ChIP, CUT&Tag, RNA). MCC assays use a separate comparison workflow.
 
 #### Normalisation factor calculation
 
@@ -321,13 +353,13 @@ geo_submission/
 └── {assay}/                          # Upload directory
 ```
 
-### QuantNado Dataset (`dataset.zarr`)
+### QuantNado Dataset (`dataset`)
 
 When `create_dataset: true` is set in the config, SeqNado runs [QuantNado](https://milne-group.github.io/QuantNado/) to produce a multi-sample signal store from all aligned BAM files:
 
 ```
-dataset.zarr/                   # Zarr v3 store (single-assay runs)
-multiomics/dataset.zarr/        # Zarr v3 store (multiomics runs)
+dataset/                   # Zarr v3 store (single-assay runs)
+multiomics/dataset/        # Zarr v3 store (multiomics runs)
 ```
 
 **Structure:**
@@ -335,7 +367,7 @@ multiomics/dataset.zarr/        # Zarr v3 store (multiomics runs)
 The store contains one Zarr array per chromosome, each with shape `(n_samples × chromosome_length)` holding integer base-resolution (1 bp) read depth values. All samples are stored together in a single matrix per chromosome, making joint access across samples efficient.
 
 ```
-dataset.zarr/
+dataset/
 ├── chr1/                       # Array: (n_samples, chrom_length), uint16/uint32
 ├── chr2/
 ├── ...
@@ -361,15 +393,41 @@ Root-level Zarr attributes store sample names, chromosome sizes, chunk length, a
 The dataset is designed for programmatic access via Python. See the [QuantNado documentation](https://milne-group.github.io/QuantNado/) for the full API, including lazy loading with xarray/dask and region extraction:
 
 ```python
-from quantnado.dataset import QuantNadoDataset
+from quantnado.analysis.core import QuantNadoDataset
 
-ds = QuantNadoDataset("seqnado_output/chip/dataset.zarr")
+qn = QuantNadoDataset(DATASET, annotation=GTF_FILE)
+qn.info
 
-# Extract a region as an xarray DataArray (lazy, dask-backed)
-region = ds.extract_region("chr9:77,418,764-78,339,335")
+# Extract a region as an xarray DataArray
+region = qn.sel(chrom=GENE_CHROM, start=GENE_START, end=GENE_END)
+region.info
 
-# Load a full chromosome for all samples
-xr_dict = ds.to_xarray(chromosomes=["chr1"])
+# Cache reusable sample-group namespaces. With match="contains",
+# each label can match one or many sample-name patterns.
+qn.group_by(
+    ip="ip",
+    treatment={
+        "control": ["control"],
+        "treated": ["treated"],
+    },
+    replicate={
+        "rep1": ["rep1"],
+        "rep2": ["rep2"],
+    },
+    spikein={
+        "spikein": ["spikein", "rx"],
+    },
+    match="contains",
+)
+
+chip_qn = qn.subset(
+    assay="CHIP",
+    ip="MLL",
+    group={
+        "spikein": "spikein",
+    },
+)
+chip_qn.info
 ```
 
 !!! note

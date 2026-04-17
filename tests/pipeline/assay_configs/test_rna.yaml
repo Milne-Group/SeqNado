@@ -1,4 +1,16 @@
 assay: RNA
 project:
-  name: default_project
+  name: test
   description: "Test project for RNA-seq"
+assay_config:
+  create_bigwigs: True
+  create_dataset: True
+  rna_quantification:
+    method: feature_counts
+    strandedness: 2
+  bigwigs:
+    pileup_method:
+      - deeptools
+    binsize: 10
+    scale_methods: null
+    perform_comparisons: True

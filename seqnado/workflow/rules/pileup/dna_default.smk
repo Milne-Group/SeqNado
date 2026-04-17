@@ -4,7 +4,7 @@ from seqnado.config.third_party_tools import CommandLineArguments
 
 # Only define HOMER bigwig rule if HOMER is configured (to avoid accessing None attributes)
 if CONFIG.third_party_tools.homer is not None:
-    rule make_bigwigs_homer:
+    rule bigwigs_homer:
         input:
             homer_tag_directory=OUTPUT_DIR + "/tag_dirs/{sample}",
         output:
@@ -39,7 +39,7 @@ if CONFIG.third_party_tools.homer is not None:
         """
 
 if CONFIG.third_party_tools.deeptools is not None:
-    rule make_bigwigs_deeptools:
+    rule bigwigs_deeptools:
         input:
             bam=OUTPUT_DIR + "/aligned/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -74,7 +74,7 @@ if CONFIG.third_party_tools.deeptools is not None:
         """
 
 if CONFIG.third_party_tools.bamnado is not None:
-    rule make_bigwigs_bamnado:
+    rule bigwigs_bamnado:
         input:
             bam=OUTPUT_DIR + "/aligned/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",

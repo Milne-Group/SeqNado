@@ -281,10 +281,17 @@ def get_bigwig_config(assay: Assay) -> Optional[BigwigConfig]:
     if isinstance(scale_methods, str):
         scale_methods = [scale_methods]
 
+    perform_comparisons = get_user_input(
+        "Perform condition-based bigwig comparisons (aggregated mean + subtraction)?",
+        default="no",
+        is_boolean=True,
+    )
+
     return BigwigConfig(
         pileup_method=[PileupMethod(m) for m in pileup_methods],
         binsize=binsize,
         scale_methods=scale_methods,
+        perform_comparisons=perform_comparisons,
     )
 
 
@@ -951,6 +958,7 @@ def render_config(
     template: Path,
     workflow_config: SeqnadoConfig,
     outfile: Path,
+    seqnado_version: str,
     all_options: bool = False,
 ) -> None:
     """Render the workflow configuration to a file."""
@@ -961,6 +969,7 @@ def render_config(
     # Convert the Pydantic model to a dictionary for rendering
     # Always include fields with None values to ensure required fields like ucsc_hub are present
     config_dict = workflow_config.model_dump(mode="json", exclude_none=False)
+    config_dict["version"] = seqnado_version
 
     try:
         rendered_content = template.render(**config_dict)
@@ -1120,6 +1129,7 @@ def render_multiomics_configs(
     assay_configs: dict[str, SeqnadoConfig],
     template: Path,
     output_dir: Path,
+    seqnado_version: str,
 ) -> List[Path]:
     """Render all config files for multiomics analysis.
 
@@ -1140,7 +1150,13 @@ def render_multiomics_configs(
     # Render individual assay configs
     for assay_name, config in assay_configs.items():
         config_file = output_dir / f"config_{assay_name}.yaml"
-        render_config(template, config, config_file, all_options=False)
+        render_config(
+            template,
+            config,
+            config_file,
+            seqnado_version=seqnado_version,
+            all_options=False,
+        )
         generated_files.append(config_file)
         logger.success(f"Generated {config_file}")
 
