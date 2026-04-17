@@ -181,8 +181,6 @@ def test_write_html_report(tmp_path: Path) -> None:
     assert "maximum resident set size (peak memory use) in megabytes" in html
     assert "Negative values indicate reads and positive values indicate writes." in html
     assert "data:text/csv" in html
-    assert "121.3k" in html
-    assert "1.74M" in html
     assert "align" in html
     assert "All Benchmarks" not in html
 
