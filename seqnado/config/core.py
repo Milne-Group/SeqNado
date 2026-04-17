@@ -11,7 +11,7 @@ from pydantic import (
     model_validator,
 )
 
-from seqnado import Assay, SpikeInMethod
+from seqnado import Assay, PeakCallingMethod, SpikeInMethod
 
 from .configs import (
     BigwigConfig,
@@ -35,7 +35,7 @@ from .mixins import (
     PeakCallingMixin,
     SNPCallingMixin,
 )
-from .third_party_tools import ThirdPartyToolsConfig
+from .third_party_tools import Seacr, ThirdPartyToolsConfig
 
 
 class BaseAssayConfig(CommonComputedFieldsMixin):
@@ -216,6 +216,20 @@ class SeqnadoConfig(BaseModel):
                 values["pcr_duplicates"] = PCRDuplicatesConfig(strategy=PCRDuplicateHandling.NONE)
 
         return values
+
+    @model_validator(mode="after")
+    def sync_peak_caller_tool_defaults(self) -> "SeqnadoConfig":
+        """Ensure peak-caller-specific tool configs exist when those methods are selected."""
+        peak_calling = getattr(self.assay_config, "peak_calling", None)
+        methods = getattr(peak_calling, "method", None) or []
+
+        if self.third_party_tools is None:
+            self.third_party_tools = ThirdPartyToolsConfig.for_assay(self.assay)
+
+        if PeakCallingMethod.SEACR in methods and self.third_party_tools.seacr is None:
+            self.third_party_tools.seacr = Seacr()
+
+        return self
 
     @classmethod
     def from_yaml(cls, path: Path) -> "SeqnadoConfig":
