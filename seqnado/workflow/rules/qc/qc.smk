@@ -206,7 +206,7 @@ rule seqnado_report:
     input:
         multiqc_input_files,
     output:
-        report = OUTPUT_DIR + "/seqnado_report.html",
+        report = OUTPUT_DIR + f"/seqnado_report_{ASSAY.clean_name}.html",
     params:
         multiqc_config = "/opt/seqnado/multiqc_config.yaml",
         output_dir = OUTPUT_DIR,
@@ -221,7 +221,7 @@ rule seqnado_report:
         """
         multiqc -o {params.output_dir} {params.output_dir} \
         --config {params.multiqc_config} \
-        --filename "seqnado_report.html" \
+        --filename "seqnado_report_{ASSAY.clean_name}.html" \
         --no-data-dir \
         --force > {log} 2>&1
         """

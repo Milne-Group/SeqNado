@@ -126,11 +126,12 @@ class QCFiles(BaseModel):
 
 class SeqNadoReportFile(BaseModel):
     output_dir: str = "seqnado_output"
+    assay_name: str = "assay"
 
     @property
     def report_file(self) -> list[str]:
         return [
-            f"{self.output_dir}/seqnado_report.html",
+            f"{self.output_dir}/seqnado_report_{self.assay_name}.html",
         ]
 
     @property
