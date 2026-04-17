@@ -18,7 +18,7 @@ requires-python = ">=3.10"
 license = {file = "LICENSE"}
 dynamic = ["version"]
 dependencies = [
-    "click<=8.3.1",
+    "click<=8.3.2",
     "cookiecutter<=2.6.0",
     "numpy>=1.24,<=2.2.6",
     "pandas>=2.0,<=2.3.3",
