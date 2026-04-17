@@ -52,3 +52,4 @@ use rule fastq_screen_paired as fastq_screen_single with:
 
 
 ruleorder: fastq_screen_paired > fastq_screen_single 
+localrules: fastq_screen_config
