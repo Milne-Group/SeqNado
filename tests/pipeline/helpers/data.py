@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import ClassVar
 
 from pydantic import BaseModel, model_validator
@@ -41,6 +42,15 @@ class GenomeResources(BaseModel):
         "fasta": "chr21.fa",
         "plot_coords": "plotting_coordinates.bed",
     }
+
+    _BT2_SUFFIXES: ClassVar[tuple[str, ...]] = (
+        "1.bt2",
+        "2.bt2",
+        "3.bt2",
+        "4.bt2",
+        "rev.1.bt2",
+        "rev.2.bt2",
+    )
 
     # Resources keyed directly by assay name
     RESOURCES: ClassVar[dict] = {
@@ -183,8 +193,10 @@ class GenomeResources(BaseModel):
         if is_bt2:
             index_dir = genome_path / index_name
             dest = index_dir / prefix
-            if list(index_dir.glob(f"{prefix}.*.bt2*")):
+            if GenomeResources._has_complete_bt2_index(index_dir, prefix):
                 return dest
+            if index_dir.exists():
+                shutil.rmtree(index_dir, ignore_errors=True)
         else:
             dest = genome_path / index_name
             index_dir = dest
@@ -207,8 +219,17 @@ class GenomeResources(BaseModel):
 
         # Verify and return
         if is_bt2:
-            return dest if list(index_dir.glob(f"{prefix}.*.bt2*")) else None
+            return dest if GenomeResources._has_complete_bt2_index(index_dir, prefix) else None
         return dest if dest.exists() else None
+
+    @staticmethod
+    def _has_complete_bt2_index(index_dir: Path, prefix: str) -> bool:
+        """Return True when all expected Bowtie2 index shards exist and are non-empty."""
+        return all(
+            (index_dir / f"{prefix}.{suffix}").exists()
+            and (index_dir / f"{prefix}.{suffix}").stat().st_size > 0
+            for suffix in GenomeResources._BT2_SUFFIXES
+        )
 
     @staticmethod
     def _update_fastq_screen_config(
@@ -259,7 +280,14 @@ class FastqFiles(BaseModel):
         """
         fastq_dir.mkdir(parents=True, exist_ok=True)
 
-        if not list(fastq_dir.glob("*.fastq.gz")):
+        if not cls._has_fastqs_for_assays(fastq_dir, selected_assays):
+            for existing_fastq in fastq_dir.glob("*.fastq.gz"):
+                existing_fastq.unlink(missing_ok=True)
+
+            nested = fastq_dir / "fastq"
+            if nested.exists():
+                shutil.rmtree(nested, ignore_errors=True)
+
             tar_path = fastq_dir.parent / "fastq.tar.gz"
             download_with_retry(cls.FQ_URL, tar_path)
             extract_tar(tar_path, fastq_dir.parent, flatten=False)
@@ -272,10 +300,17 @@ class FastqFiles(BaseModel):
 
             tar_path.unlink(missing_ok=True)
 
-            if not list(fastq_dir.glob("*.fastq.gz")):
-                raise RuntimeError(f"FASTQ extraction failed - no files in {fastq_dir}")
+            if not cls._has_fastqs_for_assays(fastq_dir, selected_assays):
+                raise RuntimeError(
+                    f"FASTQ extraction failed - missing files for assays {selected_assays} in {fastq_dir}"
+                )
 
         files = {
             a: sorted(fastq_dir.glob(get_fastq_pattern(a))) for a in selected_assays
         }
         return cls(fastq_dir=fastq_dir, files=files)
+
+    @staticmethod
+    def _has_fastqs_for_assays(fastq_dir: Path, selected_assays: list[str]) -> bool:
+        """Return True when every requested assay has at least one matching FASTQ."""
+        return all(list(fastq_dir.glob(get_fastq_pattern(assay))) for assay in selected_assays)

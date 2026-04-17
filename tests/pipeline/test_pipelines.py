@@ -21,39 +21,40 @@ def test_pipeline(
     preset = pytestconfig.getoption("--preset", default="t")
 
     import pandas as pd
+
     df = pd.read_csv(design)
 
     # Add condition and metadata columns based on assay type
-    if assay == 'mcc':
+    if assay == "mcc":
         # Extract condition from sample_id
-        df['condition'] = df['sample_id'].str.split('-').str[1].str.split('_').str[0]
-    elif assay in ('atac', 'chip', 'chip-rx', 'rna', 'rna-rx'):
+        df["condition"] = df["sample_id"].str.split("-").str[1].str.split("_").str[0]
+    elif assay in ("atac", "chip", "chip-rx", "rna", "rna-rx"):
         # Add conditions by splitting samples evenly: first half ctrl, second half treat
-        if 'condition' not in df.columns:
+        if "condition" not in df.columns:
             mid = len(df) // 2
-            conditions = ['ctrl'] * mid + ['treat'] * (len(df) - mid)
-            df['condition'] = conditions
+            conditions = ["ctrl"] * mid + ["treat"] * (len(df) - mid)
+            df["condition"] = conditions
 
         # Add consensus_group for peak calling assays
-        if assay in ('atac', 'chip-rx'):
-            if 'consensus_group' not in df.columns:
-                df['consensus_group'] = 'all'
+        if assay in ("atac", "chip-rx"):
+            if "consensus_group" not in df.columns:
+                df["consensus_group"] = "all"
             else:
-                df['consensus_group'] = df['consensus_group'].fillna('all')
+                df["consensus_group"] = df["consensus_group"].fillna("all")
 
         # For RNA-rx, use condition for consensus grouping to merge replicates by condition
-        if assay == 'rna-rx':
-            if 'consensus_group' not in df.columns:
-                df['consensus_group'] = df['condition']
+        if assay == "rna-rx":
+            if "consensus_group" not in df.columns:
+                df["consensus_group"] = df["condition"]
             else:
-                df['consensus_group'] = df['consensus_group'].fillna('all')
+                df["consensus_group"] = df["consensus_group"].fillna("all")
 
         # Add group and deseq2 columns for RNA assays
-        if assay in ('rna', 'rna-rx'):
-            if 'group' not in df.columns:
-                df['group'] = df['condition']
-            if 'deseq2' not in df.columns:
-                df['deseq2'] = (df['group'].str.lower() == 'treat').astype(int)
+        if assay in ("rna", "rna-rx"):
+            if "group" not in df.columns:
+                df["group"] = df["condition"]
+            if "deseq2" not in df.columns:
+                df["deseq2"] = (df["group"].str.lower() == "treat").astype(int)
 
     df.to_csv(design, index=False)
 
@@ -67,13 +68,12 @@ def test_pipeline(
             "--configfile",
             str(config_yaml_for_testing),
             "--preset",
-            preset
+            preset,
         ],
         cwd=config_yaml_for_testing.parent,
         capture_output=False,
         text=True,
     )
-
 
     print("STDOUT:", res.stdout)
     print("STDERR:", res.stderr)
@@ -84,5 +84,3 @@ def test_pipeline(
     assert not (test_dir / "seqnado_error.log").exists()
     assert (test_dir / "seqnado_output").exists()
     assert (test_dir / f"seqnado_output/{assay_type}/seqnado_report.html").exists()
-
-
