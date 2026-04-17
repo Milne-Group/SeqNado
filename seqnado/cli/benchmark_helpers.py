@@ -3,19 +3,18 @@
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass
 import getpass
 import hashlib
 import math
 import os
+import re
+from dataclasses import dataclass
+from datetime import datetime
 from html import escape
 from pathlib import Path
-import re
-from datetime import datetime
 from urllib.parse import quote
 
 import pandas as pd
-
 
 NUMERIC_COLUMNS = (
     "s",
@@ -116,7 +115,9 @@ def _sample_color(sample: str) -> str:
 def discover_benchmark_files(benchmark_dir: Path) -> list[Path]:
     """Return all benchmark TSV files under a benchmark directory."""
     return sorted(
-        p for p in benchmark_dir.rglob("*.tsv") if p.is_file() and ".benchmark" in p.parts
+        p
+        for p in benchmark_dir.rglob("*.tsv")
+        if p.is_file() and ".benchmark" in p.parts
     )
 
 
@@ -133,9 +134,7 @@ def discover_alignment_processing_logs(output_root: Path) -> list[Path]:
     if not output_root.exists():
         return []
     return sorted(
-        p
-        for p in output_root.glob("*/qc/alignment_post_process/*.tsv")
-        if p.is_file()
+        p for p in output_root.glob("*/qc/alignment_post_process/*.tsv") if p.is_file()
     )
 
 
@@ -188,26 +187,55 @@ def parse_snakemake_log_timeline(log_file: Path) -> pd.DataFrame:
 
     if not rows:
         return pd.DataFrame(
-            columns=["jobid", "rule", "display_rule", "assay", "label", "entity", "starttime", "endtime"]
+            columns=[
+                "jobid",
+                "rule",
+                "display_rule",
+                "assay",
+                "label",
+                "entity",
+                "starttime",
+                "endtime",
+            ]
         )
 
     timeline = pd.DataFrame(rows)
     timeline = timeline[timeline["rule"] != "all"]
-    return timeline.sort_values(["starttime", "endtime", "jobid"]).reset_index(drop=True)
+    return timeline.sort_values(["starttime", "endtime", "jobid"]).reset_index(
+        drop=True
+    )
 
 
 def parse_snakemake_logs_timeline(log_files: list[Path]) -> pd.DataFrame:
     """Parse and merge multiple Snakemake logs, keeping the most recent rule/entity entry."""
     if not log_files:
         return pd.DataFrame(
-            columns=["jobid", "rule", "display_rule", "assay", "label", "entity", "starttime", "endtime"]
+            columns=[
+                "jobid",
+                "rule",
+                "display_rule",
+                "assay",
+                "label",
+                "entity",
+                "starttime",
+                "endtime",
+            ]
         )
 
     timelines = [parse_snakemake_log_timeline(log_file) for log_file in log_files]
     timelines = [timeline for timeline in timelines if not timeline.empty]
     if not timelines:
         return pd.DataFrame(
-            columns=["jobid", "rule", "display_rule", "assay", "label", "entity", "starttime", "endtime"]
+            columns=[
+                "jobid",
+                "rule",
+                "display_rule",
+                "assay",
+                "label",
+                "entity",
+                "starttime",
+                "endtime",
+            ]
         )
 
     merged = pd.concat(timelines, ignore_index=True)
@@ -319,9 +347,15 @@ def parse_alignment_processing_logs(output_root: Path) -> pd.DataFrame:
                 )
 
     if not rows:
-        return pd.DataFrame(columns=["assay", "sample", "display_rule", "read_count", "sequence"])
+        return pd.DataFrame(
+            columns=["assay", "sample", "display_rule", "read_count", "sequence"]
+        )
 
-    return pd.DataFrame(rows).sort_values(["assay", "sample", "sequence"]).reset_index(drop=True)
+    return (
+        pd.DataFrame(rows)
+        .sort_values(["assay", "sample", "sequence"])
+        .reset_index(drop=True)
+    )
 
 
 def _coerce_numeric_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -356,14 +390,22 @@ def load_benchmark_table(benchmark_dir: Path) -> pd.DataFrame:
 
         frame = _coerce_numeric_columns(frame)
         frame["benchmark_file"] = str(display_path)
-        frame["group"] = str(display_path.parent) if display_path.parent != Path(".") else "root"
+        frame["group"] = (
+            str(display_path.parent) if display_path.parent != Path(".") else "root"
+        )
         frame["job"] = benchmark_file.stem
         path_assay, path_display_rule = _split_benchmark_path(display_path)
         if "rule_name" in frame.columns:
-            parsed_rule_names = frame["rule_name"].fillna("").astype(str).map(_split_rule_assay)
-            frame["assay"] = parsed_rule_names.map(lambda parts: parts[0] if parts[0] != "other" else path_assay)
+            parsed_rule_names = (
+                frame["rule_name"].fillna("").astype(str).map(_split_rule_assay)
+            )
+            frame["assay"] = parsed_rule_names.map(
+                lambda parts: parts[0] if parts[0] != "other" else path_assay
+            )
             frame["display_rule"] = parsed_rule_names.map(
-                lambda parts: parts[1] if parts[1] and parts[1] != "root" else path_display_rule
+                lambda parts: (
+                    parts[1] if parts[1] and parts[1] != "root" else path_display_rule
+                )
             )
         else:
             frame["assay"] = path_assay
@@ -375,7 +417,9 @@ def load_benchmark_table(benchmark_dir: Path) -> pd.DataFrame:
 
     combined = pd.concat(rows, ignore_index=True)
     if "s" in combined.columns:
-        combined = combined.sort_values(["s", "benchmark_file"], ascending=[False, True])
+        combined = combined.sort_values(
+            ["s", "benchmark_file"], ascending=[False, True]
+        )
     return combined.reset_index(drop=True)
 
 
@@ -411,7 +455,10 @@ def _shortest_unique_rule_labels(rules: list[str]) -> dict[str, str]:
             collisions = 0
             for other in unique_rules:
                 other_parts = other.split("/") if other else ["root"]
-                if len(other_parts) >= suffix_len and "/".join(other_parts[-suffix_len:]) == candidate:
+                if (
+                    len(other_parts) >= suffix_len
+                    and "/".join(other_parts[-suffix_len:]) == candidate
+                ):
                     collisions += 1
             if collisions == 1:
                 chosen = candidate
@@ -429,11 +476,21 @@ def summarize_benchmarks(df: pd.DataFrame) -> BenchmarkSummary:
     return BenchmarkSummary(
         jobs=len(df),
         groups=df["group"].nunique() if "group" in df.columns else 0,
-        total_runtime_seconds=float(df["s"].fillna(0).sum()) if "s" in df.columns else 0.0,
-        total_cpu_time_seconds=float(df["cpu_time"].fillna(0).sum()) if "cpu_time" in df.columns else 0.0,
-        peak_rss_mb=float(df["max_rss"].fillna(0).max()) if "max_rss" in df.columns else 0.0,
-        total_io_in=float(df["io_in"].fillna(0).sum()) if "io_in" in df.columns else 0.0,
-        total_io_out=float(df["io_out"].fillna(0).sum()) if "io_out" in df.columns else 0.0,
+        total_runtime_seconds=float(df["s"].fillna(0).sum())
+        if "s" in df.columns
+        else 0.0,
+        total_cpu_time_seconds=float(df["cpu_time"].fillna(0).sum())
+        if "cpu_time" in df.columns
+        else 0.0,
+        peak_rss_mb=float(df["max_rss"].fillna(0).max())
+        if "max_rss" in df.columns
+        else 0.0,
+        total_io_in=float(df["io_in"].fillna(0).sum())
+        if "io_in" in df.columns
+        else 0.0,
+        total_io_out=float(df["io_out"].fillna(0).sum())
+        if "io_out" in df.columns
+        else 0.0,
     )
 
 
@@ -535,7 +592,9 @@ def _metric_available(df: pd.DataFrame, column: str) -> bool:
     return column in df.columns and df[column].notna().any()
 
 
-def _collapsible_section_html(section_id: str, title: str, content: str, open_by_default: bool = False) -> str:
+def _collapsible_section_html(
+    section_id: str, title: str, content: str, open_by_default: bool = False
+) -> str:
     """Wrap report content in a collapsible section with a stable anchor."""
     open_attr = " open" if open_by_default else ""
     return (
@@ -553,7 +612,11 @@ def _assay_swatch_html(assay: str) -> str:
 
 def _report_run_root(benchmark_dir: Path) -> Path:
     """Return the workflow run root for a benchmark directory."""
-    return benchmark_dir.parent if benchmark_dir.name == "seqnado_output" else benchmark_dir
+    return (
+        benchmark_dir.parent
+        if benchmark_dir.name == "seqnado_output"
+        else benchmark_dir
+    )
 
 
 def _assay_chip_legend_html(assays: list[str]) -> str:
@@ -572,7 +635,9 @@ def _assay_chip_legend_html(assays: list[str]) -> str:
     return f"<div class='legend chart-legend'>{items}</div>"
 
 
-def _compute_assay_sample_counts(benchmark_dir: Path, timeline_df: pd.DataFrame) -> dict[str, int]:
+def _compute_assay_sample_counts(
+    benchmark_dir: Path, timeline_df: pd.DataFrame
+) -> dict[str, int]:
     """Compute per-assay sample counts, preferring metadata CSVs over inferred timeline entities."""
     run_root = _report_run_root(benchmark_dir)
     metadata_paths = sorted(run_root.glob("metadata_*.csv"))
@@ -646,7 +711,9 @@ def _seqnado_version() -> str:
     version_file = Path(__file__).resolve().parent.parent / "_version.py"
     if not version_file.exists():
         return "unknown"
-    match = re.search(r"__version__ = version = '([^']+)'", version_file.read_text(encoding="utf-8"))
+    match = re.search(
+        r"__version__ = version = '([^']+)'", version_file.read_text(encoding="utf-8")
+    )
     return match.group(1) if match else "unknown"
 
 
@@ -815,12 +882,17 @@ def _box_plot_html(
     if group_summary.empty:
         return f"<h2>{escape(title)}</h2><p>No data available.</p>"
 
-    selected = plot_df.merge(group_summary[["assay", "display_rule"]], on=["assay", "display_rule"], how="inner")
+    selected = plot_df.merge(
+        group_summary[["assay", "display_rule"]],
+        on=["assay", "display_rule"],
+        how="inner",
+    )
     order = list(group_summary.itertuples(index=False, name=None))
     stats_rows: list[dict[str, object]] = []
     for assay, display_rule, _, _ in order:
         values = selected.loc[
-            (selected["assay"] == assay) & (selected["display_rule"] == display_rule), value_column
+            (selected["assay"] == assay) & (selected["display_rule"] == display_rule),
+            value_column,
         ].sort_values()
         q1 = float(values.quantile(0.25))
         median = float(values.quantile(0.5))
@@ -846,12 +918,15 @@ def _box_plot_html(
         stats_df.groupby("display_rule", sort=False)["median"]
         .max()
         .sort_values(ascending=False)
-        .index
-        .tolist()
+        .index.tolist()
     )
     rule_positions = {rule: idx for idx, rule in enumerate(rule_order)}
     rule_labels = _shortest_unique_rule_labels(rule_order)
-    present_assays = [assay for assay in ASSAY_COLORS if assay != "other" and assay in stats_df["assay"].unique()]
+    present_assays = [
+        assay
+        for assay in ASSAY_COLORS
+        if assay != "other" and assay in stats_df["assay"].unique()
+    ]
     if "other" in stats_df["assay"].unique():
         present_assays.append("other")
     assay_spacing = 14
@@ -883,14 +958,18 @@ def _box_plot_html(
 
     def scale_x(value: float) -> float:
         if center_zero:
-            return left_margin + chart_width * ((value + max_abs_value) / (2 * max_abs_value))
+            return left_margin + chart_width * (
+                (value + max_abs_value) / (2 * max_abs_value)
+            )
         if use_log_scale:
             clipped = max(value, min_positive)
             domain_min = math.log10(min_positive)
             domain_max = math.log10(max_value)
             if domain_max == domain_min:
                 return left_margin
-            return left_margin + chart_width * ((math.log10(clipped) - domain_min) / (domain_max - domain_min))
+            return left_margin + chart_width * (
+                (math.log10(clipped) - domain_min) / (domain_max - domain_min)
+            )
         return left_margin + chart_width * (value / max_value)
 
     value_formatter = _metric_formatter(value_column)
@@ -900,8 +979,16 @@ def _box_plot_html(
         _csv_download_link(selected, f"{title.lower().replace(' ', '_')}.csv"),
         _plot_description_html(
             f"Distribution of {_expanded_metric_description(value_column, value_label)} for the highest-signal rule and assay combinations. Each box summarizes all matching benchmark records with min, lower quartile, median, upper quartile, and max."
-            + (" Negative values indicate reads and positive values indicate writes." if center_zero else "")
-            + (" The x-axis uses a logarithmic scale because the value range spans multiple orders of magnitude." if use_log_scale else "")
+            + (
+                " Negative values indicate reads and positive values indicate writes."
+                if center_zero
+                else ""
+            )
+            + (
+                " The x-axis uses a logarithmic scale because the value range spans multiple orders of magnitude."
+                if use_log_scale
+                else ""
+            )
         ),
         _assay_chip_legend_html(present_assays),
         f"<svg viewBox='0 0 {width} {height}' class='plot' role='img' aria-label='{escape(title)}'>",
@@ -912,14 +999,17 @@ def _box_plot_html(
     elif use_log_scale:
         start_exp = math.floor(math.log10(min_positive))
         end_exp = math.ceil(math.log10(max_value))
-        tick_values = [10 ** exp for exp in range(start_exp, end_exp + 1)]
+        tick_values = [10**exp for exp in range(start_exp, end_exp + 1)]
         if min_positive not in tick_values:
             tick_values = [min_positive] + tick_values
         if max_value not in tick_values:
             tick_values.append(max_value)
         tick_values = sorted({v for v in tick_values if min_positive <= v <= max_value})
     else:
-        tick_values = [max_value * (tick_index / tick_count) for tick_index in range(tick_count + 1)]
+        tick_values = [
+            max_value * (tick_index / tick_count)
+            for tick_index in range(tick_count + 1)
+        ]
 
     for tick_value in tick_values:
         tick_x = scale_x(float(tick_value))
@@ -997,43 +1087,56 @@ def _read_count_line_plot_html(read_counts_df: pd.DataFrame) -> str:
     if read_counts_df.empty or not required.issubset(read_counts_df.columns):
         return "<h2>Read Counts</h2><p>No data available.</p>"
 
-    plot_df = read_counts_df.loc[:, ["sample", "display_rule", "read_count", "sequence"]].copy()
+    plot_df = read_counts_df.loc[
+        :, ["sample", "display_rule", "read_count", "sequence"]
+    ].copy()
     plot_df["read_count"] = pd.to_numeric(plot_df["read_count"], errors="coerce")
     plot_df["sequence"] = pd.to_numeric(plot_df["sequence"], errors="coerce")
     plot_df = plot_df.dropna(subset=["read_count", "sequence"])
     if plot_df.empty:
         return "<h2>Read Counts</h2><p>No data available.</p>"
 
-    plot_df = plot_df.sort_values(["sample", "sequence", "display_rule"]).reset_index(drop=True)
-    plot_df["step_occurrence"] = plot_df.groupby(["sample", "display_rule"]).cumcount() + 1
+    plot_df = plot_df.sort_values(["sample", "sequence", "display_rule"]).reset_index(
+        drop=True
+    )
+    plot_df["step_occurrence"] = (
+        plot_df.groupby(["sample", "display_rule"]).cumcount() + 1
+    )
 
     canonical_intermediate_order = {
         ("Rename Aligned BAM", 1): 0,
-        ("Sort", 1): 1,
         ("QNAME Sort", 1): 2,
         ("Spike-in Filter", 1): 3,
-        ("Index", 1): 4,
         ("Spike-in Split", 1): 5,
         ("Move Reference BAM", 1): 6,
-        ("Sort", 2): 7,
         ("QNAME Sort", 2): 8,
-        ("Index", 2): 9,
         ("Blacklist", 1): 10,
         ("Remove Duplicates", 1): 11,
         ("ATAC Shift", 1): 12,
         ("Filter", 1): 13,
     }
-    aligned_mask = plot_df["display_rule"].astype(str).str.lower().str.startswith("aligned (")
-    finalise_mask = plot_df["display_rule"].astype(str).str.strip().str.lower() == "finalise"
+    aligned_mask = (
+        plot_df["display_rule"].astype(str).str.lower().str.startswith("aligned (")
+    )
+    finalise_mask = (
+        plot_df["display_rule"].astype(str).str.strip().str.lower() == "finalise"
+    )
 
-    intermediate_df = plot_df.loc[~aligned_mask & ~finalise_mask, ["display_rule", "sequence", "step_occurrence"]].copy()
+    intermediate_df = plot_df.loc[
+        ~aligned_mask & ~finalise_mask, ["display_rule", "sequence", "step_occurrence"]
+    ].copy()
     step_occurrence_max = (
-        intermediate_df.groupby("display_rule", dropna=False)["step_occurrence"].max().to_dict()
+        intermediate_df.groupby("display_rule", dropna=False)["step_occurrence"]
+        .max()
+        .to_dict()
         if not intermediate_df.empty
         else {}
     )
     observed_intermediate_order = (
-        intermediate_df.groupby("display_rule", dropna=False)["sequence"].median().sort_values().index.tolist()
+        intermediate_df.groupby("display_rule", dropna=False)["sequence"]
+        .median()
+        .sort_values()
+        .index.tolist()
         if not intermediate_df.empty
         else []
     )
@@ -1047,7 +1150,9 @@ def _read_count_line_plot_html(read_counts_df: pd.DataFrame) -> str:
     observed_slots = sorted(
         observed_slots,
         key=lambda slot: (
-            canonical_intermediate_order.get((slot[0], slot[1]), len(canonical_intermediate_order)),
+            canonical_intermediate_order.get(
+                (slot[0], slot[1]), len(canonical_intermediate_order)
+            ),
             observed_intermediate_order.index(slot[0]),
             slot[1],
         ),
@@ -1055,7 +1160,10 @@ def _read_count_line_plot_html(read_counts_df: pd.DataFrame) -> str:
     axis_slots.extend(observed_slots)
     axis_slots.append(("Finalise", 1, "Finalise"))
 
-    step_positions = {(step, occurrence): idx for idx, (step, occurrence, _label) in enumerate(axis_slots)}
+    step_positions = {
+        (step, occurrence): idx
+        for idx, (step, occurrence, _label) in enumerate(axis_slots)
+    }
 
     def _step_position(row: pd.Series) -> int:
         step = str(row["display_rule"])
@@ -1063,11 +1171,15 @@ def _read_count_line_plot_html(read_counts_df: pd.DataFrame) -> str:
             return step_positions[("__aligned__", 1)]
         if step.strip().lower() == "finalise":
             return step_positions[("Finalise", 1)]
-        return step_positions.get((step, int(row["step_occurrence"])), step_positions[("Finalise", 1)] - 1)
+        return step_positions.get(
+            (step, int(row["step_occurrence"])), step_positions[("Finalise", 1)] - 1
+        )
 
     plot_df["step_position"] = plot_df.apply(_step_position, axis=1)
     plot_df["reads_millions"] = plot_df["read_count"] / 1_000_000
-    sample_order = sorted(plot_df["sample"].dropna().astype(str).unique().tolist(), key=str.casefold)
+    sample_order = sorted(
+        plot_df["sample"].dropna().astype(str).unique().tolist(), key=str.casefold
+    )
 
     unique_positions = sorted(set(step_positions.values()))
     width = max(960, 180 + max(len(unique_positions), 1) * 110)
@@ -1108,7 +1220,7 @@ def _read_count_line_plot_html(read_counts_df: pd.DataFrame) -> str:
         "<h2>Read Counts</h2>",
         _csv_download_link(plot_df, "read_count_trajectory.csv"),
         _plot_description_html(
-            "Read-count trajectories across BAM processing steps. The x-axis follows workflow step order, the y-axis shows reads in millions, and each line is colored by sample."
+            "Read-count trajectories across BAM processing steps. Reads are measured in millions are per fragment for paired-end data and per read for single-end data. Hover over points to see exact read counts and step details. Toggle samples on/off by clicking their legend chips."
         ),
         f"<div class='legend read-count-legend'>{legend_items}</div>",
         "<div class='plot-tooltip' id='read-count-tooltip' hidden></div>",
@@ -1125,7 +1237,9 @@ def _read_count_line_plot_html(read_counts_df: pd.DataFrame) -> str:
             ]
         )
 
-    position_labels = {idx: label for idx, (_step, _occurrence, label) in enumerate(axis_slots)}
+    position_labels = {
+        idx: label for idx, (_step, _occurrence, label) in enumerate(axis_slots)
+    }
 
     for position in unique_positions:
         tick_x = scale_x(position)
@@ -1151,7 +1265,9 @@ def _read_count_line_plot_html(read_counts_df: pd.DataFrame) -> str:
     )
 
     for sample in sample_order:
-        sample_df = plot_df[plot_df["sample"] == sample].sort_values(["step_position", "sequence"])
+        sample_df = plot_df[plot_df["sample"] == sample].sort_values(
+            ["step_position", "sequence"]
+        )
         if sample_df.empty:
             continue
         points = " ".join(
@@ -1179,7 +1295,9 @@ def _gantt_plot_html(df: pd.DataFrame, title: str) -> str:
     if df.empty or not required.issubset(df.columns):
         return f"<h2>{escape(title)}</h2><p>Gantt chart unavailable: no Snakemake run timeline could be parsed.</p>"
 
-    plot_df = df.loc[:, ["display_rule", "assay", "entity", "starttime", "endtime"]].dropna()
+    plot_df = df.loc[
+        :, ["display_rule", "assay", "entity", "starttime", "endtime"]
+    ].dropna()
     if plot_df.empty:
         return f"<h2>{escape(title)}</h2><p>Gantt chart unavailable: start/end timestamps are missing.</p>"
 
@@ -1196,8 +1314,7 @@ def _gantt_plot_html(df: pd.DataFrame, title: str) -> str:
         plot_df.groupby("display_rule", sort=False)["starttime"]
         .min()
         .sort_values()
-        .index
-        .tolist()
+        .index.tolist()
     )
     rule_positions = {rule: idx for idx, rule in enumerate(rule_order)}
     rule_labels = _shortest_unique_rule_labels(rule_order)
@@ -1333,16 +1450,20 @@ def compute_assay_output_sizes(output_root: Path) -> pd.DataFrame:
     if not rows:
         return pd.DataFrame(columns=["assay", "output_size_bytes"])
 
-    return pd.DataFrame(rows).sort_values("output_size_bytes", ascending=False).reset_index(drop=True)
+    return (
+        pd.DataFrame(rows)
+        .sort_values("output_size_bytes", ascending=False)
+        .reset_index(drop=True)
+    )
 
 
 def _prepare_report_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """Return a report-ready dataframe with derived metrics added."""
     prepared = df.copy()
     if "io_in" in prepared.columns or "io_out" in prepared.columns:
-        prepared["io_signed"] = pd.to_numeric(prepared.get("io_out", 0), errors="coerce").fillna(0) - pd.to_numeric(
-            prepared.get("io_in", 0), errors="coerce"
-        ).fillna(0)
+        prepared["io_signed"] = pd.to_numeric(
+            prepared.get("io_out", 0), errors="coerce"
+        ).fillna(0) - pd.to_numeric(prepared.get("io_in", 0), errors="coerce").fillna(0)
     return prepared
 
 
@@ -1386,29 +1507,63 @@ def _report_sections(
 ) -> list[tuple[str, str, str]]:
     """Build the ordered report sections."""
     sections = [
-        ("run-timeline", "Run Timeline", f"{_assay_legend_html(timeline_df)}{_gantt_plot_html(timeline_df, 'Run Timeline')}"),
+        (
+            "run-timeline",
+            "Run Timeline",
+            f"{_assay_legend_html(timeline_df)}{_gantt_plot_html(timeline_df, 'Run Timeline')}",
+        ),
         ("output-size", "Output Size", assay_sizes_plot),
-        ("runtime", "Runtime", _box_plot_html(df, "s", "Runtime", "Runtime (s)", top_n=top_n)),
-        ("max-rss", "Max RSS", _box_plot_html(df, "max_rss", "Max RSS", "Max RSS (MB)", top_n=top_n)),
+        (
+            "runtime",
+            "Runtime",
+            _box_plot_html(df, "s", "Runtime", "Runtime (s)", top_n=top_n),
+        ),
+        (
+            "max-rss",
+            "Max RSS",
+            _box_plot_html(df, "max_rss", "Max RSS", "Max RSS (MB)", top_n=top_n),
+        ),
     ]
     if _metric_available(df, "max_uss"):
-        sections.append(("max-uss", "Max USS", _box_plot_html(df, "max_uss", "Max USS", "Max USS (MB)", top_n=top_n)))
+        sections.append(
+            (
+                "max-uss",
+                "Max USS",
+                _box_plot_html(df, "max_uss", "Max USS", "Max USS (MB)", top_n=top_n),
+            )
+        )
     if _metric_available(df, "max_pss"):
-        sections.append(("max-pss", "Max PSS", _box_plot_html(df, "max_pss", "Max PSS", "Max PSS (MB)", top_n=top_n)))
+        sections.append(
+            (
+                "max-pss",
+                "Max PSS",
+                _box_plot_html(df, "max_pss", "Max PSS", "Max PSS (MB)", top_n=top_n),
+            )
+        )
     if _metric_available(df, "cpu_usage"):
         sections.append(
-            ("cpu-usage", "CPU Usage", _box_plot_html(df, "cpu_usage", "CPU Usage", "CPU Usage (%)", top_n=top_n))
+            (
+                "cpu-usage",
+                "CPU Usage",
+                _box_plot_html(
+                    df, "cpu_usage", "CPU Usage", "CPU Usage (%)", top_n=top_n
+                ),
+            )
         )
     if _metric_available(df, "input_size_mb"):
         sections.append(
             (
                 "input-size",
                 "Input Size",
-                _box_plot_html(df, "input_size_mb", "Input Size", "Input Size (MB)", top_n=top_n),
+                _box_plot_html(
+                    df, "input_size_mb", "Input Size", "Input Size (MB)", top_n=top_n
+                ),
             )
         )
     if _metric_available(df, "io_signed"):
-        sections.append(("io", "I/O", _box_plot_html(df, "io_signed", "I/O", "I/O", top_n=top_n)))
+        sections.append(
+            ("io", "I/O", _box_plot_html(df, "io_signed", "I/O", "I/O", top_n=top_n))
+        )
     if not read_counts_df.empty:
         sections.append(
             (
@@ -1434,12 +1589,22 @@ def write_html_report(
     df = _prepare_report_dataframe(df)
     cards_html = _summary_cards_html(summary)
 
-    assay_sizes = assay_sizes if assay_sizes is not None else pd.DataFrame(columns=["assay", "output_size_bytes"])
-    timeline_df = timeline_df if timeline_df is not None else pd.DataFrame(columns=["label", "starttime", "endtime"])
+    assay_sizes = (
+        assay_sizes
+        if assay_sizes is not None
+        else pd.DataFrame(columns=["assay", "output_size_bytes"])
+    )
+    timeline_df = (
+        timeline_df
+        if timeline_df is not None
+        else pd.DataFrame(columns=["label", "starttime", "endtime"])
+    )
     read_counts_df = (
         read_counts_df
         if read_counts_df is not None
-        else parse_alignment_processing_logs(benchmark_dir if benchmark_dir.name == "seqnado_output" else benchmark_dir)
+        else parse_alignment_processing_logs(
+            benchmark_dir if benchmark_dir.name == "seqnado_output" else benchmark_dir
+        )
     )
     assay_counts_html = _overview_assay_counts_html(benchmark_dir, timeline_df)
     provenance_html = _overview_provenance_html()
@@ -1451,7 +1616,9 @@ def write_html_report(
         "Output size",
         top_n=max(len(assay_sizes), 1),
     )
-    sections = _report_sections(df, top_n, assay_sizes_plot, timeline_df, read_counts_df)
+    sections = _report_sections(
+        df, top_n, assay_sizes_plot, timeline_df, read_counts_df
+    )
     toc_html = "".join(
         f"<a class='toc-link' href='#{escape(section_id)}'>{escape(title)}</a>"
         for section_id, title, _content in sections

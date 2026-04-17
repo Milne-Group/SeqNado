@@ -83,4 +83,6 @@ def test_pipeline(
     test_dir = config_yaml_for_testing.parent
     assert not (test_dir / "seqnado_error.log").exists()
     assert (test_dir / "seqnado_output").exists()
-    assert (test_dir / f"seqnado_output/{assay_type}/seqnado_report.html").exists()
+    assert (
+        test_dir / f"seqnado_output/{assay_type}/seqnado_report_{assay_type}.html"
+    ).exists()

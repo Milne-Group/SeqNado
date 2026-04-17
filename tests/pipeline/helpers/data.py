@@ -44,12 +44,12 @@ class GenomeResources(BaseModel):
     }
 
     _BT2_SUFFIXES: ClassVar[tuple[str, ...]] = (
-        "1.bt2",
-        "2.bt2",
-        "3.bt2",
-        "4.bt2",
-        "rev.1.bt2",
-        "rev.2.bt2",
+        "1",
+        "2",
+        "3",
+        "4",
+        "rev.1",
+        "rev.2",
     )
 
     # Resources keyed directly by assay name
@@ -195,8 +195,6 @@ class GenomeResources(BaseModel):
             dest = index_dir / prefix
             if GenomeResources._has_complete_bt2_index(index_dir, prefix):
                 return dest
-            if index_dir.exists():
-                shutil.rmtree(index_dir, ignore_errors=True)
         else:
             dest = genome_path / index_name
             index_dir = dest
@@ -207,14 +205,28 @@ class GenomeResources(BaseModel):
         try:
             download_with_retry(f"{ref_url}/{tar_path.name}", tar_path)
             if is_bt2:
-                index_dir.mkdir(parents=True, exist_ok=True)
-                extract_tar(tar_path, index_dir)
+                temp_index_dir = genome_path / f".{index_name}.tmp"
+                shutil.rmtree(temp_index_dir, ignore_errors=True)
+                temp_index_dir.mkdir(parents=True, exist_ok=True)
+                extract_tar(tar_path, temp_index_dir, flatten=False)
+                extracted_index_dir = GenomeResources._find_bt2_index_dir(
+                    temp_index_dir, index_name, prefix
+                )
+
+                if extracted_index_dir is not None:
+                    shutil.rmtree(index_dir, ignore_errors=True)
+                    extracted_index_dir.rename(index_dir)
+                shutil.rmtree(temp_index_dir, ignore_errors=True)
             else:
                 extract_tar(tar_path, genome_path)
             tar_path.unlink(missing_ok=True)
         except Exception as e:
             print(f"[WARNING] Could not download index {index_name}: {e}")
             tar_path.unlink(missing_ok=True)
+            if is_bt2 and GenomeResources._has_complete_bt2_index(index_dir, prefix):
+                return dest
+            if not is_bt2 and dest.exists():
+                return dest
             return None
 
         # Verify and return
@@ -224,12 +236,28 @@ class GenomeResources(BaseModel):
 
     @staticmethod
     def _has_complete_bt2_index(index_dir: Path, prefix: str) -> bool:
-        """Return True when all expected Bowtie2 index shards exist and are non-empty."""
-        return all(
-            (index_dir / f"{prefix}.{suffix}").exists()
-            and (index_dir / f"{prefix}.{suffix}").stat().st_size > 0
-            for suffix in GenomeResources._BT2_SUFFIXES
+        """Return True when a complete Bowtie2 index exists with .bt2 or .bt2l shards."""
+        for extension in ("bt2", "bt2l"):
+            if all(
+                (index_dir / f"{prefix}.{suffix}.{extension}").exists()
+                and (index_dir / f"{prefix}.{suffix}.{extension}").stat().st_size > 0
+                for suffix in GenomeResources._BT2_SUFFIXES
+            ):
+                return True
+        return False
+
+    @staticmethod
+    def _find_bt2_index_dir(temp_index_dir: Path, index_name: str, prefix: str) -> Path | None:
+        """Locate the extracted Bowtie2 index directory despite varying archive layouts."""
+        candidate_dirs = [temp_index_dir / index_name, temp_index_dir]
+        candidate_dirs.extend(
+            path for path in temp_index_dir.rglob("*") if path.is_dir()
         )
+
+        for candidate in candidate_dirs:
+            if GenomeResources._has_complete_bt2_index(candidate, prefix):
+                return candidate
+        return None
 
     @staticmethod
     def _update_fastq_screen_config(

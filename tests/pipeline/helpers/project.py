@@ -5,13 +5,44 @@ import shutil
 import site
 import subprocess
 import sys
+from importlib import resources as importlib_resources
 from pathlib import Path
 
 import pytest
 import yaml
 
+from seqnado import Assay
+from seqnado._version import __version__ as seqnado_version
+from seqnado.config.core import ASSAY_CONFIG_MAP, SeqnadoConfig
+from seqnado.config.user_input import render_config
+
 from .data import GenomeResources
 from .utils import get_fastq_pattern
+
+
+def expand_env_values(value):
+    """Recursively expand environment variables in YAML-derived values."""
+    if isinstance(value, dict):
+        return {k: expand_env_values(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [expand_env_values(v) for v in value]
+    if isinstance(value, str):
+        return os.path.expandvars(value)
+    return value
+
+
+def merge_matching_keys(base, overrides):
+    """Recursively replace values in ``base`` for keys present in ``overrides``."""
+    if not isinstance(base, dict) or not isinstance(overrides, dict):
+        return overrides
+
+    merged = dict(base)
+    for key, value in overrides.items():
+        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
+            merged[key] = merge_matching_keys(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
 
 
 def init_seqnado_project(
@@ -185,28 +216,9 @@ def create_config_yaml(
     )
 
     with open(test_config_file) as f:
-        test_overrides = yaml.safe_load(f)
+        test_overrides = expand_env_values(yaml.safe_load(f) or {})
 
-    # For MCC assays, handle the viewpoints substitution BEFORE merging test config
-    # This ensures the environment variable is used for the actual path
-    if (
-        assay.lower() == "mcc"
-        and "assay_config" in test_overrides
-        and "mcc" in test_overrides["assay_config"]
-    ):
-        # Replace the placeholder in test_mcc.yaml with the actual environment variable
-        viewpoints_env = os.environ.get("SEQNADO_MCC_VIEWPOINTS")
-        if viewpoints_env:
-            test_overrides["assay_config"]["mcc"]["viewpoints"] = viewpoints_env
-
-    # Deep merge the test config into the base config
-    for key, value in test_overrides.items():
-        if key in config and isinstance(config[key], dict) and isinstance(value, dict):
-            # Deep merge for nested dicts (like assay_config)
-            config[key].update(value)
-        else:
-            # Simple replacement for non-dict values
-            config[key] = value
+    config = merge_matching_keys(config, test_overrides)
 
     # Add genome directory bind mount for Singularity/Apptainer
     # This allows the container to access genome files (e.g., bt2 indexes for fastq_screen)
@@ -296,8 +308,23 @@ def create_config_yaml(
             plot_coords = genome_dir / "plotting_coordinates.bed"
             config["assay_config"]["plotting"]["coordinates"] = str(plot_coords)
 
-    with open(config_path, "w") as f:
-        yaml.dump(config, f, sort_keys=False)
+    assay_enum = Assay(config["assay"])
+    config["assay"] = assay_enum
+
+    assay_config_data = config.get("assay_config")
+    assay_config_class = ASSAY_CONFIG_MAP.get(assay_enum)
+    if assay_config_data is not None and assay_config_class is not None:
+        config["assay_config"] = assay_config_class.model_validate(assay_config_data)
+
+    workflow_config = SeqnadoConfig.model_validate(config)
+    template = importlib_resources.files("seqnado.data").joinpath("config_template.jinja")
+    with importlib_resources.as_file(template) as template_path:
+        render_config(
+            Path(template_path),
+            workflow_config,
+            config_path,
+            seqnado_version=seqnado_version,
+        )
 
     return config_path
 

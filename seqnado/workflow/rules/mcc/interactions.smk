@@ -17,7 +17,6 @@ use rule bam_sort_by_qname as sort_mcc_annotated_bam with:
         bam=OUTPUT_DIR + "/mcc/{group}/{group}.bam",
     output:
         bam=temp(OUTPUT_DIR + "/mcc/{group}/{group}_qname.bam"),
-        read_log=temp(OUTPUT_DIR + "/qc/mcc/{group}_qname_sort.tsv"),
     threads: CONFIG.third_party_tools.samtools.sort.threads
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),

@@ -92,9 +92,9 @@ def test_multiomics(
             f"Output directory not found for {assay}: {assay_output_dir}"
         )
 
-        seqnado_report = assay_output_dir / "seqnado_report.html"
+        seqnado_report = assay_output_dir / f"seqnado_report_{assay}.html"
         assert seqnado_report.exists(), (
-            f"No seqnado_report.html file found for {assay}: {seqnado_report}"
+            f"No assay-specific seqnado report found for {assay}: {seqnado_report}"
         )
 
     # Verify multiomics-specific outputs (based on MultiomicsOutput class)
