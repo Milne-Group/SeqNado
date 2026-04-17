@@ -137,7 +137,7 @@ rule call_peaks_macs3_with_input:
         """
         mkdir -p $(dirname {log}) &&
         mkdir -p $(dirname {output.peaks}) &&
-        workdir=$(mktemp -d "$(dirname {output.peaks})/.macs3_tmp.{wildcards.sample_id}.XXXXXX") &&
+        workdir=$(mktemp -d "$(dirname {output.peaks})/.macs3_tmp.$(basename "{params.basename}").XXXXXX") &&
         trap 'rm -rf "$workdir"' EXIT &&
         treatment=$(realpath {input.treatment}) &&
         control=$(realpath {input.control}) &&
@@ -191,7 +191,7 @@ rule call_peaks_macs3_no_input:
         """
         mkdir -p $(dirname {log}) &&
         mkdir -p $(dirname {output.peaks}) &&
-        workdir=$(mktemp -d "$(dirname {output.peaks})/.macs3_tmp.{wildcards.sample_id}.XXXXXX") &&
+        workdir=$(mktemp -d "$(dirname {output.peaks})/.macs3_tmp.$(basename "{params.basename}").XXXXXX") &&
         trap 'rm -rf "$workdir"' EXIT &&
         treatment=$(realpath {input.treatment}) &&
         basename=$(realpath {params.basename}) &&
@@ -397,7 +397,7 @@ rule call_peaks_seacr:
         mkdir -p $(dirname {log}) &&
         mkdir -p $(dirname {output.peaks}) &&
         awk '$1 != "chrM"' {input.treatment} > {output.noM}
-        workdir=$(mktemp -d "$(dirname {output.peaks})/.seacr_tmp.{wildcards.sample_id}.XXXXXX") &&
+        workdir=$(mktemp -d "$(dirname {output.peaks})/.seacr_tmp.$(basename "{params.prefix}").XXXXXX") &&
         trap 'rm -rf "$workdir"' EXIT &&
         treatment=$(realpath {output.noM}) &&
         prefix=$(realpath {params.prefix}) &&
