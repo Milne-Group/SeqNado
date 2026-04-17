@@ -98,10 +98,19 @@ rule call_peaks_seacr_consensus:
         "Calling peaks with SEACR for merged group {wildcards.group}"
     shell:
         """
-    if ! SEACR_1.3.sh {input.treatment} {params.threshold} {params.normalization} {params.stringency} {params.basename} > {log} 2>&1; then
+    mkdir -p $(dirname {log}) &&
+    mkdir -p $(dirname {output.peaks}) &&
+    workdir=$(mktemp -d "$(dirname {output.peaks})/.seacr_tmp.{wildcards.group}.XXXXXX") &&
+    trap 'rm -rf "$workdir"' EXIT &&
+    treatment=$(realpath {input.treatment}) &&
+    basename=$(realpath {params.basename}) &&
+    log_file=$(realpath {log}) &&
+    if ! (
+        cd "$workdir" &&
+        SEACR_1.3.sh "$treatment" {params.threshold} {params.normalization} {params.stringency} "$basename" > "$log_file" 2>&1
+    ); then
         touch {output.peaks}
     else
         awk 'BEGIN{{OFS="\\t"}} {{print $1, $2, $3}}' {output.temp_peaks} > {output.peaks} 2>> {log}
     fi
     """
-

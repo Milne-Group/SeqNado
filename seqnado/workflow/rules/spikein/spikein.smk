@@ -4,7 +4,6 @@ use rule bam_sort as bam_sort_spikein with:
         bam=OUTPUT_DIR + "/aligned/spikein/raw/{sample}.bam",
     output:
         bam=temp(OUTPUT_DIR + "/aligned/spikein/sorted/{sample}.bam"),
-        read_log=temp(OUTPUT_DIR + "/aligned/spikein/sorted/{sample}_read.log"),
     log: OUTPUT_DIR + "/logs/aligned_spikein/{sample}_sort.log",
     benchmark: OUTPUT_DIR + "/.benchmark/aligned_spikein/{sample}_sort.tsv",
     message: "Sorting spike-in aligned BAM for sample {wildcards.sample} using samtools"
@@ -90,11 +89,13 @@ rule bam_move_ref:
         bam=temp(OUTPUT_DIR + "/aligned/raw/{sample}.bam"),
     params:
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
-    container: None
+    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
     log: OUTPUT_DIR + "/logs/bam_move_ref/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bam_move_ref/{sample}.tsv",
     message: "Moving reference BAM for sample {wildcards.sample} to raw aligned directory",
     shell: f"""
+    mkdir -p $(dirname {{log}}) &&
+    mkdir -p $(dirname {{output.bam}}) &&
     before=$(samtools view -c {{input.bam}}) &&
     cp {{input.bam}} {{output.bam}} >> {{log}} 2>&1 &&
     after=$(samtools view -c {{output.bam}}) &&

@@ -6,7 +6,6 @@ rule bam_sort:
         bam=OUTPUT_DIR + "/aligned/raw/{sample}.bam",
     output:
         bam=temp(OUTPUT_DIR + "/aligned/sorted/{sample}.bam"),
-        read_log=temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_sort.tsv"),
     params:
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         log_entity="{sample}",
@@ -22,7 +21,7 @@ rule bam_sort:
         before=$(samtools view -c {{input.bam}}) &&
         samtools sort {{input.bam}} -@ {{threads}} -o {{output.bam}} -m 900M >> {{log}} 2>&1 &&
         after=$(samtools view -c {{output.bam}}) &&
-        {emit_read_logs("Sort", "{params.log_entity}", "{params.read_log}", "{output.read_log}")}
+        {emit_read_logs("Sort", "{params.log_entity}", "{params.read_log}")}
     """
 
 rule bam_sort_by_qname:
@@ -30,7 +29,6 @@ rule bam_sort_by_qname:
         bam=OUTPUT_DIR + "/aligned/sorted/{sample}.bam",
     output:
         bam=temp(OUTPUT_DIR + "/aligned/sorted_by_qname/{sample}.bam"),
-        read_log=temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_filter_qname.tsv"),
     params:
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         log_entity="{sample}",
@@ -46,7 +44,7 @@ rule bam_sort_by_qname:
         before=$(samtools view -c {{input.bam}}) &&
         samtools sort -n {{input.bam}} -@ {{threads}} -o {{output.bam}} -m 900M >> {{log}} 2>&1 &&
         after=$(samtools view -c {{output.bam}}) &&
-        {emit_read_logs("QNAME Sort", "{params.log_entity}", "{params.read_log}", "{output.read_log}")}
+        {emit_read_logs("QNAME Sort", "{params.log_entity}", "{params.read_log}")}
     """
 
 
@@ -81,7 +79,6 @@ rule bam_move_to_final_location:
     output:
         bam=OUTPUT_DIR + "/aligned/{sample,[A-Za-z\\d\\-_]+}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample,[A-Za-z\\d\\-_]+}.bam.bai",
-        read_log=temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_final.tsv"),
     params:
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         log_entity="{sample}",
@@ -97,5 +94,5 @@ rule bam_move_to_final_location:
     cp {{input.bam}} {{output.bam}} >> {{log}} 2>&1 &&
     cp {{input.bai}} {{output.bai}} >> {{log}} 2>&1 &&
     after=$(samtools view -c {{output.bam}}) &&
-    {emit_read_logs("Finalise", "{params.log_entity}", "{params.read_log}", "{output.read_log}")}
+    {emit_read_logs("Finalise", "{params.log_entity}", "{params.read_log}")}
     """

@@ -1,6 +1,6 @@
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
 
-if CONFIG.remove_blacklist:
+if CONFIG.qc.remove_blacklist:
 
     rule bam_remove_blacklisted_regions:
         input:
@@ -9,7 +9,6 @@ if CONFIG.remove_blacklist:
         output:
             bam=temp(OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam"),
             bai=temp(OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam.bai"),
-            read_log=temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_blacklist.tsv"),
         threads: 1
         params:
             blacklist=CONFIG.genome.blacklist,
@@ -26,7 +25,7 @@ if CONFIG.remove_blacklist:
         bedtools intersect -v -b {{params.blacklist}} -a {{input.bam}} > {{output.bam}} 2>> {{log}} &&
         samtools index -b {{output.bam}} -o {{output.bai}} >> {{log}} 2>&1 &&
         after=$(samtools view -c {{output.bam}}) &&
-        {emit_read_logs("Blacklist", "{wildcards.sample}", "{params.read_log}", "{output.read_log}")}
+        {emit_read_logs("Blacklist", "{wildcards.sample}", "{params.read_log}")}
         """
 
 else:
@@ -38,7 +37,6 @@ else:
         output:
             bam=temp(OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam"),
             bai=temp(OUTPUT_DIR + "/aligned/blacklist_regions_removed/{sample}.bam.bai"),
-            read_log=temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_blacklist.tsv"),
         params:
             read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         threads: 1
@@ -55,5 +53,5 @@ else:
         cp {{input.bam}} {{output.bam}} >> {{log}} 2>&1 &&
         cp {{input.bai}} {{output.bai}} >> {{log}} 2>&1 &&
         after=$(samtools view -c {{output.bam}}) &&
-        {emit_read_logs("Blacklist", "{wildcards.sample}", "{params.read_log}", "{output.read_log}")}
+        {emit_read_logs("Blacklist", "{wildcards.sample}", "{params.read_log}")}
         """

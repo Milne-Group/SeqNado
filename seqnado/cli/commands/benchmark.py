@@ -93,46 +93,14 @@ def _resolve_report_outputs(
     return html_path, tsv_path
 
 
-@app.command(help="Aggregate Snakemake .benchmark TSV files into a summary TSV and HTML report.")
-def benchmark(
-    benchmark_dir: Path = typer.Argument(
-        Path(".benchmark"),
-        exists=False,
-        file_okay=False,
-        dir_okay=True,
-        readable=True,
-        resolve_path=False,
-        metavar="[BENCHMARK_DIR]",
-        help="Directory containing benchmark TSV files or a SeqNado output root. Defaults to .benchmark.",
-    ),
-    output_html: Path = typer.Option(
-        Path("benchmark_report.html"),
-        "--html",
-        "-o",
-        help="Path to write the HTML report. Defaults to seqnado_output/seqnado_benchmark.html when available.",
-    ),
-    output_tsv: Path = typer.Option(
-        Path("benchmark_summary.tsv"),
-        "--tsv",
-        help="Path to write the aggregated benchmark table. Defaults to seqnado_output/seqnado_benchmark.tsv when available.",
-    ),
-    top_n: int = typer.Option(
-        20,
-        "--top",
-        min=1,
-        help="Number of longest and highest-memory jobs to highlight in the HTML report.",
-    ),
-    verbose: bool = verbose_option(),
+def run_benchmark_report(
+    benchmark_dir: Path,
+    output_html: Path = Path("benchmark_report.html"),
+    output_tsv: Path = Path("benchmark_summary.tsv"),
+    top_n: int = 20,
+    verbose: bool = False,
 ) -> None:
-    """
-    Generate a benchmark report from Snakemake benchmark output.
-
-    Examples:
-        seqnado benchmark
-        seqnado benchmark seqnado_output
-        seqnado benchmark seqnado_output/chip/.benchmark
-        seqnado benchmark .benchmark --html qc/benchmark_report.html --tsv qc/benchmark_summary.tsv
-    """
+    """Generate benchmark outputs from plain Python code without Typer option wrappers."""
     _configure_logging(verbose)
 
     resolved_benchmark_dir = _resolve_benchmark_dir(benchmark_dir)
@@ -184,3 +152,52 @@ def benchmark(
 
     logger.success(f"Wrote HTML report to {output_html}")
     logger.success(f"Wrote aggregated TSV to {output_tsv}")
+
+
+@app.command(help="Aggregate Snakemake .benchmark TSV files into a summary TSV and HTML report.")
+def benchmark(
+    benchmark_dir: Path = typer.Argument(
+        Path(".benchmark"),
+        exists=False,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+        resolve_path=False,
+        metavar="[BENCHMARK_DIR]",
+        help="Directory containing benchmark TSV files or a SeqNado output root. Defaults to .benchmark.",
+    ),
+    output_html: Path = typer.Option(
+        Path("benchmark_report.html"),
+        "--html",
+        "-o",
+        help="Path to write the HTML report. Defaults to seqnado_output/seqnado_benchmark.html when available.",
+    ),
+    output_tsv: Path = typer.Option(
+        Path("benchmark_summary.tsv"),
+        "--tsv",
+        help="Path to write the aggregated benchmark table. Defaults to seqnado_output/seqnado_benchmark.tsv when available.",
+    ),
+    top_n: int = typer.Option(
+        20,
+        "--top",
+        min=1,
+        help="Number of longest and highest-memory jobs to highlight in the HTML report.",
+    ),
+    verbose: bool = verbose_option(),
+) -> None:
+    """
+    Generate a benchmark report from Snakemake benchmark output.
+
+    Examples:
+        seqnado benchmark
+        seqnado benchmark seqnado_output
+        seqnado benchmark seqnado_output/chip/.benchmark
+        seqnado benchmark .benchmark --html qc/benchmark_report.html --tsv qc/benchmark_summary.tsv
+    """
+    run_benchmark_report(
+        benchmark_dir=benchmark_dir,
+        output_html=output_html,
+        output_tsv=output_tsv,
+        top_n=top_n,
+        verbose=verbose,
+    )

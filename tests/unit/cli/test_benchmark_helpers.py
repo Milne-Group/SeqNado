@@ -128,7 +128,7 @@ def test_summarize_benchmarks(tmp_path: Path) -> None:
 def test_write_html_report(tmp_path: Path) -> None:
     _write_benchmark(tmp_path / ".benchmark" / "align" / "sample_a.tsv", 10, 20, 100, 121254.87, 1740695.35)
     _write_benchmark(tmp_path / ".benchmark" / "peaks" / "sample_b.tsv", 30, 40, 200, 11, 13)
-    alignment_log = tmp_path / "seqnado_output" / "chip" / "logs" / "alignment_post_process" / "chip-rx_MLL.log"
+    alignment_log = tmp_path / "seqnado_output" / "chip" / "qc" / "alignment_post_process" / "chip-rx_MLL.tsv"
     alignment_log.parent.mkdir(parents=True, exist_ok=True)
     alignment_log.write_text(
         "Step\tSample\tReads Before\tReads After\n"
@@ -156,7 +156,13 @@ def test_write_html_report(tmp_path: Path) -> None:
     assert "Run Timeline" in html
     assert "Runtime By Rule Box Plot" in html
     assert "Max RSS By Rule Box Plot" in html
-    assert "Read Counts By Rule Box Plot" in html
+    assert "Read Count Trajectory" in html
+    assert "Reads (millions)" in html
+    assert "Workflow Step" in html
+    assert "read-count-legend" in html
+    assert "data-sample='chip-rx_MLL'" in html
+    assert "read-count-series" in html
+    assert "is-dimmed" in html
     assert "href='#read-counts'" in html
     assert "<details class='report-section' id='read-counts'>" in html
     assert "href='#io'" in html
@@ -174,6 +180,7 @@ def test_write_html_report(tmp_path: Path) -> None:
     assert "All Assays" in html
     assert "gantt-legend" in html
     assert "gantt-bar" in html
+    assert "data-assay='all'" in html
     assert "Timeline of logged jobs parsed from Snakemake run logs." in html
     assert "maximum resident set size (peak memory use) in megabytes" in html
     assert "input/output read volume" in html
@@ -186,7 +193,7 @@ def test_write_html_report(tmp_path: Path) -> None:
 
 
 def test_parse_alignment_processing_logs(tmp_path: Path) -> None:
-    log_file = tmp_path / "seqnado_output" / "chip" / "logs" / "alignment_post_process" / "chip-rx_MLL.log"
+    log_file = tmp_path / "seqnado_output" / "chip" / "qc" / "alignment_post_process" / "chip-rx_MLL.tsv"
     log_file.parent.mkdir(parents=True, exist_ok=True)
     log_file.write_text(
         "\n".join(
@@ -213,6 +220,95 @@ def test_parse_alignment_processing_logs(tmp_path: Path) -> None:
         "Blacklist",
     ]
     assert list(parsed["read_count"]) == [29346, 29346, 29346]
+
+
+def test_read_count_plot_orders_alignment_first_and_finalise_last(tmp_path: Path) -> None:
+    alignment_log = tmp_path / "seqnado_output" / "chip" / "qc" / "alignment_post_process" / "chip-rx_MLL.tsv"
+    alignment_log.parent.mkdir(parents=True, exist_ok=True)
+    alignment_log.write_text(
+        "\n".join(
+            [
+                "Step\tSample\tReads Before\tReads After",
+                "Aligned (align_paired)\tchip-rx_MLL\t0\t29346",
+                "Aligned (align_single)\tchip-rx_MLL\t0\t29346",
+                "Sort\tchip-rx_MLL\t29346\t29346",
+                "Blacklist\tchip-rx_MLL\t29346\t29300",
+                "Finalise\tchip-rx_MLL\t29300\t29300",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    table = load_benchmark_table(tmp_path)
+    output_html = tmp_path / "benchmark_report.html"
+    write_html_report(
+        table,
+        benchmark_dir=tmp_path,
+        output_file=output_html,
+        top_n=5,
+        read_counts_df=parse_alignment_processing_logs(tmp_path / "seqnado_output"),
+    )
+
+    html = output_html.read_text(encoding="utf-8")
+    assert ">Aligned</text>" in html
+    assert "Aligned (align_paired)" not in html
+    assert "Aligned (align_single)" not in html
+    assert html.index(">Aligned</text>") < html.index(">Sort</text>")
+    assert html.index(">Sort</text>") < html.index(">Blacklist</text>")
+    assert html.index(">Blacklist</text>") < html.index(">Finalise</text>")
+
+
+def test_read_count_plot_keeps_repeated_steps_in_sequence(tmp_path: Path) -> None:
+    alignment_log = tmp_path / "seqnado_output" / "rna" / "qc" / "alignment_post_process" / "rna-spikein-treated-rep1.tsv"
+    alignment_log.parent.mkdir(parents=True, exist_ok=True)
+    alignment_log.write_text(
+        "\n".join(
+            [
+                "Step\tSample\tReads Before\tReads After",
+                "Aligned (align_paired_spikein_rna)\trna-spikein-treated-rep1\t0\t364745",
+                "Rename Aligned BAM\trna-spikein-treated-rep1\t364745\t364745",
+                "Sort\trna-spikein-treated-rep1\t364745\t364745",
+                "Spike-in Filter\trna-spikein-treated-rep1\t364745\t186768",
+                "Index\trna-spikein-treated-rep1\t186768\t186768",
+                "Spike-in Split\trna-spikein-treated-rep1\t186768\t105340",
+                "Move Reference BAM\trna-spikein-treated-rep1\t105340\t105340",
+                "Sort\trna-spikein-treated-rep1\t105340\t105340",
+                "Index\trna-spikein-treated-rep1\t105340\t105340",
+                "Blacklist\trna-spikein-treated-rep1\t105340\t105332",
+                "Remove Duplicates\trna-spikein-treated-rep1\t105332\t105332",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    table = load_benchmark_table(tmp_path)
+    output_html = tmp_path / "benchmark_report.html"
+    write_html_report(
+        table,
+        benchmark_dir=tmp_path,
+        output_file=output_html,
+        top_n=5,
+        read_counts_df=parse_alignment_processing_logs(tmp_path / "seqnado_output"),
+    )
+
+    html = output_html.read_text(encoding="utf-8")
+    assert ">Aligned</text>" in html
+    assert ">Rename Aligned BAM</text>" in html
+    assert ">Spike-in Filter</text>" in html
+    assert ">Spike-in Split</text>" in html
+    assert ">Move Reference BAM</text>" in html
+    assert ">Sort 1</text>" in html
+    assert ">Sort 2</text>" in html
+    assert ">Index 1</text>" in html
+    assert ">Index 2</text>" in html
+    assert html.index(">Rename Aligned BAM</text>") < html.index(">Spike-in Filter</text>")
+    assert html.index(">Spike-in Filter</text>") < html.index(">Spike-in Split</text>")
+    assert html.index(">Spike-in Split</text>") < html.index(">Move Reference BAM</text>")
+    assert html.index(">Move Reference BAM</text>") < html.index(">Sort 2</text>")
+    assert html.index(">Sort 1</text>") < html.index(">Sort 2</text>")
+    assert html.index(">Index 1</text>") < html.index(">Index 2</text>")
 
 
 def test_write_html_report_includes_extended_benchmark_sections(tmp_path: Path) -> None:

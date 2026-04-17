@@ -13,6 +13,7 @@ from loguru import logger
 
 from seqnado.cli.app_instance import app
 from seqnado.cli.autocomplete import assay_autocomplete
+from seqnado.cli.commands.benchmark import run_benchmark_report
 from seqnado.cli.snakemake_builder import SnakemakeCommandBuilder
 from seqnado.cli.utils import (
     _configure_logging,
@@ -38,6 +39,20 @@ def _ensure_default_snakemake_flag(options: List[str], flag: str) -> List[str]:
     if flag in options:
         return options
     return [flag, *options]
+
+
+def _run_benchmark_after_success(verbose: bool) -> None:
+    """Best-effort benchmark/report generation after a successful pipeline run."""
+    try:
+        run_benchmark_report(benchmark_dir=Path(".benchmark"), verbose=verbose)
+    except typer.Exit as exc:
+        if exc.exit_code not in (0, None):
+            logger.warning(
+                "Pipeline completed, but automatic benchmark report generation failed with exit code {}.",
+                exc.exit_code,
+            )
+    except Exception as exc:
+        logger.warning("Pipeline completed, but automatic benchmark report generation failed: {}", exc)
 
 
 def _run_multiomics_pipeline(
@@ -295,6 +310,8 @@ def pipeline(
             verbose=verbose,
             print_cmd=print_cmd,
         )
+        if exit_code == 0:
+            _run_benchmark_after_success(verbose)
         raise typer.Exit(code=exit_code)
 
     # Single-assay mode
@@ -348,6 +365,8 @@ def pipeline(
             # Final working directory setup and execution
             cwd = str(Path(".").resolve())
             exit_code = execute_snakemake(cmd, cwd, print_cmd)
+            if exit_code == 0:
+                _run_benchmark_after_success(verbose)
             raise typer.Exit(code=exit_code)
     except typer.Exit:
         raise

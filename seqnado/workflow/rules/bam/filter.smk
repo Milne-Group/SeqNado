@@ -8,7 +8,6 @@ rule bam_filter:
     output:
         bam=OUTPUT_DIR + "/aligned/filtered/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/filtered/{sample}.bam.bai",
-        read_log=temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_filter.tsv"),
     params:
         options=str(CONFIG.third_party_tools.samtools.view.command_line_arguments),
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
@@ -25,5 +24,5 @@ rule bam_filter:
     samtools view -@ {{threads}} -h -b {{input.bam}} {{params.options}} > {{output.bam}} 2>> {{log}} &&
     samtools index {{output.bam}} >> {{log}} 2>&1 &&
     after=$(samtools view -c {{output.bam}}) &&
-    {emit_read_logs("Filter", "{wildcards.sample}", "{params.read_log}", "{output.read_log}")}
+    {emit_read_logs("Filter", "{wildcards.sample}", "{params.read_log}")}
     """

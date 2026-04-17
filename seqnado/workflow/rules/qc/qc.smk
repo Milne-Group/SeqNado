@@ -124,13 +124,8 @@ rule qualimap_rnaseq:
 
 
 rule bam_stats:
-    input: 
-        sort=OUTPUT_DIR + "/qc/alignment_post_process/{sample}_sort.tsv",
-        blacklist=OUTPUT_DIR + "/qc/alignment_post_process/{sample}_blacklist.tsv",
-        remove_duplicates=OUTPUT_DIR + "/qc/alignment_post_process/{sample}_remove_duplicates.tsv",
-        atac_shift=OUTPUT_DIR + "/qc/alignment_post_process/{sample}_atac_shift.tsv",
-        filtered=OUTPUT_DIR + "/qc/alignment_post_process/{sample}_filter.tsv",
-        final=OUTPUT_DIR + "/qc/alignment_post_process/{sample}_final.tsv",
+    input:
+        read_log=OUTPUT_DIR + "/qc/alignment_post_process/{sample}.tsv",
     output: temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_alignment_stats.tsv")
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
@@ -141,7 +136,7 @@ rule bam_stats:
     message: "Compiling alignment post-processing stats for sample {wildcards.sample}",
     shell:
         """
-        cat {input.sort} {input.blacklist} {input.remove_duplicates} {input.atac_shift} {input.filtered} {input.final} > {output}
+        cp {input.read_log} {output}
         """
 
 

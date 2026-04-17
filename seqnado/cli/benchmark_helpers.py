@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 from dataclasses import dataclass
 import getpass
+import hashlib
 import math
 import os
 from html import escape
@@ -103,6 +104,13 @@ def _assay_color(assay: str) -> str:
 def _assay_display_name(assay: str) -> str:
     """Return the user-facing display name for an assay."""
     return ASSAY_DISPLAY_NAMES.get(str(assay), str(assay))
+
+
+def _sample_color(sample: str) -> str:
+    """Return a deterministic color for a sample series."""
+    digest = hashlib.md5(sample.encode("utf-8")).hexdigest()
+    hue = int(digest[:6], 16) % 360
+    return f"hsl({hue}, 62%, 46%)"
 
 
 def discover_benchmark_files(benchmark_dir: Path) -> list[Path]:
@@ -983,6 +991,187 @@ def _box_plot_html(
     return "".join(svg_parts)
 
 
+def _read_count_line_plot_html(read_counts_df: pd.DataFrame) -> str:
+    """Render a per-sample read-count trajectory plot."""
+    required = {"sample", "display_rule", "read_count", "sequence"}
+    if read_counts_df.empty or not required.issubset(read_counts_df.columns):
+        return "<h2>Read Counts</h2><p>No data available.</p>"
+
+    plot_df = read_counts_df.loc[:, ["sample", "display_rule", "read_count", "sequence"]].copy()
+    plot_df["read_count"] = pd.to_numeric(plot_df["read_count"], errors="coerce")
+    plot_df["sequence"] = pd.to_numeric(plot_df["sequence"], errors="coerce")
+    plot_df = plot_df.dropna(subset=["read_count", "sequence"])
+    if plot_df.empty:
+        return "<h2>Read Counts</h2><p>No data available.</p>"
+
+    plot_df = plot_df.sort_values(["sample", "sequence", "display_rule"]).reset_index(drop=True)
+    plot_df["step_occurrence"] = plot_df.groupby(["sample", "display_rule"]).cumcount() + 1
+
+    canonical_intermediate_order = {
+        ("Rename Aligned BAM", 1): 0,
+        ("Sort", 1): 1,
+        ("QNAME Sort", 1): 2,
+        ("Spike-in Filter", 1): 3,
+        ("Index", 1): 4,
+        ("Spike-in Split", 1): 5,
+        ("Move Reference BAM", 1): 6,
+        ("Sort", 2): 7,
+        ("QNAME Sort", 2): 8,
+        ("Index", 2): 9,
+        ("Blacklist", 1): 10,
+        ("Remove Duplicates", 1): 11,
+        ("ATAC Shift", 1): 12,
+        ("Filter", 1): 13,
+    }
+    aligned_mask = plot_df["display_rule"].astype(str).str.lower().str.startswith("aligned (")
+    finalise_mask = plot_df["display_rule"].astype(str).str.strip().str.lower() == "finalise"
+
+    intermediate_df = plot_df.loc[~aligned_mask & ~finalise_mask, ["display_rule", "sequence", "step_occurrence"]].copy()
+    step_occurrence_max = (
+        intermediate_df.groupby("display_rule", dropna=False)["step_occurrence"].max().to_dict()
+        if not intermediate_df.empty
+        else {}
+    )
+    observed_intermediate_order = (
+        intermediate_df.groupby("display_rule", dropna=False)["sequence"].median().sort_values().index.tolist()
+        if not intermediate_df.empty
+        else []
+    )
+    axis_slots: list[tuple[str, int, str]] = [("__aligned__", 1, "Aligned")]
+    observed_slots: list[tuple[str, int, str]] = []
+    for step in observed_intermediate_order:
+        occurrences = int(step_occurrence_max.get(step, 1))
+        for occurrence in range(1, occurrences + 1):
+            label = f"{step} {occurrence}" if occurrences > 1 else str(step)
+            observed_slots.append((str(step), occurrence, label))
+    observed_slots = sorted(
+        observed_slots,
+        key=lambda slot: (
+            canonical_intermediate_order.get((slot[0], slot[1]), len(canonical_intermediate_order)),
+            observed_intermediate_order.index(slot[0]),
+            slot[1],
+        ),
+    )
+    axis_slots.extend(observed_slots)
+    axis_slots.append(("Finalise", 1, "Finalise"))
+
+    step_positions = {(step, occurrence): idx for idx, (step, occurrence, _label) in enumerate(axis_slots)}
+
+    def _step_position(row: pd.Series) -> int:
+        step = str(row["display_rule"])
+        if step.lower().startswith("aligned ("):
+            return step_positions[("__aligned__", 1)]
+        if step.strip().lower() == "finalise":
+            return step_positions[("Finalise", 1)]
+        return step_positions.get((step, int(row["step_occurrence"])), step_positions[("Finalise", 1)] - 1)
+
+    plot_df["step_position"] = plot_df.apply(_step_position, axis=1)
+    plot_df["reads_millions"] = plot_df["read_count"] / 1_000_000
+    sample_order = sorted(plot_df["sample"].dropna().astype(str).unique().tolist(), key=str.casefold)
+
+    unique_positions = sorted(set(step_positions.values()))
+    width = max(960, 180 + max(len(unique_positions), 1) * 110)
+    height = 520
+    left_margin = 80
+    right_margin = 28
+    top_margin = 24
+    bottom_margin = 120
+    chart_width = width - left_margin - right_margin
+    chart_height = height - top_margin - bottom_margin
+    max_reads_m = float(plot_df["reads_millions"].max()) if not plot_df.empty else 1.0
+    if max_reads_m <= 0:
+        max_reads_m = 1.0
+    tick_count = 5
+
+    def scale_x(position: int) -> float:
+        if len(unique_positions) <= 1:
+            return left_margin + chart_width / 2
+        max_position = max(unique_positions)
+        if max_position <= 0:
+            return left_margin + chart_width / 2
+        return left_margin + chart_width * (position / max_position)
+
+    def scale_y(value: float) -> float:
+        return top_margin + chart_height - (chart_height * (value / max_reads_m))
+
+    legend_items = "".join(
+        (
+            f"<button type='button' class='chip legend-toggle is-active' data-sample='{escape(str(sample))}'>"
+            f"<span class='chip-swatch' style='background:{_sample_color(str(sample))}'></span>"
+            f"{escape(str(sample))}"
+            "</button>"
+        )
+        for sample in sample_order
+    )
+
+    svg_parts = [
+        "<h2>Read Counts</h2>",
+        _csv_download_link(plot_df, "read_count_trajectory.csv"),
+        _plot_description_html(
+            "Read-count trajectories across BAM processing steps. The x-axis follows workflow step order, the y-axis shows reads in millions, and each line is colored by sample."
+        ),
+        f"<div class='legend read-count-legend'>{legend_items}</div>",
+        f"<svg viewBox='0 0 {width} {height}' class='plot' id='read-count-chart' role='img' aria-label='Read Count Trajectory'>",
+    ]
+
+    for tick_index in range(tick_count + 1):
+        tick_value = max_reads_m * (tick_index / tick_count)
+        tick_y = scale_y(tick_value)
+        svg_parts.extend(
+            [
+                f"<line x1='{left_margin}' y1='{tick_y:.2f}' x2='{left_margin + chart_width}' y2='{tick_y:.2f}' class='plot-grid-line'></line>",
+                f"<text x='{left_margin - 10}' y='{tick_y + 4:.2f}' text-anchor='end' class='plot-axis'>{tick_value:,.2f}</text>",
+            ]
+        )
+
+    position_labels = {idx: label for idx, (_step, _occurrence, label) in enumerate(axis_slots)}
+
+    for position in unique_positions:
+        tick_x = scale_x(position)
+        label = escape(position_labels.get(position, ""))
+        svg_parts.extend(
+            [
+                f"<line x1='{tick_x:.2f}' y1='{top_margin}' x2='{tick_x:.2f}' y2='{top_margin + chart_height}' class='plot-grid-line'></line>",
+                f"<text x='{tick_x:.2f}' y='{height - 62}' text-anchor='end' transform='rotate(-35 {tick_x:.2f} {height - 62})' class='plot-axis'>{label}</text>",
+            ]
+        )
+
+    svg_parts.append(
+        f"<line x1='{left_margin}' y1='{top_margin + chart_height}' x2='{left_margin + chart_width}' y2='{top_margin + chart_height}' class='axis-line'></line>"
+    )
+    svg_parts.append(
+        f"<line x1='{left_margin}' y1='{top_margin}' x2='{left_margin}' y2='{top_margin + chart_height}' class='axis-line'></line>"
+    )
+    svg_parts.append(
+        f"<text x='{left_margin}' y='{height - 18}' class='plot-axis'>Workflow Step</text>"
+    )
+    svg_parts.append(
+        f"<text x='18' y='{top_margin + chart_height / 2:.2f}' transform='rotate(-90 18 {top_margin + chart_height / 2:.2f})' class='plot-axis'>Reads (millions)</text>"
+    )
+
+    for sample in sample_order:
+        sample_df = plot_df[plot_df["sample"] == sample].sort_values(["step_position", "sequence"])
+        if sample_df.empty:
+            continue
+        points = " ".join(
+            f"{scale_x(int(row.step_position)):.2f},{scale_y(float(row.reads_millions)):.2f}"
+            for row in sample_df.itertuples(index=False)
+        )
+        color = _sample_color(str(sample))
+        svg_parts.append(
+            f"<polyline class='read-count-series' data-sample='{escape(str(sample))}' fill='none' stroke='{color}' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' points='{points}'><title>{escape(str(sample))}</title></polyline>"
+        )
+        for row in sample_df.itertuples(index=False):
+            point_x = scale_x(int(row.step_position))
+            point_y = scale_y(float(row.reads_millions))
+            svg_parts.append(
+                f"<circle class='read-count-point' data-sample='{escape(str(sample))}' cx='{point_x:.2f}' cy='{point_y:.2f}' r='3.5' fill='{color}'><title>{escape(str(sample))} | {escape(str(row.display_rule))} | {row.reads_millions:,.2f}M reads</title></circle>"
+            )
+
+    svg_parts.append("</svg>")
+    return "".join(svg_parts)
+
+
 def _gantt_plot_html(df: pd.DataFrame, title: str) -> str:
     """Render a Gantt-style timeline with rule rows and sample/group bars."""
     required = {"display_rule", "assay", "entity", "starttime", "endtime"}
@@ -1224,7 +1413,7 @@ def _report_sections(
             (
                 "read-counts",
                 "Read Counts",
-                _box_plot_html(read_counts_df, "read_count", "Read Counts", "Reads", top_n=max(top_n, 16)),
+                _read_count_line_plot_html(read_counts_df),
             )
         )
     return sections
@@ -1341,6 +1530,10 @@ def write_html_report(
             "    .legend-toggle.is-active { opacity: 1; }",
             "    .legend-swatch { width: 14px; height: 14px; border-radius: 999px; border: 1px solid rgba(31, 41, 51, 0.15); display: inline-block; }",
             "    .legend-swatch-all { background: linear-gradient(90deg, #0891b2 0%, #2563eb 50%, #9333ea 100%); }",
+            "    .chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; background: #fbf6ec; border: 1px solid #ece6dc; font-size: 13px; color: #1f2933; }",
+            "    .chip-swatch { width: 12px; height: 12px; border-radius: 999px; border: 1px solid rgba(31, 41, 51, 0.18); display: inline-block; flex: 0 0 auto; }",
+            "    .read-count-series, .read-count-point { transition: opacity 120ms ease, filter 120ms ease; }",
+            "    .read-count-series.is-dimmed, .read-count-point.is-dimmed { opacity: 0.18; filter: grayscale(1); }",
             "    .export-link { display: inline-block; margin: 0 0 12px; font-size: 13px; color: #8b5e00; text-decoration: none; border-bottom: 1px solid rgba(139, 94, 0, 0.35); }",
             "    .export-link:hover { color: #5f3f00; border-bottom-color: rgba(95, 63, 0, 0.55); }",
             "    .plot-description { margin: 0 0 12px; color: #5f6b76; font-size: 13px; line-height: 1.45; max-width: 72ch; }",
@@ -1354,6 +1547,8 @@ def write_html_report(
             "    .box-median { stroke: #fffdfa; stroke-width: 2.4; }",
             "    .box-median-dot { fill: #1f2933; opacity: 0.82; }",
             "    .plot-track-line { stroke: rgba(231, 223, 209, 0.9); stroke-width: 1.5; }",
+            "    .gantt-bar { transition: opacity 120ms ease, filter 120ms ease; }",
+            "    .gantt-bar.is-dimmed { opacity: 0.18; filter: grayscale(1); }",
             "    @media (max-width: 960px) { .report-layout { grid-template-columns: 1fr; } .report-toc { position: static; margin-bottom: 18px; } }",
             "  </style>",
             "</head>",
@@ -1398,43 +1593,64 @@ def write_html_report(
             "          const toggles = Array.from(legend.querySelectorAll('.legend-toggle[data-assay]'));",
             "          const assayToggles = toggles.filter((node) => node.dataset.assay !== 'all');",
             "          const bars = Array.from(chart.querySelectorAll('.gantt-bar[data-assay]'));",
-            "          const rows = Array.from(chart.querySelectorAll('.gantt-row'));",
-            "          const setState = () => {",
-            "            const activeAssays = new Set(",
-            "              assayToggles.filter((node) => node.classList.contains('is-active')).map((node) => node.dataset.assay)",
-            "            );",
-            "            const showAll = activeAssays.size === 0 || activeAssays.size === assayToggles.length;",
+            "          const setState = (activeAssay) => {",
+            "            const showAll = !activeAssay;",
             "            const allToggle = legend.querySelector('.legend-toggle[data-assay=\"all\"]');",
             "            if (allToggle) {",
             "              allToggle.classList.toggle('is-active', showAll);",
             "              allToggle.classList.toggle('is-inactive', !showAll);",
             "            }",
-            "            bars.forEach((bar) => {",
-            "              const visible = showAll || activeAssays.has(bar.dataset.assay);",
-            "              bar.style.display = visible ? '' : 'none';",
+            "            assayToggles.forEach((toggle) => {",
+            "              const isActive = showAll || toggle.dataset.assay === activeAssay;",
+            "              toggle.classList.toggle('is-active', isActive);",
+            "              toggle.classList.toggle('is-inactive', !isActive);",
             "            });",
-            "            rows.forEach((row) => {",
-            "              const visibleBars = row.querySelectorAll('.gantt-bar:not([style*=\"display: none\"])');",
-            "              row.style.display = visibleBars.length > 0 ? '' : 'none';",
+            "            bars.forEach((bar) => {",
+            "              const isDimmed = !showAll && bar.dataset.assay !== activeAssay;",
+            "              bar.classList.toggle('is-dimmed', isDimmed);",
             "            });",
             "          };",
             "          toggles.forEach((toggle) => {",
             "            toggle.addEventListener('click', () => {",
             "              if (toggle.dataset.assay === 'all') {",
-            "                assayToggles.forEach((node) => {",
-            "                  node.classList.add('is-active');",
-            "                  node.classList.remove('is-inactive');",
-            "                });",
-            "                setState();",
+            "                legend.dataset.activeAssay = '';",
+            "                setState('');",
             "                return;",
             "              }",
-            "              toggle.classList.toggle('is-active');",
-            "              toggle.classList.toggle('is-inactive', !toggle.classList.contains('is-active'));",
-            "              setState();",
+            "              const active = legend.dataset.activeAssay || '';",
+            "              const next = active === toggle.dataset.assay ? '' : toggle.dataset.assay;",
+            "              legend.dataset.activeAssay = next;",
+            "              setState(next);",
             "            });",
             "          });",
-            "          setState();",
+            "          setState('');",
             "          }",
+            "        const readCountLegend = document.querySelector('.read-count-legend');",
+            "        const readCountChart = document.getElementById('read-count-chart');",
+            "        if (readCountLegend && readCountChart) {",
+            "          const toggles = Array.from(readCountLegend.querySelectorAll('.legend-toggle[data-sample]'));",
+            "          const series = Array.from(readCountChart.querySelectorAll('.read-count-series[data-sample], .read-count-point[data-sample]'));",
+            "          const setReadCountState = (activeSample) => {",
+            "            toggles.forEach((toggle) => {",
+            "              const isActive = !activeSample || toggle.dataset.sample === activeSample;",
+            "              toggle.classList.toggle('is-active', isActive);",
+            "              toggle.classList.toggle('is-inactive', !isActive);",
+            "            });",
+            "            series.forEach((node) => {",
+            "              const isDimmed = !!activeSample && node.dataset.sample !== activeSample;",
+            "              node.classList.toggle('is-dimmed', isDimmed);",
+            "            });",
+            "          };",
+            "          toggles.forEach((toggle) => {",
+            "            toggle.addEventListener('click', () => {",
+            "              const active = readCountLegend.dataset.activeSample || '';",
+            "              const next = active === toggle.dataset.sample ? '' : toggle.dataset.sample;",
+            "              readCountLegend.dataset.activeSample = next;",
+            "              setReadCountState(next);",
+            "            });",
+            "          });",
+            "          setReadCountState('');",
+            "        }",
             "        document.querySelectorAll('.toc-link').forEach((link) => {",
             "          link.addEventListener('click', (event) => {",
             "            const targetId = (link.getAttribute('href') || '').replace(/^#/, '');",

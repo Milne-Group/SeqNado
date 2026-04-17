@@ -100,8 +100,9 @@ rule taps_inverted:
     benchmark: OUTPUT_DIR + "/.benchmark/methylation/taps_inverted/{sample}_{genome}.tsv"
     message: "Converting to TAPS methylation for sample {wildcards.sample} and genome {wildcards.genome}"
     shell: """
+    mkdir -p $(dirname {output.taps}) &&
+    mkdir -p $(dirname {log}) &&
     awk -v OFS="\t" '{{print $1, $2, $3, (100-$4), $5, $6}}' {input.bdg} > {output.taps} 2> {log}
-    rm {input.bdg}
     """
 
 rule bigwigs_meth_taps:

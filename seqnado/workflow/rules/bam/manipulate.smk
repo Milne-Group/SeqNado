@@ -30,7 +30,6 @@ if CONFIG.shift_for_tn5_insertion:
         output:
             bam=temp(OUTPUT_DIR + "/aligned/shifted_for_tn5_insertion/{sample}.bam"),
             bai=temp(OUTPUT_DIR + "/aligned/shifted_for_tn5_insertion/{sample}.bam.bai"),
-            read_log=temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_atac_shift.tsv"),
         params:
             read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         threads: 1
@@ -46,7 +45,7 @@ if CONFIG.shift_for_tn5_insertion:
         samtools sort {{input.tmp}} -@ {{threads}} -o {{output.bam}} >> {{log}} 2>&1 &&
         samtools index {{output.bam}} >> {{log}} 2>&1 &&
         after=$(samtools view -c {{output.bam}}) &&
-        {emit_read_logs("ATAC Shift", "{wildcards.sample}", "{params.read_log}", "{output.read_log}")}
+        {emit_read_logs("ATAC Shift", "{wildcards.sample}", "{params.read_log}")}
         """
 
 else:
@@ -59,7 +58,6 @@ else:
             bai=temp(
                 OUTPUT_DIR + "/aligned/shifted_for_tn5_insertion/{sample}.bam.bai"
             ),
-            read_log=temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_atac_shift.tsv"),
         params:
             read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         threads: 1
@@ -72,5 +70,5 @@ else:
         cp {{input.bam}} {{output.bam}} >> {{log}} 2>&1 &&
         cp {{input.bai}} {{output.bai}} >> {{log}} 2>&1 &&
         after=$(samtools view -c {{output.bam}}) &&
-        {emit_read_logs("ATAC Shift", "{wildcards.sample}", "{params.read_log}", "{output.read_log}")}
+        {emit_read_logs("ATAC Shift", "{wildcards.sample}", "{params.read_log}")}
         """
