@@ -1111,6 +1111,7 @@ def _read_count_line_plot_html(read_counts_df: pd.DataFrame) -> str:
             "Read-count trajectories across BAM processing steps. The x-axis follows workflow step order, the y-axis shows reads in millions, and each line is colored by sample."
         ),
         f"<div class='legend read-count-legend'>{legend_items}</div>",
+        "<div class='plot-tooltip' id='read-count-tooltip' hidden></div>",
         f"<svg viewBox='0 0 {width} {height}' class='plot' id='read-count-chart' role='img' aria-label='Read Count Trajectory'>",
     ]
 
@@ -1165,7 +1166,7 @@ def _read_count_line_plot_html(read_counts_df: pd.DataFrame) -> str:
             point_x = scale_x(int(row.step_position))
             point_y = scale_y(float(row.reads_millions))
             svg_parts.append(
-                f"<circle class='read-count-point' data-sample='{escape(str(sample))}' cx='{point_x:.2f}' cy='{point_y:.2f}' r='3.5' fill='{color}'><title>{escape(str(sample))} | {escape(str(row.display_rule))} | {row.reads_millions:,.2f}M reads</title></circle>"
+                f"<circle class='read-count-point' data-sample='{escape(str(sample))}' data-step='{escape(str(row.display_rule))}' data-reads='{int(row.read_count):,}' data-reads-millions='{row.reads_millions:,.3f}' cx='{point_x:.2f}' cy='{point_y:.2f}' r='3.5' fill='{color}'><title>{escape(str(sample))} | {escape(str(row.display_rule))} | {row.reads_millions:,.2f}M reads</title></circle>"
             )
 
     svg_parts.append("</svg>")
@@ -1534,6 +1535,7 @@ def write_html_report(
             "    .chip-swatch { width: 12px; height: 12px; border-radius: 999px; border: 1px solid rgba(31, 41, 51, 0.18); display: inline-block; flex: 0 0 auto; }",
             "    .read-count-series, .read-count-point { transition: opacity 120ms ease, filter 120ms ease; }",
             "    .read-count-series.is-dimmed, .read-count-point.is-dimmed { opacity: 0.18; filter: grayscale(1); }",
+            "    .plot-tooltip { position: fixed; z-index: 20; pointer-events: none; background: rgba(31, 41, 51, 0.94); color: #fffdfa; padding: 8px 10px; border-radius: 10px; box-shadow: 0 10px 20px rgba(31, 41, 51, 0.18); font-size: 12px; line-height: 1.35; max-width: 240px; }",
             "    .export-link { display: inline-block; margin: 0 0 12px; font-size: 13px; color: #8b5e00; text-decoration: none; border-bottom: 1px solid rgba(139, 94, 0, 0.35); }",
             "    .export-link:hover { color: #5f3f00; border-bottom-color: rgba(95, 63, 0, 0.55); }",
             "    .plot-description { margin: 0 0 12px; color: #5f6b76; font-size: 13px; line-height: 1.45; max-width: 72ch; }",
@@ -1627,9 +1629,11 @@ def write_html_report(
             "          }",
             "        const readCountLegend = document.querySelector('.read-count-legend');",
             "        const readCountChart = document.getElementById('read-count-chart');",
+            "        const readCountTooltip = document.getElementById('read-count-tooltip');",
             "        if (readCountLegend && readCountChart) {",
             "          const toggles = Array.from(readCountLegend.querySelectorAll('.legend-toggle[data-sample]'));",
             "          const series = Array.from(readCountChart.querySelectorAll('.read-count-series[data-sample], .read-count-point[data-sample]'));",
+            "          const points = Array.from(readCountChart.querySelectorAll('.read-count-point[data-sample]'));",
             "          const setReadCountState = (activeSample) => {",
             "            toggles.forEach((toggle) => {",
             "              const isActive = !activeSample || toggle.dataset.sample === activeSample;",
@@ -1649,6 +1653,23 @@ def write_html_report(
             "              setReadCountState(next);",
             "            });",
             "          });",
+            "          if (readCountTooltip) {",
+            "            const showTooltip = (event) => {",
+            "              const point = event.currentTarget;",
+            "              readCountTooltip.hidden = false;",
+            "              readCountTooltip.innerHTML = `${point.dataset.sample}<br>${point.dataset.step}<br>${point.dataset.reads} reads (${point.dataset.readsMillions}M)`;",
+            "              readCountTooltip.style.left = `${event.clientX + 14}px`;",
+            "              readCountTooltip.style.top = `${event.clientY + 14}px`;",
+            "            };",
+            "            const hideTooltip = () => {",
+            "              readCountTooltip.hidden = true;",
+            "            };",
+            "            points.forEach((point) => {",
+            "              point.addEventListener('mouseenter', showTooltip);",
+            "              point.addEventListener('mousemove', showTooltip);",
+            "              point.addEventListener('mouseleave', hideTooltip);",
+            "            });",
+            "          }",
             "          setReadCountState('');",
             "        }",
             "        document.querySelectorAll('.toc-link').forEach((link) => {",

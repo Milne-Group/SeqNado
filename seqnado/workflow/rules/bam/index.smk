@@ -6,9 +6,6 @@ rule bam_sort:
         bam=OUTPUT_DIR + "/aligned/raw/{sample}.bam",
     output:
         bam=temp(OUTPUT_DIR + "/aligned/sorted/{sample}.bam"),
-    params:
-        read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
-        log_entity="{sample}",
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=16, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
@@ -18,10 +15,7 @@ rule bam_sort:
     benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_sort.tsv",
     message: "Sorting aligned BAM for sample {wildcards.sample} using samtools",
     shell: f"""
-        before=$(samtools view -c {{input.bam}}) &&
-        samtools sort {{input.bam}} -@ {{threads}} -o {{output.bam}} -m 900M >> {{log}} 2>&1 &&
-        after=$(samtools view -c {{output.bam}}) &&
-        {emit_read_logs("Sort", "{params.log_entity}", "{params.read_log}")}
+    samtools sort {{input.bam}} -@ {{threads}} -o {{output.bam}} -m 900M >> {{log}} 2>&1 
     """
 
 rule bam_sort_by_qname:
@@ -29,9 +23,6 @@ rule bam_sort_by_qname:
         bam=OUTPUT_DIR + "/aligned/sorted/{sample}.bam",
     output:
         bam=temp(OUTPUT_DIR + "/aligned/sorted_by_qname/{sample}.bam"),
-    params:
-        read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
-        log_entity="{sample}",
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
@@ -41,10 +32,7 @@ rule bam_sort_by_qname:
     benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_filter_qname.tsv",
     message: "Sorting aligned BAM by QNAME for sample {wildcards.sample} using samtools",
     shell: f"""
-        before=$(samtools view -c {{input.bam}}) &&
-        samtools sort -n {{input.bam}} -@ {{threads}} -o {{output.bam}} -m 900M >> {{log}} 2>&1 &&
-        after=$(samtools view -c {{output.bam}}) &&
-        {emit_read_logs("QNAME Sort", "{params.log_entity}", "{params.read_log}")}
+    samtools sort -n {{input.bam}} -@ {{threads}} -o {{output.bam}} -m 900M >> {{log}} 2>&1 
     """
 
 
@@ -53,9 +41,6 @@ rule bam_index:
         bam=OUTPUT_DIR + "/aligned/sorted/{sample}.bam",
     output:
         bai=temp(OUTPUT_DIR + "/aligned/sorted/{sample}.bam.bai"),
-    params:
-        read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
-        log_entity="{sample}",
     threads: 1
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
@@ -65,10 +50,7 @@ rule bam_index:
     benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_index.tsv",
     message: "Indexing aligned BAM for sample {wildcards.sample} using samtools",
     shell: f"""
-    before=$(samtools view -c {{input.bam}}) &&
-    samtools index -@ {{threads}} -b {{input.bam}} >> {{log}} 2>&1 &&
-    after="$before" &&
-    {emit_read_logs("Index", "{params.log_entity}", "{params.read_log}")}
+    samtools index -@ {{threads}} -b {{input.bam}} >> {{log}} 2>&1
     """
 
 

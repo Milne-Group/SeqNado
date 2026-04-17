@@ -181,8 +181,8 @@ class SeqnadoConfig(BaseModel):
     project: ProjectConfig
     genome: GenomeConfig
     metadata: Path
-    qc: QCConfig = QCConfig()
-    pcr_duplicates: PCRDuplicatesConfig = PCRDuplicatesConfig()
+    qc: QCConfig = Field(default_factory=QCConfig)
+    pcr_duplicates: PCRDuplicatesConfig = Field(default_factory=PCRDuplicatesConfig)
     assay_config: AssaySpecificConfig | None = None
     third_party_tools: ThirdPartyToolsConfig | None = Field(None, description="Configuration for third-party tools.")
 

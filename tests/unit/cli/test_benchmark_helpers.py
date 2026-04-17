@@ -154,37 +154,32 @@ def test_write_html_report(tmp_path: Path) -> None:
     assert "href='#run-timeline'" in html
     assert "<details class='report-section' id='run-timeline'>" in html
     assert "Run Timeline" in html
-    assert "Runtime By Rule Box Plot" in html
-    assert "Max RSS By Rule Box Plot" in html
+    assert "<h2>Runtime</h2>" in html
+    assert "<h2>Max RSS</h2>" in html
     assert "Read Count Trajectory" in html
     assert "Reads (millions)" in html
     assert "Workflow Step" in html
     assert "read-count-legend" in html
     assert "data-sample='chip-rx_MLL'" in html
     assert "read-count-series" in html
+    assert "read-count-tooltip" in html
+    assert "data-reads=" in html
     assert "is-dimmed" in html
     assert "href='#read-counts'" in html
     assert "<details class='report-section' id='read-counts'>" in html
     assert "href='#io'" in html
     assert "<details class='report-section' id='io'>" in html
-    assert "I/O By Rule Box Plot" in html
+    assert "<h2>I/O</h2>" in html
     assert "input/output volume" in html
-    assert "Output Size By Assay" in html
-    assert "Samples Per Assay" in html
-    assert "RNA-seq" in html
-    assert "Report Provenance" in html
+    assert "<h2>Output Size</h2>" in html
+    assert "Report Generation" in html
     assert "generated this report with SeqNado version" in html
-    assert "Total IO In" in html
-    assert "Total IO Out" in html
+    assert "Total I/O In" in html
+    assert "Total I/O Out" in html
     assert "Export CSV" in html
-    assert "All Assays" in html
-    assert "gantt-legend" in html
-    assert "gantt-bar" in html
-    assert "data-assay='all'" in html
-    assert "Timeline of logged jobs parsed from Snakemake run logs." in html
+    assert "Gantt chart unavailable: no Snakemake run timeline could be parsed." in html
     assert "maximum resident set size (peak memory use) in megabytes" in html
-    assert "input/output read volume" in html
-    assert "input/output write volume" in html
+    assert "Negative values indicate reads and positive values indicate writes." in html
     assert "data:text/csv" in html
     assert "121.3k" in html
     assert "1.74M" in html
@@ -252,8 +247,8 @@ def test_read_count_plot_orders_alignment_first_and_finalise_last(tmp_path: Path
 
     html = output_html.read_text(encoding="utf-8")
     assert ">Aligned</text>" in html
-    assert "Aligned (align_paired)" not in html
-    assert "Aligned (align_single)" not in html
+    assert "data-step='Aligned (align_paired)'" in html
+    assert "data-step='Aligned (align_single)'" in html
     assert html.index(">Aligned</text>") < html.index(">Sort</text>")
     assert html.index(">Sort</text>") < html.index(">Blacklist</text>")
     assert html.index(">Blacklist</text>") < html.index(">Finalise</text>")
