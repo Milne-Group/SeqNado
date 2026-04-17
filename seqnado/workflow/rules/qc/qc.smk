@@ -210,6 +210,7 @@ rule seqnado_report:
     params:
         multiqc_config = "/opt/seqnado/multiqc_config.yaml",
         output_dir = OUTPUT_DIR,
+        assay_name = ASSAY.clean_name,
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
@@ -221,7 +222,7 @@ rule seqnado_report:
         """
         multiqc -o {params.output_dir} {params.output_dir} \
         --config {params.multiqc_config} \
-        --filename "seqnado_report_{ASSAY.clean_name}.html" \
+        --filename "seqnado_report_{params.assay_name}.html" \
         --no-data-dir \
         --force > {log} 2>&1
         """
