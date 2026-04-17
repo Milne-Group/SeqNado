@@ -398,7 +398,7 @@ class AlignmentSection(ProtocolSection):
             lines.append(f"Aligned reads were sorted by coordinate using samtools sort v{samtools_version}.")
 
         # Add blacklist removal if enabled
-        if self.config.get("remove_blacklist", False):
+        if self.config.get("qc", {}).get("remove_blacklist", False):
             blacklist_file = self.config.get("genome", {}).get("blacklist", "")
             if blacklist_file:
                 lines.append(

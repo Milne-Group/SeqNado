@@ -1,4 +1,4 @@
-from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
+from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested, get_read_count_flags
 
 
 rule bam_filter:
@@ -8,9 +8,10 @@ rule bam_filter:
     output:
         bam=OUTPUT_DIR + "/aligned/filtered/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/filtered/{sample}.bam.bai",
-        read_log=temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_filter.tsv"),
     params:
         options=str(CONFIG.third_party_tools.samtools.view.command_line_arguments),
+        read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
+        count_flags=lambda wildcards: get_read_count_flags(wildcards, INPUT_FILES),
     threads: CONFIG.third_party_tools.samtools.view.threads
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
@@ -19,8 +20,10 @@ rule bam_filter:
     log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_filter.log",
     benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_filter.tsv",
     message: "Filtering aligned BAM for sample {wildcards.sample} using samtools",
-    shell: """
-    samtools view -@ {threads} -h -b {input.bam} {params.options} > {output.bam} &&
-    samtools index {output.bam} &&
-    echo -e "filtering\t$(samtools view -c {output.bam})" >> {output.read_log} 2>&1 | tee -a {log}
+    shell: f"""
+    before=$(samtools view -c {{params.count_flags}} {{input.bam}}) &&
+    samtools view -@ {{threads}} -h -b {{input.bam}} {{params.options}} > {{output.bam}} 2>> {{log}} &&
+    samtools index {{output.bam}} >> {{log}} 2>&1 &&
+    after=$(samtools view -c {{params.count_flags}} {{output.bam}}) &&
+    {emit_read_logs("Filter", "{wildcards.sample}", "{params.read_log}")}
     """

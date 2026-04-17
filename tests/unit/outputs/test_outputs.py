@@ -255,7 +255,7 @@ class SeqNadoReportFileTest:
         files = report.files
         assert isinstance(files, list)
         assert all(isinstance(f, str) for f in files)
-        assert any("seqnado_report.html" in f for f in files)
+        assert any("seqnado_report_atac.html" in f for f in files)
 
 class TestBigWigFiles:
     """Tests for BigWigFiles class."""

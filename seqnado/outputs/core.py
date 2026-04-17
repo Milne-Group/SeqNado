@@ -413,7 +413,8 @@ class SeqNadoReportFiles:
         filtered_files = [
             f
             for f in all_files
-            if not f.endswith(".hub.txt") and not f.endswith("seqnado_report.html")
+            if not f.endswith(".hub.txt")
+            and not f.endswith(f"seqnado_report_{self.assay.clean_name}.html")
         ]
         return filtered_files
 
@@ -486,6 +487,7 @@ class SeqnadoOutputBuilder:
 
         report_file = SeqNadoReportFile(
             output_dir=self.output_dir,
+            assay_name=self.assay.clean_name,
         )
         self.file_collections.append(report_file)
 

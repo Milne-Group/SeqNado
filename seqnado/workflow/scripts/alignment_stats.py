@@ -12,10 +12,10 @@ for f in snakemake.input:
         df = pd.read_csv(f, sep='\t')
 
         # Drop unchanged steps
-        df = df.loc[df['Read Count'].shift() != df['Read Count']].reset_index(drop=True)
+        df = df.loc[df['Reads After'].shift() != df['Reads After']].reset_index(drop=True)
 
         steps = df['Step'].tolist()
-        counts = df['Read Count'].tolist()
+        counts = df['Reads After'].tolist()
         deltas = []
 
         for i in range(len(counts) - 1):

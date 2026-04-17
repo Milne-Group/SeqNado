@@ -1,8 +1,6 @@
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
 import shutil
 
-localrules: fastq_screen_config
-
 
 rule fastq_screen_config:
     input:
@@ -54,3 +52,4 @@ use rule fastq_screen_paired as fastq_screen_single with:
 
 
 ruleorder: fastq_screen_paired > fastq_screen_single 
+localrules: fastq_screen_config

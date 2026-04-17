@@ -6,3 +6,9 @@ assay_config:
   create_bigwigs: True
   plot_with_plotnado: True
   create_dataset: True
+
+third_party_tools:
+  samtools:
+    view:
+      threads: 8
+      command_line_arguments: "-bS -f 2"

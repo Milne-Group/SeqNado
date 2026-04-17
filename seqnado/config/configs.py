@@ -293,6 +293,7 @@ class QCConfig(BaseModel):
     calculate_library_complexity: bool = False
     calculate_fraction_of_reads_in_peaks: bool = False
     trim_fastq: bool = True
+    remove_blacklist: bool = False
 
 
 class BigwigConfig(BaseModel):
@@ -536,5 +537,3 @@ class MCCConfig(BaseModel, PathValidatorMixin):
 
         v = list(sorted(set(v)))  # Remove duplicates and sort
         return v
-
-

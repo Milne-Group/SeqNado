@@ -906,6 +906,7 @@ def build_workflow_config(assay: Assay, seqnado_version: str) -> SeqnadoConfig:
             project=project,
             genome=genome,
             metadata=Path(metadata_path),
+            qc=QCConfig(remove_blacklist=bool(genome.blacklist)),
             assay_config=assay_config,
         )
         return workflow_config
@@ -945,6 +946,7 @@ def build_default_workflow_config(assay: Assay) -> SeqnadoConfig:
             project=default_project,
             genome=default_genome,
             metadata=f"metadata_{assay.clean_name}.csv",
+            qc=QCConfig(remove_blacklist=bool(default_genome.blacklist)),
             assay_config=assay_config,
         )
         return workflow_config

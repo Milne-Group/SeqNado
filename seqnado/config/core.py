@@ -181,9 +181,8 @@ class SeqnadoConfig(BaseModel):
     project: ProjectConfig
     genome: GenomeConfig
     metadata: Path
-    qc: QCConfig = QCConfig()
-    pcr_duplicates: PCRDuplicatesConfig = PCRDuplicatesConfig()
-    remove_blacklist: bool = False
+    qc: QCConfig = Field(default_factory=QCConfig)
+    pcr_duplicates: PCRDuplicatesConfig = Field(default_factory=PCRDuplicatesConfig)
     assay_config: AssaySpecificConfig | None = None
     third_party_tools: ThirdPartyToolsConfig | None = Field(None, description="Configuration for third-party tools.")
 
@@ -217,6 +216,19 @@ class SeqnadoConfig(BaseModel):
 
         return values
 
+    @model_validator(mode="before")
+    def migrate_remove_blacklist_to_qc(cls, values):
+        """Support legacy top-level remove_blacklist by moving it under qc."""
+        if not isinstance(values, dict):
+            return values
+
+        if "remove_blacklist" in values:
+            qc_values = dict(values.get("qc") or {})
+            qc_values.setdefault("remove_blacklist", values.pop("remove_blacklist"))
+            values["qc"] = qc_values
+
+        return values
+
     @model_validator(mode="after")
     def sync_peak_caller_tool_defaults(self) -> "SeqnadoConfig":
         """Ensure peak-caller-specific tool configs exist when those methods are selected."""
@@ -229,6 +241,15 @@ class SeqnadoConfig(BaseModel):
         if PeakCallingMethod.SEACR in methods and self.third_party_tools.seacr is None:
             self.third_party_tools.seacr = Seacr()
 
+        return self
+
+    @model_validator(mode="after")
+    def validate_qc_remove_blacklist(self) -> "SeqnadoConfig":
+        """Require a genome blacklist when blacklist removal is enabled."""
+        if self.qc.remove_blacklist and not self.genome.blacklist:
+            raise ValueError(
+                "qc.remove_blacklist can only be True if genome blacklist is provided."
+            )
         return self
 
     @classmethod
@@ -260,15 +281,6 @@ class SeqnadoConfig(BaseModel):
         if self.assay_config and hasattr(self.assay_config, "mcc"):
             return str(self.assay_config.mcc.viewpoints)
         return ""
-
-    @field_validator("remove_blacklist")
-    def validate_remove_blacklist(cls, v):
-        """Can only be set to True if genome blacklist is provided."""
-        if v and not cls.genome.blacklist:
-            raise ValueError(
-                "remove_blacklist can only be True if genome blacklist is provided."
-            )
-        return v
 
     @field_validator("assay_config", mode="before")
     def validate_assay_config_matches_assay(cls, v, info):

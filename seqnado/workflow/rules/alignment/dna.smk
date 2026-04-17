@@ -15,6 +15,9 @@ rule align_paired:
         index=CONFIG.genome.index.prefix,
         options=str(CONFIG.third_party_tools.bowtie2.align.command_line_arguments),
         rg="--rg-id {sample} --rg SM:{sample}",
+        read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
+        rule_label="align_paired",
+        count_flags="-f 64",
     threads: CONFIG.third_party_tools.bowtie2.align.threads,
     resources:
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
@@ -23,16 +26,19 @@ rule align_paired:
     log: OUTPUT_DIR + "/logs/align/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/align/{sample}.tsv",
     message: "Aligning reads for sample {wildcards.sample} using Bowtie2",
-    shell: """
+    shell: f"""
     bowtie2 \
-        -p {threads} \
-        -x {params.index} \
-        -1 {input.fq1} \
-        -2 {input.fq2} \
-        {params.rg} \
-        {params.options} \
-        2> {log} \
-    | samtools view -bS - > {output.bam}
+        -p {{threads}} \
+        -x {{params.index}} \
+        -1 {{input.fq1}} \
+        -2 {{input.fq2}} \
+        {{params.rg}} \
+        {{params.options}} \
+        2> {{log}} \
+    | samtools view -bS - > {{output.bam}} &&
+    before=0 &&
+    after=$(samtools view -c {{params.count_flags}} {{output.bam}}) &&
+    {emit_read_logs("Aligned ({params.rule_label})", "{wildcards.sample}", "{params.read_log}")}
     """
 
 
@@ -45,6 +51,9 @@ rule align_single:
         index=CONFIG.genome.index.prefix,
         options=str(CONFIG.third_party_tools.bowtie2.align.command_line_arguments),
         rg="--rg-id {sample} --rg SM:{sample}",
+        read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
+        rule_label="align_single",
+        count_flags="",
     threads: CONFIG.third_party_tools.bowtie2.align.threads,
     resources:
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
@@ -53,15 +62,18 @@ rule align_single:
     log: OUTPUT_DIR + "/logs/align/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/align/{sample}.tsv",
     message: "Aligning reads for sample {wildcards.sample} using Bowtie2",
-    shell: """
+    shell: f"""
     bowtie2 \
-        -p {threads} \
-        -x {params.index} \
-        -U {input.fq1} \
-        {params.rg} \
-        {params.options} \
-        2> {log} \
-    | samtools view -bS - > {output.bam}
+        -p {{threads}} \
+        -x {{params.index}} \
+        -U {{input.fq1}} \
+        {{params.rg}} \
+        {{params.options}} \
+        2> {{log}} \
+    | samtools view -bS - > {{output.bam}} &&
+    before=0 &&
+    after=$(samtools view -c {{params.count_flags}} {{output.bam}}) &&
+    {emit_read_logs("Aligned ({params.rule_label})", "{wildcards.sample}", "{params.read_log}")}
     """
 
 
