@@ -1,4 +1,4 @@
-from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
+from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested, get_read_count_flags
 
 if CONFIG.shift_for_tn5_insertion:
     rule bam_shift_atac_alignments:
@@ -9,6 +9,7 @@ if CONFIG.shift_for_tn5_insertion:
             tmp=temp(OUTPUT_DIR + "/aligned/shifted_for_tn5_insertion/{sample}.bam.tmp"),
         params:
             read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
+            count_flags=lambda wildcards: get_read_count_flags(wildcards, INPUT_FILES),
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=3, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
@@ -32,6 +33,7 @@ if CONFIG.shift_for_tn5_insertion:
             bai=temp(OUTPUT_DIR + "/aligned/shifted_for_tn5_insertion/{sample}.bam.bai"),
         params:
             read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
+            count_flags=lambda wildcards: get_read_count_flags(wildcards, INPUT_FILES),
         threads: 1
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
@@ -41,10 +43,10 @@ if CONFIG.shift_for_tn5_insertion:
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_atac_shift.tsv",
         message: "Sorting and indexing shifted ATAC-seq alignments for sample {wildcards.sample}",
         shell: f"""
-        before=$(samtools view -c {{input.bam_before}}) &&
+        before=$(samtools view -c {{params.count_flags}} {{input.bam_before}}) &&
         samtools sort {{input.tmp}} -@ {{threads}} -o {{output.bam}} >> {{log}} 2>&1 &&
         samtools index {{output.bam}} >> {{log}} 2>&1 &&
-        after=$(samtools view -c {{output.bam}}) &&
+        after=$(samtools view -c {{params.count_flags}} {{output.bam}}) &&
         {emit_read_logs("ATAC Shift", "{wildcards.sample}", "{params.read_log}")}
         """
 
@@ -60,15 +62,16 @@ else:
             ),
         params:
             read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
+            count_flags=lambda wildcards: get_read_count_flags(wildcards, INPUT_FILES),
         threads: 1
         container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
         log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_atac_shift.log",
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_atac_shift.tsv",
         message: "Skipping ATAC-seq shift for sample {wildcards.sample}",
         shell: f"""
-        before=$(samtools view -c {{input.bam}}) &&
+        before=$(samtools view -c {{params.count_flags}} {{input.bam}}) &&
         cp {{input.bam}} {{output.bam}} >> {{log}} 2>&1 &&
         cp {{input.bai}} {{output.bai}} >> {{log}} 2>&1 &&
-        after=$(samtools view -c {{output.bam}}) &&
+        after=$(samtools view -c {{params.count_flags}} {{output.bam}}) &&
         {emit_read_logs("ATAC Shift", "{wildcards.sample}", "{params.read_log}")}
         """

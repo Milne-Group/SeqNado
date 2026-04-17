@@ -1,4 +1,4 @@
-from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
+from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested, get_read_count_flags
 
 
 rule bam_sort:
@@ -64,6 +64,7 @@ rule bam_move_to_final_location:
     params:
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         log_entity="{sample}",
+        count_flags=lambda wildcards: get_read_count_flags(wildcards, INPUT_FILES),
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
@@ -72,9 +73,9 @@ rule bam_move_to_final_location:
     benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_final.tsv",
     message: "Moving final BAM for sample {wildcards.sample} to final location",
     shell: f"""
-    before=$(samtools view -c {{input.bam}}) &&
+    before=$(samtools view -c {{params.count_flags}} {{input.bam}}) &&
     cp {{input.bam}} {{output.bam}} >> {{log}} 2>&1 &&
     cp {{input.bai}} {{output.bai}} >> {{log}} 2>&1 &&
-    after=$(samtools view -c {{output.bam}}) &&
+    after=$(samtools view -c {{params.count_flags}} {{output.bam}}) &&
     {emit_read_logs("Finalise", "{params.log_entity}", "{params.read_log}")}
     """

@@ -1,5 +1,6 @@
 # Combine bam files for merge
 from seqnado.workflow.helpers.bam import get_bam_files_for_consensus
+from seqnado.workflow.helpers.common import get_read_count_flags
 
 
 rule bam_merge:
@@ -9,6 +10,9 @@ rule bam_merge:
         temp(OUTPUT_DIR + "/aligned/merged/{group}.bam"),
     params:
         read_log=read_log_shared_path(OUTPUT_DIR, "{group}", "merge_bam"),
+        count_flags=lambda wildcards: get_read_count_flags(
+            wildcards, INPUT_FILES, SAMPLE_GROUPINGS
+        ),
     threads: CONFIG.third_party_tools.samtools.merge.threads
     wildcard_constraints:
         group="|".join(SAMPLE_GROUPINGS.get_grouping('consensus').group_names),
@@ -20,10 +24,10 @@ rule bam_merge:
     benchmark: OUTPUT_DIR + "/.benchmark/merge_bam/{group}.tsv",
     message: "Merging BAM files for group {wildcards.group} using samtools",
     shell: f"""
-    before=$(for bam in {{input.bams}}; do samtools view -c "$bam"; done | awk '{{{{s+=$1}}}} END {{{{print s+0}}}}') &&
+    before=$(for bam in {{input.bams}}; do samtools view -c {{params.count_flags}} "$bam"; done | awk '{{{{s+=$1}}}} END {{{{print s+0}}}}') &&
     echo "Input BAM files: {{input.bams}}" > {{log}} 2>&1 &&
     samtools merge {{output}} {{input}} -@ {{threads}} >> {{log}} 2>&1 &&
-    after=$(samtools view -c {{output}}) &&
+    after=$(samtools view -c {{params.count_flags}} {{output}}) &&
     {emit_read_logs("Merge", "{wildcards.group}", "{params.read_log}")}
     """
 

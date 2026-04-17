@@ -18,6 +18,7 @@ rule align_paired:
         prefix=OUTPUT_DIR + "/aligned/star/{sample}.star/",
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         rule_label="align_paired",
+        count_flags="-f 64",
     threads: CONFIG.third_party_tools.star.align.threads
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=35, attempts=attempt, scale=SCALE_RESOURCES),
@@ -37,9 +38,8 @@ rule align_paired:
     --outFileNamePrefix {{params.prefix}} \
     {{params.options}} \
     > {{log}} 2>&1 &&
-    mapped=$(samtools view -c {{output.bam_dir}}/Aligned.sortedByCoord.out.bam) &&
     before=0 &&
-    after="$mapped" &&
+    after=$(samtools view -c {{params.count_flags}} {{output.bam_dir}}/Aligned.sortedByCoord.out.bam) &&
     {emit_read_logs("Aligned ({params.rule_label})", "{wildcards.sample}", "{params.read_log}")}
     """
 
@@ -56,6 +56,7 @@ rule align_single:
         prefix=OUTPUT_DIR + "/aligned/star/{sample}.star/",
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         rule_label="align_single",
+        count_flags="",
     threads: CONFIG.third_party_tools.star.align.threads
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=35, attempts=attempt, scale=SCALE_RESOURCES),
@@ -75,9 +76,8 @@ rule align_single:
     --outFileNamePrefix {{params.prefix}} \
     {{params.options}} \
     > {{log}} 2>&1 &&
-    mapped=$(samtools view -c {{output.bam_dir}}/Aligned.sortedByCoord.out.bam) &&
     before=0 &&
-    after="$mapped" &&
+    after=$(samtools view -c {{params.count_flags}} {{output.bam_dir}}/Aligned.sortedByCoord.out.bam) &&
     {emit_read_logs("Aligned ({params.rule_label})", "{wildcards.sample}", "{params.read_log}")}
     """
 
@@ -90,13 +90,14 @@ rule rename_aligned:
         bam=temp(OUTPUT_DIR + "/aligned/raw/{sample}.bam"),
     params:
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
+        count_flags=lambda wildcards: "-f 64" if INPUT_FILES.is_paired_end(str(wildcards.sample)) else "",
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
     log: OUTPUT_DIR + "/logs/rename_aligned/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/rename_aligned/{sample}.tsv",
     message: "Renaming aligned BAM for sample {wildcards.sample} to standard format",
     shell: f"""
-    before=$(samtools view -c {{input.bam_dir}}/Aligned.sortedByCoord.out.bam) &&
+    before=$(samtools view -c {{params.count_flags}} {{input.bam_dir}}/Aligned.sortedByCoord.out.bam) &&
     mv {{input.bam_dir}}/Aligned.sortedByCoord.out.bam {{output.bam}} >> {{log}} 2>&1 &&
-    after=$(samtools view -c {{output.bam}}) &&
+    after=$(samtools view -c {{params.count_flags}} {{output.bam}}) &&
     {emit_read_logs("Rename Aligned BAM", "{wildcards.sample}", "{params.read_log}")}
     """

@@ -17,6 +17,7 @@ rule align_paired:
         rg="--rg-id {sample} --rg SM:{sample}",
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         rule_label="align_paired",
+        count_flags="-f 64",
     threads: CONFIG.third_party_tools.bowtie2.align.threads,
     resources:
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
@@ -35,9 +36,8 @@ rule align_paired:
         {{params.options}} \
         2> {{log}} \
     | samtools view -bS - > {{output.bam}} &&
-    mapped=$(samtools view -c {{output.bam}}) &&
     before=0 &&
-    after="$mapped" &&
+    after=$(samtools view -c {{params.count_flags}} {{output.bam}}) &&
     {emit_read_logs("Aligned ({params.rule_label})", "{wildcards.sample}", "{params.read_log}")}
     """
 
@@ -53,6 +53,7 @@ rule align_single:
         rg="--rg-id {sample} --rg SM:{sample}",
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         rule_label="align_single",
+        count_flags="",
     threads: CONFIG.third_party_tools.bowtie2.align.threads,
     resources:
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
@@ -70,9 +71,8 @@ rule align_single:
         {{params.options}} \
         2> {{log}} \
     | samtools view -bS - > {{output.bam}} &&
-    mapped=$(samtools view -c {{output.bam}}) &&
     before=0 &&
-    after="$mapped" &&
+    after=$(samtools view -c {{params.count_flags}} {{output.bam}}) &&
     {emit_read_logs("Aligned ({params.rule_label})", "{wildcards.sample}", "{params.read_log}")}
     """
 
