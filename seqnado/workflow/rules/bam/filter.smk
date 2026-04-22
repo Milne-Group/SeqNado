@@ -21,6 +21,7 @@ rule bam_filter:
     benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_filter.tsv",
     message: "Filtering aligned BAM for sample {wildcards.sample} using samtools",
     shell: f"""
+    echo "Filtering aligned BAM with samtools view using options: {{params.options}}" > {log} 2>&1 &&
     before=$(samtools view -c {{params.count_flags}} {{input.bam}}) &&
     samtools view -@ {{threads}} -h -b {{input.bam}} {{params.options}} > {{output.bam}} 2>> {{log}} &&
     samtools index {{output.bam}} >> {{log}} 2>&1 &&
