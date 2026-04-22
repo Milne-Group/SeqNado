@@ -29,6 +29,7 @@ if (
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_remove_duplicates.tsv",
         message: "Removing duplicates from aligned BAM for sample {wildcards.sample} using samtools",
         shell: f"""
+        echo "Removing duplicates with samtools" > {{log}} 2>&1 &&
         before=$(samtools view -c {{params.count_flags}} {{input.bam}}) &&
         samtools rmdup -@ {{threads}} {{input.bam}} {{output.bam}} >> {{log}} 2>&1 &&
         samtools index {{output.bam}} >> {{log}} 2>&1 &&
@@ -58,6 +59,7 @@ elif CONFIG.pcr_duplicates.strategy == PCRDuplicateHandling.REMOVE and picard_ma
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_remove_duplicates.tsv",
         message: "Removing duplicates from aligned BAM for sample {wildcards.sample} using Picard",
         shell: f"""
+        echo "Removing duplicates with Picard MarkDuplicates" > {{log}} 2>&1 &&
         before=$(samtools view -c {{params.count_flags}} {{input.bam}}) &&
         picard MarkDuplicates I={{input.bam}} O={{output.bam}} M={{output.metrics}} CREATE_INDEX=true {{params.options}} >> {{log}} 2>&1 &&
         mv {OUTPUT_DIR}/aligned/duplicates_removed/{{wildcards.sample}}.bai {{output.bai}} &&
@@ -84,6 +86,7 @@ else:
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_remove_duplicates.tsv",
         message: "Skipping duplicate removal for sample {wildcards.sample}",
         shell: f"""
+        echo "Skipping duplicate removal" > {{log}} 2>&1 &&
         before=$(samtools view -c {{params.count_flags}} {{input.bam}}) &&
         cp {{input.bam}} {{output.bam}} >> {{log}} 2>&1 &&
         cp {{input.bai}} {{output.bai}} >> {{log}} 2>&1 &&

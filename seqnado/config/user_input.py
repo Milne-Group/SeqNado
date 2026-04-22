@@ -197,7 +197,7 @@ def get_project_config() -> ProjectConfig:
     return ProjectConfig(name=project_name, date=today, directory=Path(project_dir))
 
 
-def get_qc_config() -> QCConfig:
+def get_qc_config(genome: GenomeConfig | None = None) -> QCConfig:
     """Get QC configuration from user input."""
     run_fastq_screen = get_user_input(
         "Perform FastQScreen?", default="no", is_boolean=True
@@ -208,10 +208,17 @@ def get_qc_config() -> QCConfig:
     calculate_fraction_of_reads_in_peaks = get_user_input(
         "Calculate Fraction of Reads in Peaks (FRiP)?", default="no", is_boolean=True
     )
+    blacklist_available = genome is not None and bool(getattr(genome, "blacklist", None))
+    remove_blacklist = get_user_input(
+        "Remove blacklist regions?",
+        default="yes" if blacklist_available else "no",
+        is_boolean=True,
+    )
     return QCConfig(
         run_fastq_screen=run_fastq_screen,
         calculate_library_complexity=calculate_library_complexity,
         calculate_fraction_of_reads_in_peaks=calculate_fraction_of_reads_in_peaks,
+        remove_blacklist=remove_blacklist,
     )
 
 
@@ -900,13 +907,16 @@ def build_workflow_config(assay: Assay, seqnado_version: str) -> SeqnadoConfig:
     # Build assay-specific configuration
     assay_config = build_assay_config(assay, genome)
 
+    # Get QC configuration
+    qc = get_qc_config(genome)
+
     try:
         workflow_config = SeqnadoConfig(
             assay=assay,
             project=project,
             genome=genome,
             metadata=Path(metadata_path),
-            qc=QCConfig(remove_blacklist=bool(genome.blacklist)),
+            qc=qc,
             assay_config=assay_config,
         )
         return workflow_config
