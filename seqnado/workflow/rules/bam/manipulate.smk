@@ -44,10 +44,10 @@ if CONFIG.shift_for_tn5_insertion:
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_atac_shift.tsv",
         message: "Sorting and indexing shifted ATAC-seq alignments for sample {wildcards.sample}",
         shell: f"""
-        echo "Sorting and indexing shifted ATAC-seq alignments" > {log} 2>&1 &&
+        echo "Sorting and indexing shifted ATAC-seq alignments" > {{log}} 2>&1 &&
         before=$(samtools view -c {{params.count_flags}} {{input.bam_before}}) &&
-        samtools sort {{input.tmp}} -@ {{threads}} -o {{output.bam}} >> {log} 2>&1 &&
-        samtools index {{output.bam}} >> {log} 2>&1 &&
+        samtools sort {{input.tmp}} -@ {{threads}} -o {{output.bam}} >> {{log}} 2>&1 &&
+        samtools index {{output.bam}} >> {{log}} 2>&1 &&
         after=$(samtools view -c {{params.count_flags}} {{output.bam}}) &&
         {emit_read_logs("ATAC Shift", "{wildcards.sample}", "{params.read_log}")}
         """
