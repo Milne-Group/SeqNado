@@ -27,7 +27,7 @@ dependencies = [
     "pip",
     "pulp<=3.3.0",
     "pybtex",
-    "pydantic<=2.12.5",
+    "pydantic<=2.13.2",
     "pyyaml<=6.0.3",
     "rich<=15.0.0",
     "seaborn<=0.13.2",
