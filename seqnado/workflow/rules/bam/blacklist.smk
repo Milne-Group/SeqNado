@@ -22,7 +22,7 @@ if CONFIG.qc.remove_blacklist:
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_blacklist.tsv",
         message: "Removing blacklisted regions from aligned BAM for sample {wildcards.sample} using bedtools",
         shell: f"""
-        echo "Removing blacklisted regions with bedtools" > {log} 2>&1 &&
+        echo "Removing blacklisted regions with bedtools" > {{log}} 2>&1 &&
         before=$(samtools view -c {{params.count_flags}} {{input.bam}}) &&
         bedtools intersect -v -b {{params.blacklist}} -a {{input.bam}} > {{output.bam}} 2>> {{log}} &&
         samtools index -b {{output.bam}} -o {{output.bai}} >> {{log}} 2>&1 &&
@@ -51,7 +51,7 @@ else:
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_blacklist.tsv",
         message: "Skipping blacklisted regions removal for sample {wildcards.sample}",
         shell: f"""
-        echo "Skipping blacklisted regions removal" > {log} 2>&1 &&
+        echo "Skipping blacklisted regions removal" > {{log}} 2>&1 &&
         before=$(samtools view -c {{params.count_flags}} {{input.bam}}) &&
         mkdir -p $(dirname {{output.bam}}) &&
         cp {{input.bam}} {{output.bam}} >> {{log}} 2>&1 &&

@@ -19,7 +19,7 @@ if CONFIG.shift_for_tn5_insertion:
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_atac_shift_modify.tsv",
         message: "Shifting ATAC-seq alignments for sample {wildcards.sample} using bamnado",
         shell: """
-        echo "Shifting ATAC-seq alignments with bamnado" > {log} 2>&1 &&
+        echo "Shifting ATAC-seq alignments with bamnado" > {{log}} 2>&1 &&
         mkdir -p $(dirname {log}) &&
         mkdir -p $(dirname {output.tmp}) &&
         bamnado modify --input {input.bam} --output {output.tmp} --tn5-shift >> {log} 2>&1
@@ -44,7 +44,7 @@ if CONFIG.shift_for_tn5_insertion:
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_atac_shift.tsv",
         message: "Sorting and indexing shifted ATAC-seq alignments for sample {wildcards.sample}",
         shell: f"""
-        echo "Sorting and indexing shifted ATAC-seq alignments" > {log} 2>&1 &&
+        echo "Sorting and indexing shifted ATAC-seq alignments" > {{log}} 2>&1 &&
         before=$(samtools view -c {{params.count_flags}} {{input.bam_before}}) &&
         samtools sort {{input.tmp}} -@ {{threads}} -o {{output.bam}} >> {{log}} 2>&1 &&
         samtools index {{output.bam}} >> {{log}} 2>&1 &&
@@ -71,7 +71,7 @@ else:
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_atac_shift.tsv",
         message: "Skipping ATAC-seq shift for sample {wildcards.sample}",
         shell: f"""
-        echo "Skipping ATAC-seq shift" > {log} 2>&1 &&
+        echo "Skipping ATAC-seq shift" > {{log}} 2>&1 &&
         before=$(samtools view -c {{params.count_flags}} {{input.bam}}) &&
         cp {{input.bam}} {{output.bam}} >> {{log}} 2>&1 &&
         cp {{input.bai}} {{output.bai}} >> {{log}} 2>&1 &&
