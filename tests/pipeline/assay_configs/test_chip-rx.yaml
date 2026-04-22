@@ -26,3 +26,9 @@ assay_config:
       - csaw
   plot_with_plotnado: True
   create_heatmaps: True
+qc:
+  run_fastq_screen: True
+  calculate_library_complexity: True
+  calculate_fraction_of_reads_in_peaks: True
+  trim_fastq: True
+  remove_blacklist: True
