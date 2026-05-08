@@ -13,6 +13,7 @@ from seqnado.inputs import (
 )
 from seqnado.outputs import SeqnadoOutputFactory, SeqnadoOutputFiles
 from seqnado.utils import remove_unwanted_run_files
+from seqnado.workflow.helpers.read_logs import emit_read_logs, read_log_shared_path
 
 
 ################################
@@ -190,7 +191,7 @@ if CONFIG.assay_config.has_spikein:
         case _:
             ruleorder: align_paired_spikein > align_single_spikein
             ruleorder: bam_move_ref > align_paired > align_single
-            ruleorder: make_bigwigs_deeptools_spikein > make_bigwigs_deeptools
+            ruleorder: bigwigs_deeptools_spikein > bigwigs_deeptools
 else:
     match ASSAY:
         case Assay.RNA:

@@ -7,6 +7,8 @@ import pytest
 
 from seqnado import Assay, PCRDuplicateHandling, PCRDuplicateTool
 from seqnado.config.configs import (
+    PeakCallingConfig,
+    PeakCallingMethod,
     PCRDuplicatesConfig,
     ProjectConfig,
     QCConfig,
@@ -217,6 +219,24 @@ class TestSeqnadoConfigValidation:
 
         assert config.qc.run_fastq_screen is False
         assert config.qc.calculate_library_complexity is True
+
+    def test_chip_seacr_peak_calling_populates_seacr_tool_defaults(self, tmp_metadata, tmp_bowtie_index):
+        """Test ChIP configs populate SEACR tool options when SEACR peak calling is selected."""
+        config = SeqnadoConfig(
+            assay=Assay.CHIP,
+            project=ProjectConfig(name="test"),
+            genome=GenomeConfig(name="hg38", index=BowtieIndex(prefix=str(tmp_bowtie_index))),
+            metadata=tmp_metadata,
+            assay_config=ChIPAssayConfig(
+                peak_calling=PeakCallingConfig(method=[PeakCallingMethod.SEACR])
+            ),
+        )
+
+        assert config.third_party_tools is not None
+        assert config.third_party_tools.seacr is not None
+        assert config.third_party_tools.seacr.threshold == 0.01
+        assert config.third_party_tools.seacr.normalization == "non"
+        assert config.third_party_tools.seacr.stringency == "stringent"
 
 
 class TestAssayConfigMatching:

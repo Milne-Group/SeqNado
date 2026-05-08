@@ -115,6 +115,7 @@ def config(
                     assay_configs=assay_configs,
                     template=Path(tpl_path),
                     output_dir=outdir,
+                    seqnado_version=seqnado_version,
                 )
 
                 logger.success(
@@ -169,6 +170,7 @@ def config(
                     template=Path(tpl_path),
                     workflow_config=workflow_config,
                     outfile=config_output,
+                    seqnado_version=seqnado_version,
                     all_options=render_options,
                 )
             except Exception as e:

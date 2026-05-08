@@ -1,6 +1,6 @@
 assay: ATAC
 project:
-  name: default_project
+  name: test
   description: "Test project for ATAC-seq"
 
 assay_config:

@@ -1,4 +1,4 @@
-rule make_bigwigs_deeptools_rna_plus:
+rule bigwigs_deeptools_rna_plus:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -19,7 +19,7 @@ rule make_bigwigs_deeptools_rna_plus:
     """
 
 
-rule make_bigwigs_deeptools_rna_minus:
+rule bigwigs_deeptools_rna_minus:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -39,7 +39,7 @@ rule make_bigwigs_deeptools_rna_minus:
     bamCoverage {params.options} -p {threads} -b {input.bam} -o {output.bigwig} --filterRNAstrand reverse --scaleFactor -1 > {log} 2>&1
     """
 
-rule make_bigwigs_homer_rna:
+rule bigwigs_homer_rna:
     input:
         homer_tag_directory=OUTPUT_DIR + "/tag_dirs/{sample}",
     output:
@@ -79,7 +79,7 @@ rule make_bigwigs_homer_rna:
     """
 
 
-rule make_bigwigs_bamnado_rna_plus:
+rule bigwigs_bamnado_rna_plus:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -100,7 +100,7 @@ rule make_bigwigs_bamnado_rna_plus:
     bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} --strand forward > {log} 2>&1
     """
 
-rule make_bigwigs_bamnado_rna_minus:
+rule bigwigs_bamnado_rna_minus:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
@@ -122,5 +122,5 @@ rule make_bigwigs_bamnado_rna_minus:
     """
 
 
-ruleorder: make_bigwigs_deeptools_rna_plus > make_bigwigs_deeptools_rna_minus
-ruleorder: make_bigwigs_bamnado_rna_plus > make_bigwigs_bamnado_rna_minus
+ruleorder: bigwigs_deeptools_rna_plus > bigwigs_deeptools_rna_minus
+ruleorder: bigwigs_bamnado_rna_plus > bigwigs_bamnado_rna_minus

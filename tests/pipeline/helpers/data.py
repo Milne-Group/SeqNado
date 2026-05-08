@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import ClassVar
 
 from pydantic import BaseModel, model_validator
@@ -41,6 +42,15 @@ class GenomeResources(BaseModel):
         "fasta": "chr21.fa",
         "plot_coords": "plotting_coordinates.bed",
     }
+
+    _BT2_SUFFIXES: ClassVar[tuple[str, ...]] = (
+        "1",
+        "2",
+        "3",
+        "4",
+        "rev.1",
+        "rev.2",
+    )
 
     # Resources keyed directly by assay name
     RESOURCES: ClassVar[dict] = {
@@ -183,7 +193,7 @@ class GenomeResources(BaseModel):
         if is_bt2:
             index_dir = genome_path / index_name
             dest = index_dir / prefix
-            if list(index_dir.glob(f"{prefix}.*.bt2*")):
+            if GenomeResources._has_complete_bt2_index(index_dir, prefix):
                 return dest
         else:
             dest = genome_path / index_name
@@ -195,20 +205,59 @@ class GenomeResources(BaseModel):
         try:
             download_with_retry(f"{ref_url}/{tar_path.name}", tar_path)
             if is_bt2:
-                index_dir.mkdir(parents=True, exist_ok=True)
-                extract_tar(tar_path, index_dir)
+                temp_index_dir = genome_path / f".{index_name}.tmp"
+                shutil.rmtree(temp_index_dir, ignore_errors=True)
+                temp_index_dir.mkdir(parents=True, exist_ok=True)
+                extract_tar(tar_path, temp_index_dir, flatten=False)
+                extracted_index_dir = GenomeResources._find_bt2_index_dir(
+                    temp_index_dir, index_name, prefix
+                )
+
+                if extracted_index_dir is not None:
+                    shutil.rmtree(index_dir, ignore_errors=True)
+                    extracted_index_dir.rename(index_dir)
+                shutil.rmtree(temp_index_dir, ignore_errors=True)
             else:
                 extract_tar(tar_path, genome_path)
             tar_path.unlink(missing_ok=True)
         except Exception as e:
             print(f"[WARNING] Could not download index {index_name}: {e}")
             tar_path.unlink(missing_ok=True)
+            if is_bt2 and GenomeResources._has_complete_bt2_index(index_dir, prefix):
+                return dest
+            if not is_bt2 and dest.exists():
+                return dest
             return None
 
         # Verify and return
         if is_bt2:
-            return dest if list(index_dir.glob(f"{prefix}.*.bt2*")) else None
+            return dest if GenomeResources._has_complete_bt2_index(index_dir, prefix) else None
         return dest if dest.exists() else None
+
+    @staticmethod
+    def _has_complete_bt2_index(index_dir: Path, prefix: str) -> bool:
+        """Return True when a complete Bowtie2 index exists with .bt2 or .bt2l shards."""
+        for extension in ("bt2", "bt2l"):
+            if all(
+                (index_dir / f"{prefix}.{suffix}.{extension}").exists()
+                and (index_dir / f"{prefix}.{suffix}.{extension}").stat().st_size > 0
+                for suffix in GenomeResources._BT2_SUFFIXES
+            ):
+                return True
+        return False
+
+    @staticmethod
+    def _find_bt2_index_dir(temp_index_dir: Path, index_name: str, prefix: str) -> Path | None:
+        """Locate the extracted Bowtie2 index directory despite varying archive layouts."""
+        candidate_dirs = [temp_index_dir / index_name, temp_index_dir]
+        candidate_dirs.extend(
+            path for path in temp_index_dir.rglob("*") if path.is_dir()
+        )
+
+        for candidate in candidate_dirs:
+            if GenomeResources._has_complete_bt2_index(candidate, prefix):
+                return candidate
+        return None
 
     @staticmethod
     def _update_fastq_screen_config(
@@ -259,7 +308,14 @@ class FastqFiles(BaseModel):
         """
         fastq_dir.mkdir(parents=True, exist_ok=True)
 
-        if not list(fastq_dir.glob("*.fastq.gz")):
+        if not cls._has_fastqs_for_assays(fastq_dir, selected_assays):
+            for existing_fastq in fastq_dir.glob("*.fastq.gz"):
+                existing_fastq.unlink(missing_ok=True)
+
+            nested = fastq_dir / "fastq"
+            if nested.exists():
+                shutil.rmtree(nested, ignore_errors=True)
+
             tar_path = fastq_dir.parent / "fastq.tar.gz"
             download_with_retry(cls.FQ_URL, tar_path)
             extract_tar(tar_path, fastq_dir.parent, flatten=False)
@@ -272,10 +328,17 @@ class FastqFiles(BaseModel):
 
             tar_path.unlink(missing_ok=True)
 
-            if not list(fastq_dir.glob("*.fastq.gz")):
-                raise RuntimeError(f"FASTQ extraction failed - no files in {fastq_dir}")
+            if not cls._has_fastqs_for_assays(fastq_dir, selected_assays):
+                raise RuntimeError(
+                    f"FASTQ extraction failed - missing files for assays {selected_assays} in {fastq_dir}"
+                )
 
         files = {
             a: sorted(fastq_dir.glob(get_fastq_pattern(a))) for a in selected_assays
         }
         return cls(fastq_dir=fastq_dir, files=files)
+
+    @staticmethod
+    def _has_fastqs_for_assays(fastq_dir: Path, selected_assays: list[str]) -> bool:
+        """Return True when every requested assay has at least one matching FASTQ."""
+        return all(list(fastq_dir.glob(get_fastq_pattern(assay))) for assay in selected_assays)

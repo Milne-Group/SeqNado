@@ -135,7 +135,18 @@ rule call_peaks_macs3_with_input:
         "Calling peaks with MACS3 for sample {wildcards.sample_id}"
     shell:
         """
-        if ! macs3 callpeak -t {input.treatment} -c {input.control} -n {params.basename} {params.options} > {log} 2>&1; then
+        mkdir -p $(dirname {log}) &&
+        mkdir -p $(dirname {output.peaks}) &&
+        workdir=$(mktemp -d "$(dirname {output.peaks})/.macs3_tmp.$(basename "{params.basename}").XXXXXX") &&
+        trap 'rm -rf "$workdir"' EXIT &&
+        treatment=$(realpath {input.treatment}) &&
+        control=$(realpath {input.control}) &&
+        basename=$(realpath {params.basename}) &&
+        log_file=$(realpath {log}) &&
+        if ! (
+            cd "$workdir" &&
+            macs3 callpeak -t "$treatment" -c "$control" -n "$basename" {params.options} > "$log_file" 2>&1
+        ); then
             touch {output.peaks}
         else
             awk 'BEGIN{{OFS="\\t"}} !/^#/ && !/^chr[[:space:]]+start[[:space:]]+end/ && !/^$/ {{print $1, $2, $3}}' {params.narrow_peak} > {output.peaks} 2>> {log}
@@ -178,7 +189,17 @@ rule call_peaks_macs3_no_input:
         "Calling peaks with MACS3 for sample {wildcards.sample_id}"
     shell:
         """
-        if ! macs3 callpeak -t {input.treatment} -n {params.basename} {params.options} > {log} 2>&1; then
+        mkdir -p $(dirname {log}) &&
+        mkdir -p $(dirname {output.peaks}) &&
+        workdir=$(mktemp -d "$(dirname {output.peaks})/.macs3_tmp.$(basename "{params.basename}").XXXXXX") &&
+        trap 'rm -rf "$workdir"' EXIT &&
+        treatment=$(realpath {input.treatment}) &&
+        basename=$(realpath {params.basename}) &&
+        log_file=$(realpath {log}) &&
+        if ! (
+            cd "$workdir" &&
+            macs3 callpeak -t "$treatment" -n "$basename" {params.options} > "$log_file" 2>&1
+        ); then
             touch {output.peaks}
         else
             awk 'BEGIN{{OFS="\\t"}} !/^#/ && !/^chr[[:space:]]+start[[:space:]]+end/ && !/^$/ {{print $1, $2, $3}}' {params.narrow_peak} > {output.peaks} 2>> {log}
@@ -373,8 +394,18 @@ rule call_peaks_seacr:
         "Calling peaks with SEACR for sample {wildcards.sample_id}"
     shell:
         """
+        mkdir -p $(dirname {log}) &&
+        mkdir -p $(dirname {output.peaks}) &&
         awk '$1 != "chrM"' {input.treatment} > {output.noM}
-        SEACR_1.3.sh {output.noM} {params.threshold} {params.norm} {params.stringency} {output.peaks} > {log} 2>&1 || touch {params.prefix}.{params.stringency}.bed
+        workdir=$(mktemp -d "$(dirname {output.peaks})/.seacr_tmp.$(basename "{params.prefix}").XXXXXX") &&
+        trap 'rm -rf "$workdir"' EXIT &&
+        treatment=$(realpath {output.noM}) &&
+        prefix=$(realpath {params.prefix}) &&
+        log_file=$(realpath {log}) &&
+        (
+            cd "$workdir" &&
+            SEACR_1.3.sh "$treatment" {params.threshold} {params.norm} {params.stringency} "$prefix" > "$log_file" 2>&1 || touch "$prefix".{params.stringency}.bed
+        ) &&
         mv {params.prefix}.{params.stringency}.bed {output.seacr}
         cut -f 1-3 {output.seacr} > {output.peaks}
         """

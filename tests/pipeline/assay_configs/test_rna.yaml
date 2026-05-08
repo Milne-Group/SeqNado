@@ -1,9 +1,10 @@
 assay: RNA
 project:
-  name: default_project
+  name: test
   description: "Test project for RNA-seq"
 assay_config:
   create_bigwigs: True
+  create_dataset: True
   rna_quantification:
     method: feature_counts
     strandedness: 2

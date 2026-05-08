@@ -175,3 +175,28 @@ def format_deeptools_options(wildcards, options, input_files, sample_groupings=N
         )
 
     return str(options)
+
+
+def get_read_count_flags(wildcards, input_files, sample_groupings=None) -> str:
+    """Return samtools flags for fragment-style counting on paired-end data.
+
+    For paired-end samples we count read 1 only so counts track fragments.
+    For single-end samples we keep the default `samtools view -c` behavior.
+    For grouped samples, read 1 counting is used only if every sample in the group
+    is paired-end.
+    """
+    if hasattr(wildcards, "group"):
+        if sample_groupings is None:
+            raise ValueError(
+                "sample_groupings required when wildcards has 'group' attribute"
+            )
+        samples = (
+            sample_groupings.get_grouping("consensus")
+            .get_group(wildcards.group)
+            .samples
+        )
+        is_paired = all(input_files.is_paired_end(sample_name) for sample_name in samples)
+    else:
+        is_paired = input_files.is_paired_end(str(wildcards.sample))
+
+    return "-f 64" if is_paired else ""

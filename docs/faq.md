@@ -37,11 +37,11 @@ apptainer remote use SylabsCloud
 Yes, you can merge multiple samples into a single sample to generate merged bigWig files and consensus peaks. To do this, you need to create a design file that specifies the samples to be merged. The design file should have a column named "merge" that specifies the samples to be merged e.g.:
 
 
-| sample | r1 | r2 | deseq2 | merge |
-|--------|----|----|--------|-------|
-| rna1 | /tmp/pytest-of-asmith/pytest-7/data2/2024-01-13_rna_test/rna1_2.fastq.gz | /tmp/pytest-of-asmith/pytest-7/data2/2024-01-13_rna_test/rna1_1.fastq.gz | control | control |
-| rna2 | /tmp/pytest-of-asmith/pytest-7/data2/2024-01-13_rna_test/rna2_2.fastq.gz | /tmp/pytest-of-asmith/pytest-7/data2/2024-01-13_rna_test/rna2_1.fastq.gz | control | control |
-| rna3 | /tmp/pytest-of-asmith/pytest-7/data2/2024-01-13_rna_test/rna3_2.fastq.gz | /tmp/pytest-of-asmith/pytest-7/data2/2024-01-13_rna_test/rna3_1.fastq.gz | control | control |
-| rna4 | /tmp/pytest-of-asmith/pytest-7/data2/2024-01-13_rna_test/rna4_2.fastq.gz | /tmp/pytest-of-asmith/pytest-7/data2/2024-01-13_rna_test/rna4_1.fastq.gz | treated | treated |
-| rna5 | /tmp/pytest-of-asmith/pytest-7/data2/2024-01-13_rna_test/rna5_2.fastq.gz | /tmp/pytest-of-asmith/pytest-7/data2/2024-01-13_rna_test/rna5_1.fastq.gz | treated | treated |
-| rna6 | /tmp/pytest-of-asmith/pytest-7/data2/2024-01-13_rna_test/rna6_2.fastq.gz | /tmp/pytest-of-asmith/pytest-7/data2/2024-01-13_rna_test/rna6_1.fastq.gz | treated | treated |
+| sample | r1 | r2 | merge |
+|--------|----|----|--------|
+| sample-control-rep1 | /path/to/sample-control-rep1_R1.fastq.gz | /path/to/sample-control-rep1_R2.fastq.gz | control | 
+| sample-control-rep2 | /path/to/sample-control-rep2_R1.fastq.gz | /path/to/sample-control-rep2_R2.fastq.gz | control | 
+| sample-control-rep3 | /path/to/sample-control-rep3_R1.fastq.gz | /path/to/sample-control-rep3_R2.fastq.gz | control | 
+| sample-treated-rep1 | /path/to/sample-treated-rep1_R1.fastq.gz | /path/to/sample-treated-rep1_R2.fastq.gz | treated |
+| sample-treated-rep2 | /path/to/sample-treated-rep2_R1.fastq.gz | /path/to/sample-treated-rep2_R2.fastq.gz | treated |
+| sample-treated-rep3 | /path/to/sample-treated-rep3_R1.fastq.gz | /path/to/sample-treated-rep3_R2.fastq.gz | treated |

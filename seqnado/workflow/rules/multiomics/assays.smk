@@ -9,6 +9,9 @@ for assay in ASSAYS:
     with open(config_path, 'r') as f:
         assay_config = yaml.safe_load(f)
     assay_config["output_dir"] = f"{OUTPUT_DIR}/{assay.clean_name}"
+    if MULTIOMICS_CONFIG.create_dataset:
+        assay_config.setdefault("assay_config", {})
+        assay_config["assay_config"]["create_dataset"] = True
     LOADED_CONFIGS[assay.clean_name] = assay_config
 
 

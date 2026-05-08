@@ -2,7 +2,7 @@ from seqnado.workflow.helpers.common import define_time_requested, define_memory
 
 # Merged, stranded bigwigs for RNA-seq
 
-rule make_bigwigs_deeptools_rna_merged_plus:
+rule bigwigs_deeptools_rna_merged_plus:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -26,7 +26,7 @@ rule make_bigwigs_deeptools_rna_merged_plus:
         """
 
 
-rule make_bigwigs_deeptools_rna_merged_minus:
+rule bigwigs_deeptools_rna_merged_minus:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -50,7 +50,7 @@ rule make_bigwigs_deeptools_rna_merged_minus:
         """
 
 
-rule make_bigwigs_bamnado_rna_merged_plus:
+rule bigwigs_bamnado_rna_merged_plus:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -78,7 +78,7 @@ rule make_bigwigs_bamnado_rna_merged_plus:
         """
 
 
-rule make_bigwigs_bamnado_rna_merged_minus:
+rule bigwigs_bamnado_rna_merged_minus:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -106,7 +106,7 @@ rule make_bigwigs_bamnado_rna_merged_minus:
         """
 
 
-rule make_bigwigs_homer_rna_merged:
+rule bigwigs_homer_rna_merged:
     input:
         homer_tag_directory=OUTPUT_DIR + "/tag_dirs/merged/unscaled/{group}",
     output:

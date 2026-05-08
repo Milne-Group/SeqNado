@@ -268,7 +268,7 @@ Tools are organized by category, matching the structure of the `seqnado tools` C
 
 #### QuantNado
 **Purpose**: SeqNado multiomics quantification and dataset creation tool  
-**Version**: 0.2.5  
+**Version**: 0.4.3  
 **Usage**: Generate quantified datasets for ML analysis  
 **Reference**: Catherine Chahrour and Alastair L. Smith. QuantNado: multiomics machine learning dataset generation tool. 2024. [https://pypi.org/project/QuantNado.](https://pypi.org/project/QuantNado.)
 

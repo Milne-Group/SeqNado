@@ -29,10 +29,10 @@ rule multiomics_summary:
                 f.write(f"  Config:   config_{assay}.yaml\n")
                 f.write(f"  Metadata: metadata_{assay}.csv\n")
                 f.write(f"  Output:   seqnado_output/{assay}/\n")
-                f.write(f"  Report:   seqnado_output/{assay}/seqnado_report.html\n")
+                f.write(f"  Report:   seqnado_output/{assay}/seqnado_report_{assay}.html\n")
 
                 # Check for completeness
-                complete_file = OUTPUT_DIR + f"/{assay}/seqnado_report.html"
+                complete_file = OUTPUT_DIR + f"/{assay}/seqnado_report_{assay}.html"
                 if os.path.exists(complete_file):
                     f.write(f"  STATUS:   COMPLETE\n")
                 else:

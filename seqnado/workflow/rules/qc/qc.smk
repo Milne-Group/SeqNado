@@ -124,13 +124,8 @@ rule qualimap_rnaseq:
 
 
 rule bam_stats:
-    input: 
-        sort=OUTPUT_DIR + "/qc/alignment_post_process/{sample}_sort.tsv",
-        blacklist=OUTPUT_DIR + "/qc/alignment_post_process/{sample}_blacklist.tsv",
-        remove_duplicates=OUTPUT_DIR + "/qc/alignment_post_process/{sample}_remove_duplicates.tsv",
-        atac_shift=OUTPUT_DIR + "/qc/alignment_post_process/{sample}_atac_shift.tsv",
-        filtered=OUTPUT_DIR + "/qc/alignment_post_process/{sample}_filter.tsv",
-        final=OUTPUT_DIR + "/qc/alignment_post_process/{sample}_final.tsv",
+    input:
+        read_log=OUTPUT_DIR + "/qc/alignment_post_process/{sample}.tsv",
     output: temp(OUTPUT_DIR + "/qc/alignment_post_process/{sample}_alignment_stats.tsv")
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
@@ -141,7 +136,7 @@ rule bam_stats:
     message: "Compiling alignment post-processing stats for sample {wildcards.sample}",
     shell:
         """
-        cat {input.sort} {input.blacklist} {input.remove_duplicates} {input.atac_shift} {input.filtered} {input.final} > {output}
+        cp {input.read_log} {output}
         """
 
 
@@ -206,10 +201,11 @@ rule seqnado_report:
     input:
         multiqc_input_files,
     output:
-        report = OUTPUT_DIR + "/seqnado_report.html",
+        report = OUTPUT_DIR + f"/seqnado_report_{ASSAY.clean_name}.html",
     params:
         multiqc_config = "/opt/seqnado/multiqc_config.yaml",
         output_dir = OUTPUT_DIR,
+        assay_name = ASSAY.clean_name,
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
@@ -221,7 +217,7 @@ rule seqnado_report:
         """
         multiqc -o {params.output_dir} {params.output_dir} \
         --config {params.multiqc_config} \
-        --filename "seqnado_report.html" \
+        --filename "seqnado_report_{params.assay_name}.html" \
         --no-data-dir \
         --force > {log} 2>&1
         """

@@ -53,6 +53,3 @@ rule merged_counts:
     -o {output.counts} \
     {input.bam} > {log} 2>&1
     """
-
-localrules:
-    merged_saf

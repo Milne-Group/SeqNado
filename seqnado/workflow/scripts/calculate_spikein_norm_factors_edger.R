@@ -19,8 +19,16 @@ tryCatch({
 
   # Load the data
   cat("Loading metadata...\n")
-  metadata <- read_csv(snakemake@input[[2]], show_col_types = FALSE) %>%
-    mutate(deseq2 = factor(deseq2))
+  metadata <- read_csv(snakemake@input[[2]], show_col_types = FALSE)
+  design_candidates <- c("deseq2", "group", "condition", "scaling_group")
+  design_col <- design_candidates[design_candidates %in% colnames(metadata)][1]
+  if (is.na(design_col)) {
+    cat("  No design column found; using a single-level factor\n")
+    metadata <- metadata %>% mutate(design_group = factor("all_samples"))
+  } else {
+    cat("  Using design column:", design_col, "\n")
+    metadata <- metadata %>% mutate(design_group = factor(.data[[design_col]]))
+  }
   cat("  Samples:", nrow(metadata), "\n")
   cat("  Sample IDs:", paste(metadata$sample_id, collapse = ", "), "\n\n")
 
@@ -81,7 +89,7 @@ tryCatch({
 
   # edgeR model fitting
   cat("\nFitting edgeR model...\n")
-  design <- model.matrix(~ deseq2, data = metadata)
+  design <- model.matrix(~ design_group, data = metadata)
   dge <- estimateDisp(dge, design)
   fit <- glmQLFit(dge, design)
 

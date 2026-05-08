@@ -1,4 +1,4 @@
 assay: SNP
 project:
-  name: default_project
+  name: test
   description: "Test project for SNP"

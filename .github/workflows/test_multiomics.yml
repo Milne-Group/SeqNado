@@ -75,6 +75,7 @@ jobs:
           APPTAINER_CACHEDIR: "${{ github.workspace }}/.apptainer/cache"
           APPTAINER_TMPDIR: "${{ github.workspace }}/.apptainer/tmp"
           SEQNADO_CONFIG: "${{ github.workspace }}/tests/genome_config.json"
+          MPLCONFIGDIR: /tmp/matplotlib
         run: |
           python -m pytest tests/pipeline/test_multiomics.py -vv -s \
             --cores 4 --run-pipeline --tb=short 2>&1 | tee test_output.log

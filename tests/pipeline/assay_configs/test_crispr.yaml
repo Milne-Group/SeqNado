@@ -1,4 +1,4 @@
 assay: CRISPR
 project:
-  name: default_project
+  name: test
   description: "Test project for CRISPR screening"

@@ -76,6 +76,7 @@ jobs:
           APPTAINER_CACHEDIR: "${{ github.workspace }}/.apptainer/cache"
           APPTAINER_TMPDIR: "${{ github.workspace }}/.apptainer/tmp"
           SEQNADO_CONFIG: "${{ github.workspace }}/tests/genome_config.json"
+          MPLCONFIGDIR: /tmp/matplotlib
         run: |
           python -m pytest tests/pipeline/test_pipelines.py::test_pipeline -vv \
           -s --cores 4 --run-pipeline --preset t --assays ${{ matrix.assay }}

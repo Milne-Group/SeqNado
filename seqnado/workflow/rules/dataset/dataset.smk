@@ -1,93 +1,148 @@
-from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
-from seqnado.config import RNAAssayConfig
-import json
+import re
 
-SCALE_RESOURCES = 1
+from seqnado.workflow.helpers.common import define_memory_requested, define_time_requested
 
-BAM_FILES = OUTPUT.bam_files
-VCF_FILES = OUTPUT.vcf_files
-BEDGRAPH_FILES = OUTPUT.bedgraph_files
-
-CHROMOSOME_SIZES = CONFIG.genome.chromosome_sizes
-
-# VCF files are named {sample}.vcf.gz — Path.stem gives {sample}.vcf, not {sample}
-DATASET_VCF_SAMPLE_NAMES = OUTPUT.sample_names if VCF_FILES else []
-
-# Methylation files are named {sample}_{genome}_CpG.bedGraph — stem is not the sample name
-DATASET_METHYLATION_SAMPLE_NAMES = OUTPUT.sample_names if BEDGRAPH_FILES else []
-
-# Strandedness: only applies to RNA assay with non-zero strandedness
-_STRAND_MAP = {1: "F", 2: "R"}
-_strandedness = (
-    CONFIG.assay_config.rna_quantification.strandedness
-    if isinstance(CONFIG.assay_config, RNAAssayConfig) and CONFIG.assay_config.rna_quantification
-    else 0
-)
-_library_type = _STRAND_MAP.get(_strandedness)
-_bam_sample_names = OUTPUT.ip_sample_names or OUTPUT.sample_names
-DATASET_STRANDED_CONFIG = (
-    {s: _library_type for s in _bam_sample_names} if _library_type else {}
-)
+DATASET_SAMPLE_NAMES = OUTPUT.ip_sample_names or OUTPUT.sample_names
+DATASET_PATH = f"{OUTPUT_DIR}/dataset/{CONFIG.project.date}_{CONFIG.project.name}.zarr"
+DATASET_SAMPLE_PATTERN = "|".join(re.escape(sample) for sample in DATASET_SAMPLE_NAMES)
 
 
-rule make_dataset:
-    """Create a dataset from bam files using QuantNado."""
+def _get_dataset_args(wildcards):
+    assay = ASSAY.clean_name
+    sample_id = wildcards.sample_id
+    bam = OUTPUT_DIR + f"/aligned/{sample_id}.bam"
+    bai = OUTPUT_DIR + f"/aligned/{sample_id}.bam.bai"
+
+    if assay == "snp":
+        return {
+            "bam": [],
+            "bai": [],
+            "vcf": OUTPUT_DIR + f"/variant/{sample_id}.vcf.gz",
+            "bdg": [],
+            "primary_input_flag": f"--vcf-file {OUTPUT_DIR}/variant/{sample_id}.vcf.gz",
+            "extra_args": "",
+        }
+
+    if assay in ("chip", "cat"):
+        return {
+            "bam": bam,
+            "bai": bai,
+            "vcf": [],
+            "bdg": [],
+            "primary_input_flag": f"--bam-file {bam}",
+            "extra_args": f"--ip {INPUT_FILES.query(sample_id).ip}",
+        }
+
+    if assay == "rna":
+        strandedness = (
+            CONFIG.assay_config.rna_quantification.strandedness
+            if CONFIG.assay_config.rna_quantification
+            else 0
+        )
+        return {
+            "bam": bam,
+            "bai": bai,
+            "vcf": [],
+            "bdg": [],
+            "primary_input_flag": f"--bam-file {bam}",
+            "extra_args": f"--stranded {strandedness}",
+        }
+
+    if assay == "meth":
+        return {
+            "bam": bam,
+            "bai": bai,
+            "vcf": [],
+            "bdg": OUTPUT.meth_file_map[sample_id],
+            "primary_input_flag": f"--bam-file {bam}",
+            "extra_args": f"--methylation_file {OUTPUT.meth_file_map[sample_id]}",
+        }
+
+    if assay == "atac":
+        return {
+            "bam": bam,
+            "bai": bai,
+            "vcf": [],
+            "bdg": [],
+            "primary_input_flag": f"--bam-file {bam}",
+            "extra_args": "",
+        }
+
+    if assay == "mcc":
+        return {
+            "bam": bam,
+            "bai": bai,
+            "vcf": [],
+            "bdg": [],
+            "primary_input_flag": f"--bam-file {bam}",
+            "extra_args": "",
+        }
+    raise ValueError(f"Unsupported assay type: {assay}")
+
+
+rule dataset_create:
     input:
-        bam_files=BAM_FILES,
-        bedgraph_files=BEDGRAPH_FILES,
-        vcf_files=VCF_FILES,
+        bam=lambda wc: _get_dataset_args(wc)["bam"],
+        bai=lambda wc: _get_dataset_args(wc)["bai"],
+        vcf=lambda wc: _get_dataset_args(wc)["vcf"],
+        bdg=lambda wc: _get_dataset_args(wc)["bdg"],
     output:
-        dataset=directory(OUTPUT_DIR + "/dataset.zarr"),
+        dataset=temp(directory(OUTPUT_DIR + "/dataset/{sample_id}.zarr")),
+    wildcard_constraints:
+        sample_id=DATASET_SAMPLE_PATTERN,
     params:
-        chromosome_sizes=CHROMOSOME_SIZES,
-        dataset=OUTPUT_DIR + "/dataset.zarr",
-        vcf_sample_names=DATASET_VCF_SAMPLE_NAMES,
-        methylation_sample_names=DATASET_METHYLATION_SAMPLE_NAMES,
-        stranded_config=DATASET_STRANDED_CONFIG,
-    threads: 16
+        assay=ASSAY.value,
+        output_dir=OUTPUT_DIR + "/dataset",
+        primary_input_flag=lambda wc: _get_dataset_args(wc)["primary_input_flag"],
+        extra_args=lambda wc: _get_dataset_args(wc)["extra_args"],
+    threads: 1
     resources:
-            mem=lambda wildcards, attempt: define_memory_requested(initial_value=32, attempts=attempt, scale=SCALE_RESOURCES),
-            runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "docker://ghcr.io/milne-group/quantnado-ci:latest",
-    log: OUTPUT_DIR + "/logs/dataset/quantnado.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/dataset/quantnado.tsv",
-    message: "Making dataset from bam files using QuantNado."
-    run:
-        # Build command with repeated flags for each file
-        cmd_basic = [
-            "quantnado create-dataset", 
-            f"--output {params.dataset}",
-            f"--chromsizes {params.chromosome_sizes}",
-            f"--max-workers {threads}",
-            "--chr-workers 1",
-            "--local-staging",
-            "--staging-dir $TMPDIR",
-            "--construction-compression fast",
-            f"--log-file {log}",
-            "--verbose",
-            "--overwrite"
-        ]
-        # Add --bam for each BAM file
-        if input.bam_files:
-            cmd_basic.append(f"--bam {','.join(input.bam_files)}")
+        mem=lambda wildcards, attempt: define_memory_requested(
+            initial_value=32, attempts=attempt, scale=SCALE_RESOURCES
+        ),
+        runtime=lambda wildcards, attempt: define_time_requested(
+            initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
+        ),
+    container: "docker://ghcr.io/milne-group/quantnado-ci:latest"
+    log: OUTPUT_DIR + "/logs/dataset/{sample_id}.log"
+    benchmark: OUTPUT_DIR + "/.benchmark/dataset/{sample_id}.tsv"
+    message: "Creating dataset for sample {wildcards.sample_id} using QuantNado."
+    shell: """
+    quantnado dataset create \
+    --sample {wildcards.sample_id} \
+    --output-dir {params.output_dir} \
+    --overwrite \
+    --log-file {log} \
+    --assay "{params.assay}" \
+    {params.primary_input_flag} \
+    {params.extra_args}
+    """
 
-        # Add --methylation for each bedgraph file, with sample name overrides
-        if input.bedgraph_files:
-            cmd_basic.append(f"--methylation {','.join(input.bedgraph_files)}")
-            if params.methylation_sample_names:
-                cmd_basic.append(f"--methylation-sample-names {','.join(params.methylation_sample_names)}")
 
-        # Add --vcf for each VCF file, with sample name overrides
-        if input.vcf_files:
-            cmd_basic.append(f"--vcf {','.join(input.vcf_files)}")
-            if params.vcf_sample_names:
-                cmd_basic.append(f"--vcf-sample-names {','.join(params.vcf_sample_names)}")
-
-        # Add --stranded for RNA samples with non-zero strandedness
-        if params.stranded_config:
-            cmd_basic.append(f"--stranded '{json.dumps(params.stranded_config)}'")
-
-     
-
-        cmd = " ".join(cmd_basic)
-        shell(cmd)
+rule dataset_combine:
+    input:
+        stores=lambda wildcards: expand(
+            OUTPUT_DIR + "/dataset/{sample_id}.zarr",
+            sample_id=DATASET_SAMPLE_NAMES,
+        )
+    output:
+        dataset=directory(DATASET_PATH)
+    threads: 1
+    resources:
+        mem=lambda wildcards, attempt: define_memory_requested(
+            initial_value=32, attempts=attempt, scale=SCALE_RESOURCES
+        ),
+        runtime=lambda wildcards, attempt: define_time_requested(
+            initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
+        ),
+    container: "docker://ghcr.io/milne-group/quantnado-ci:latest"
+    log: OUTPUT_DIR + "/logs/dataset/dataset_combine.log"
+    benchmark: OUTPUT_DIR + "/.benchmark/dataset/dataset_combine.tsv"
+    message: "Combining single-assay datasets using QuantNado."
+    shell: """
+    quantnado dataset combine \
+    --stores {input.stores} \
+    --output {output.dataset} \
+    --overwrite \
+    --log-file {log}
+    """

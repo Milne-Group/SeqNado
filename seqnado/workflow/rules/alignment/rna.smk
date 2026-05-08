@@ -9,16 +9,16 @@ rule align_paired:
     input:
         fq1=lambda wildcards: get_alignment_input(wildcards, OUTPUT_DIR, CONFIG, paired=True)["fq1"],
         fq2=lambda wildcards: get_alignment_input(wildcards, OUTPUT_DIR, CONFIG, paired=True)["fq2"],
+    output:
+        bam_dir=temp(directory(OUTPUT_DIR + "/aligned/star/{sample}.star/")),
+        log_out=temp(OUTPUT_DIR + "/aligned/star/{sample}.star/Log.final.out"),
     params:
         index=str(CONFIG.genome.index.prefix),
         options=str(CONFIG.third_party_tools.star.align.command_line_arguments),
-        prefix=OUTPUT_DIR + "/aligned/star/{sample}_",
-    output:
-        bam=temp(OUTPUT_DIR + "/aligned/star/{sample}_Aligned.sortedByCoord.out.bam"),
-        bam2=temp(
-            OUTPUT_DIR + "/aligned/star/{sample}_Aligned.toTranscriptome.out.bam"
-        ),
-        log_out=temp(OUTPUT_DIR + "/aligned/star/{sample}_Log.final.out"),
+        prefix=OUTPUT_DIR + "/aligned/star/{sample}.star/",
+        read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
+        rule_label="align_paired",
+        count_flags="-f 64",
     threads: CONFIG.third_party_tools.star.align.threads
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=35, attempts=attempt, scale=SCALE_RESOURCES),
@@ -27,33 +27,36 @@ rule align_paired:
     log: OUTPUT_DIR + "/logs/align/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/align/{sample}.tsv",
     message: "Aligning reads for sample {wildcards.sample} using STAR",
-    shell: """
+    shell: f"""
     STAR \
-    --genomeDir {params.index} \
-    --readFilesIn {input.fq1} {input.fq2} \
+    --genomeDir {{params.index}} \
+    --readFilesIn {{input.fq1}} {{input.fq2}} \
     --readFilesCommand zcat \
     --outSAMtype BAM SortedByCoordinate \
-    --runThreadN {threads} \
-    --outSAMattrRGline ID:{wildcards.sample} SM:{wildcards.sample} \
-    --outFileNamePrefix {params.prefix} \
-    {params.options} \
-    > {log} 2>&1
+    --runThreadN {{threads}} \
+    --outSAMattrRGline ID:{{wildcards.sample}} SM:{{wildcards.sample}} \
+    --outFileNamePrefix {{params.prefix}} \
+    {{params.options}} \
+    > {{log}} 2>&1 &&
+    before=0 &&
+    after=$(samtools view -c {{params.count_flags}} {{output.bam_dir}}/Aligned.sortedByCoord.out.bam) &&
+    {emit_read_logs("Aligned ({params.rule_label})", "{wildcards.sample}", "{params.read_log}")}
     """
 
 
 rule align_single:
     input:
         fq1=lambda wildcards: get_alignment_input(wildcards, OUTPUT_DIR, CONFIG, paired=False),
+    output:
+        bam_dir=temp(directory(OUTPUT_DIR + "/aligned/star/{sample}.star/")),
+        log_out=temp(OUTPUT_DIR + "/aligned/star/{sample}.star/Log.final.out"),
     params:
         index=str(CONFIG.genome.index.prefix),
         options=str(CONFIG.third_party_tools.star.align.command_line_arguments),
-        prefix=OUTPUT_DIR + "/aligned/star/{sample}_",
-    output:
-        bam=temp(OUTPUT_DIR + "/aligned/star/{sample}_Aligned.sortedByCoord.out.bam"),
-        bam2=temp(
-            OUTPUT_DIR + "/aligned/star/{sample}_Aligned.toTranscriptome.out.bam"
-        ),
-        log_out=temp(OUTPUT_DIR + "/aligned/star/{sample}_Log.final.out"),
+        prefix=OUTPUT_DIR + "/aligned/star/{sample}.star/",
+        read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
+        rule_label="align_single",
+        count_flags="",
     threads: CONFIG.third_party_tools.star.align.threads
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=35, attempts=attempt, scale=SCALE_RESOURCES),
@@ -62,31 +65,39 @@ rule align_single:
     log: OUTPUT_DIR + "/logs/align/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/align/{sample}.tsv",
     message: "Aligning reads for sample {wildcards.sample} using STAR",
-    shell: """
+    shell: f"""
     STAR \
-    --genomeDir {params.index} \
-    --readFilesIn {input.fq1} \
+    --genomeDir {{params.index}} \
+    --readFilesIn {{input.fq1}} \
     --readFilesCommand zcat \
     --outSAMtype BAM SortedByCoordinate \
-    --runThreadN {threads} \
-    --outSAMattrRGline ID:{wildcards.sample} SM:{wildcards.sample} \
-    --outFileNamePrefix {params.prefix} \
-    {params.options} \
-    > {log} 2>&1
+    --runThreadN {{threads}} \
+    --outSAMattrRGline ID:{{wildcards.sample}} SM:{{wildcards.sample}} \
+    --outFileNamePrefix {{params.prefix}} \
+    {{params.options}} \
+    > {{log}} 2>&1 &&
+    before=0 &&
+    after=$(samtools view -c {{params.count_flags}} {{output.bam_dir}}/Aligned.sortedByCoord.out.bam) &&
+    {emit_read_logs("Aligned ({params.rule_label})", "{wildcards.sample}", "{params.read_log}")}
     """
 
 
 rule rename_aligned:
     input:
-        bam=OUTPUT_DIR + "/aligned/star/{sample}_Aligned.sortedByCoord.out.bam",
+        bam_dir=OUTPUT_DIR + "/aligned/star/{sample}.star/",
+        log_out=OUTPUT_DIR + "/aligned/star/{sample}.star/Log.final.out",
     output:
         bam=temp(OUTPUT_DIR + "/aligned/raw/{sample}.bam"),
+    params:
+        read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
+        count_flags=lambda wildcards: "-f 64" if INPUT_FILES.is_paired_end(str(wildcards.sample)) else "",
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
     log: OUTPUT_DIR + "/logs/rename_aligned/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/rename_aligned/{sample}.tsv",
     message: "Renaming aligned BAM for sample {wildcards.sample} to standard format",
-    shell: "mv {input.bam} {output.bam}"
-
-
-localrules:
-    rename_aligned,
+    shell: f"""
+    before=$(samtools view -c {{params.count_flags}} {{input.bam_dir}}/Aligned.sortedByCoord.out.bam) &&
+    mv {{input.bam_dir}}/Aligned.sortedByCoord.out.bam {{output.bam}} >> {{log}} 2>&1 &&
+    after=$(samtools view -c {{params.count_flags}} {{output.bam}}) &&
+    {emit_read_logs("Rename Aligned BAM", "{wildcards.sample}", "{params.read_log}")}
+    """

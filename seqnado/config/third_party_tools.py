@@ -464,7 +464,7 @@ class Bamnado(BaseModel):
     
     bam_coverage: ToolConfig = Field(
         default_factory=lambda: ToolConfig(
-            threads=8, command_line_arguments=CommandLineArguments(value="--bin-size 10 --norm-method raw")
+            threads=8, command_line_arguments=CommandLineArguments(value="--bin-size 10 --norm-method raw --ignore-scaffold")
         ),
         description="BAM coverage analysis configuration"
     )

@@ -1,6 +1,6 @@
 assay: MCC
 project:
-  name: default_project
+  name: test
   description: "Test project for MCC"
 
 assay_config:

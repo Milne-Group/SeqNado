@@ -6,7 +6,6 @@ use rule bam_sort_by_qname as sort_genomic_aligned_reads with:
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
     output:
         bam=temp(OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}_qname_sorted.bam"),
-        read_log=temp(OUTPUT_DIR + "/qc/mcc/{sample}_qname_sort.tsv"),
     threads: CONFIG.third_party_tools.samtools.sort.threads
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
@@ -58,7 +57,6 @@ use rule bam_sort as bam_sort_viewpoints with:
         bam=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}_deduplicated.bam",
     output:
         bam=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.bam",
-        read_log=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}_read_log.txt",
     log: OUTPUT_DIR + "/logs/bam_sort_viewpoints/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bam_sort_viewpoints/{sample}.tsv",
     message: "Sorting BAM file for viewpoints for sample {wildcards.sample}",
@@ -71,7 +69,6 @@ use rule bam_index as bam_index_viewpoints with:
     log: OUTPUT_DIR + "/logs/bam_index_viewpoints/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bam_index_viewpoints/{sample}.tsv",
     message: "Indexing BAM file for viewpoints for sample {wildcards.sample}",
-
 
 
 

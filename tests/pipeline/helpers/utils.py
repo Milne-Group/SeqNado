@@ -1,5 +1,6 @@
 import json
 import re
+import shutil
 import tarfile
 import time
 from dataclasses import dataclass
@@ -117,7 +118,40 @@ class TestContext:
     def __init__(self, pytestconfig, tmp_path_factory):
         self.pytestconfig = pytestconfig
         self.tmp_path_factory = tmp_path_factory
-        self.test_paths = make_test_paths(Path(__file__).resolve())
+        base_paths = make_test_paths(Path(__file__).resolve())
+
+        try:
+            base_temp = tmp_path_factory.getbasetemp()
+        except (FileExistsError, AttributeError):
+            base_temp = tmp_path_factory._basetemp
+
+        if base_temp is None:
+            base_temp = tmp_path_factory.mktemp("pytest")
+
+        test_dir = Path(base_temp)
+        test_data = test_dir / "data"
+        genome = test_data / "genome"
+        fastq = test_data / "fastq"
+        for path in (test_dir, test_data, genome, fastq):
+            path.mkdir(parents=True, exist_ok=True)
+
+        # Seed each test invocation from any repo-level cached data without sharing
+        # the mutable directories directly between concurrent pytest runs.
+        if base_paths.genome.exists():
+            shutil.copytree(base_paths.genome, genome, dirs_exist_ok=True)
+        if base_paths.fastq.exists():
+            shutil.copytree(base_paths.fastq, fastq, dirs_exist_ok=True)
+
+        self.test_paths = TestPaths(
+            repo=base_paths.repo,
+            package=base_paths.package,
+            test_dir=test_dir,
+            test_data=test_data,
+            workflow=base_paths.workflow,
+            test_profile=base_paths.test_profile,
+            genome=genome,
+            fastq=fastq,
+        )
 
     @property
     def cores(self):

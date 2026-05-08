@@ -19,6 +19,7 @@ from seqnado.cli.commands import tools  # noqa: F401
 from seqnado.cli.commands import download  # noqa: F401
 from seqnado.cli.commands import design  # noqa: F401
 from seqnado.cli.commands import pipeline  # noqa: F401
+from seqnado.cli.commands import benchmark  # noqa: F401
 
 # Import and register the genomes sub-application
 from seqnado.cli.commands.genomes import app as genomes_app

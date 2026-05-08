@@ -100,11 +100,12 @@ rule taps_inverted:
     benchmark: OUTPUT_DIR + "/.benchmark/methylation/taps_inverted/{sample}_{genome}.tsv"
     message: "Converting to TAPS methylation for sample {wildcards.sample} and genome {wildcards.genome}"
     shell: """
+    mkdir -p $(dirname {output.taps}) &&
+    mkdir -p $(dirname {log}) &&
     awk -v OFS="\t" '{{print $1, $2, $3, (100-$4), $5, $6}}' {input.bdg} > {output.taps} 2> {log}
-    rm {input.bdg}
     """
 
-rule make_bigwigs_meth_taps:
+rule bigwigs_meth_taps:
     input:
         bdg=rules.taps_inverted.output.taps
     output:
@@ -124,7 +125,7 @@ rule make_bigwigs_meth_taps:
     bedGraphToBigWig {output.bdg} {params.chrom_sizes} {output.bigwig} > {log} 2>&1
     """
 
-rule make_bigwigs_meth_wgbs:
+rule bigwigs_meth_wgbs:
     input:
         bdg=rules.methyldackel_extract.output.bdg
     output:
@@ -143,6 +144,3 @@ rule make_bigwigs_meth_wgbs:
     awk -v OFS="\t" '{{print $1, $2, $3, $4}}' {input.bdg} > {output.bdg} 2> {log}
     bedGraphToBigWig {output.bdg} {params.chrom_sizes} {output.bigwig} > {log} 2>&1
     """
-
-localrules:
-    calculate_conversion

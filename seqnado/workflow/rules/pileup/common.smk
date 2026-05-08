@@ -1,4 +1,4 @@
-rule homer_make_tag_directory:
+rule tag_directory:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
     output:
@@ -29,7 +29,7 @@ rule homer_make_tag_directory:
     makeTagDirectory {output.homer_tag_directory} {input.bam} {params.options} > {log} 2>&1
     """
 
-rule homer_make_tag_directory_merged:
+rule tag_directory_merged:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
     output:
@@ -62,4 +62,4 @@ rule homer_make_tag_directory_merged:
 
 
 
-ruleorder: homer_make_tag_directory > homer_make_tag_directory_merged
+ruleorder: tag_directory > tag_directory_merged

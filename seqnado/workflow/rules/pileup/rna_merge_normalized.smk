@@ -10,7 +10,7 @@ from seqnado.workflow.helpers.normalization import (
     get_scaling_factor_for_merged_group,
 )
 
-rule make_bigwigs_deeptools_rna_merged_spikein_plus:
+rule bigwigs_deeptools_rna_merged_spikein_plus:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -41,7 +41,7 @@ rule make_bigwigs_deeptools_rna_merged_spikein_plus:
         """
 
 
-rule make_bigwigs_deeptools_rna_merged_spikein_minus:
+rule bigwigs_deeptools_rna_merged_spikein_minus:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -72,7 +72,7 @@ rule make_bigwigs_deeptools_rna_merged_spikein_minus:
         """
 
 
-rule make_bigwigs_bamnado_rna_merged_spikein_plus:
+rule bigwigs_bamnado_rna_merged_spikein_plus:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -102,7 +102,7 @@ rule make_bigwigs_bamnado_rna_merged_spikein_plus:
         """
 
 
-rule make_bigwigs_bamnado_rna_merged_spikein_minus:
+rule bigwigs_bamnado_rna_merged_spikein_minus:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -134,7 +134,7 @@ rule make_bigwigs_bamnado_rna_merged_spikein_minus:
 
 # CSAW (library-size) normalized, stranded bigwigs for merged RNA samples
 
-rule make_bigwigs_deeptools_rna_merged_csaw_plus:
+rule bigwigs_deeptools_rna_merged_csaw_plus:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -165,7 +165,7 @@ rule make_bigwigs_deeptools_rna_merged_csaw_plus:
         """
 
 
-rule make_bigwigs_deeptools_rna_merged_csaw_minus:
+rule bigwigs_deeptools_rna_merged_csaw_minus:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -196,7 +196,7 @@ rule make_bigwigs_deeptools_rna_merged_csaw_minus:
         """
 
 
-rule make_bigwigs_bamnado_rna_merged_csaw_plus:
+rule bigwigs_bamnado_rna_merged_csaw_plus:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -223,7 +223,7 @@ rule make_bigwigs_bamnado_rna_merged_csaw_plus:
         """
 
 
-rule make_bigwigs_bamnado_rna_merged_csaw_minus:
+rule bigwigs_bamnado_rna_merged_csaw_minus:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
@@ -249,7 +249,7 @@ rule make_bigwigs_bamnado_rna_merged_csaw_minus:
         bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} --strand reverse --scale-factor {params.scale} > {log} 2>&1
         """
 
-ruleorder: make_bigwigs_deeptools_rna_merged_plus > make_bigwigs_deeptools_rna_merged_minus
-ruleorder: make_bigwigs_deeptools_rna_merged_csaw_plus > make_bigwigs_deeptools_rna_merged_csaw_minus
-ruleorder: make_bigwigs_bamnado_rna_merged_csaw_plus > make_bigwigs_bamnado_rna_merged_csaw_minus
+ruleorder: bigwigs_deeptools_rna_merged_plus > bigwigs_deeptools_rna_merged_minus
+ruleorder: bigwigs_deeptools_rna_merged_csaw_plus > bigwigs_deeptools_rna_merged_csaw_minus
+ruleorder: bigwigs_bamnado_rna_merged_csaw_plus > bigwigs_bamnado_rna_merged_csaw_minus
 
