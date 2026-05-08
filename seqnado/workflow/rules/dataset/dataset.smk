@@ -68,6 +68,15 @@ def _get_dataset_args(wildcards):
             "extra_args": "",
         }
 
+    if assay == "mcc":
+        return {
+            "bam": bam,
+            "bai": bai,
+            "vcf": [],
+            "bdg": [],
+            "primary_input_flag": f"--bam-file {bam}",
+            "extra_args": "",
+        }
     raise ValueError(f"Unsupported assay type: {assay}")
 
 
