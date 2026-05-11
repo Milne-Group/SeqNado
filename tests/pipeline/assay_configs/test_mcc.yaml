@@ -17,3 +17,4 @@ assay_config:
       - bamnado
     binsize: 10
   create_bigwigs: true
+  create_dataset: true
