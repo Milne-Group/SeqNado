@@ -26,3 +26,4 @@ assay_config:
       - Cas9_5p_seq
   plot_with_plotnado: True
   has_spikein: True
+  create_dataset: True
