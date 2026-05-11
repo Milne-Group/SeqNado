@@ -1,8 +1,8 @@
 [build-system]
 requires = [
-    "setuptools >= 61.0",
+    "setuptools >= 82.0.1",
     "wheel",
-    "setuptools_scm[toml]>=6.2",
+    "setuptools_scm[toml]>=10.0.5",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -10,7 +10,7 @@ build-backend = "setuptools.build_meta"
 name = "seqnado"
 authors = [
     {name = "Alastair Smith", email = "alastair.smith@ndcls.ox.ac.uk"},
-    {name = "Catherine Chahrour", email = "catherine.chahrour@msdtc.ox.ac.uk"}
+    {name = "Catherine Chahrour", email = "catherine.chahrour@ndcls.ox.ac.uk"}
 ]
 description = "Pipelines for genomics analysis"
 readme = "README.md"
@@ -20,7 +20,7 @@ dynamic = ["version"]
 dependencies = [
     "click<=8.3.3",
     "cookiecutter<=2.7.1",
-    "numpy>=1.24,<=2.2.6",
+    "numpy>=2,<=2.2.6",
     "pandas>=2.0,<=2.3.3",
     "pandera<=0.31.1",
     "pexpect<=4.9.0",
