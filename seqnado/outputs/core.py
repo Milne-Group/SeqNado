@@ -5,13 +5,7 @@ from typing import Any, List
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from seqnado import (
-    Assay,
-    DataScalingTechnique,
-    PeakCallingMethod,
-    PileupMethod,
-    SpikeInMethod,
-)
+from seqnado import Assay, DataScalingTechnique, PeakCallingMethod, PileupMethod, SpikeInMethod
 from seqnado import QuantificationMethod
 from seqnado.config import SeqnadoConfig
 from seqnado.inputs import (
@@ -139,7 +133,7 @@ class SeqnadoOutputFiles(BaseModel):
         Args:
             method (PileupMethod): The pileup method to filter by.
             scale (DataScalingTechnique): The scale method to filter by.
-            spikein_method (str, optional): The spike-in method to filter by orlando or with_input. Defaults to None.
+            spikein_method (str, optional): The spike-in method to filter by orlando or with_input. Defaults to None. 
             assay (Assay, optional): The assay type to filter by. Defaults to None.
             is_merged (bool): If True, select merged (consensus) bigWigs only.
             ip_only (bool): If True, exclude control/input samples (requires ip_sample_names to be set).
@@ -201,7 +195,10 @@ class SeqnadoOutputFiles(BaseModel):
             f
             for f in self.files
             if "/methylation/methyldackel/" in f
-            and (f.endswith("_CpG.bedGraph") or f.endswith("_CpG_inverted.bedGraph"))
+            and (
+                f.endswith("_CpG.bedGraph")
+                or f.endswith("_CpG_inverted.bedGraph")
+            )
         ]
 
     @property
@@ -211,7 +208,11 @@ class SeqnadoOutputFiles(BaseModel):
         for sample in self.sample_names:
             prefix = f"{sample}_"
             match = next(
-                (f for f in self.meth_files if Path(f).name.startswith(prefix)),
+                (
+                    f
+                    for f in self.meth_files
+                    if Path(f).name.startswith(prefix)
+                ),
                 None,
             )
             if match is not None:
@@ -268,9 +269,7 @@ class SeqnadoOutputFiles(BaseModel):
         is_merged: bool = False,
         spikein_method: str | None = None,
     ) -> str:
-        return (
-            f"{self._heatmap_dir(scale, method, is_merged, spikein_method)}/heatmap.pdf"
-        )
+        return f"{self._heatmap_dir(scale, method, is_merged, spikein_method)}/heatmap.pdf"
 
     def select_heatmap_metaplot(
         self,
@@ -500,12 +499,8 @@ class SeqnadoOutputBuilder:
         if self.config.assay_config.bigwigs is None:
             return
 
-        unscaled_scales = [
-            m for m in self.scale_methods if m == DataScalingTechnique.UNSCALED
-        ]
-        normalized_scales = [
-            m for m in self.scale_methods if m != DataScalingTechnique.UNSCALED
-        ]
+        unscaled_scales = [m for m in self.scale_methods if m == DataScalingTechnique.UNSCALED]
+        normalized_scales = [m for m in self.scale_methods if m != DataScalingTechnique.UNSCALED]
 
         # Unscaled bigwigs are generated for all samples (including controls)
         if unscaled_scales:
@@ -539,7 +534,7 @@ class SeqnadoOutputBuilder:
         if self.config.assay_config.bigwigs is None:
             return
 
-        spikein_config = getattr(self.config.assay_config, "spikein", None)
+        spikein_config = getattr(self.config.assay_config, 'spikein', None)
         spikein_methods = spikein_config.method if spikein_config else []
 
         bigwig_files = BigWigFiles(
@@ -584,7 +579,8 @@ class SeqnadoOutputBuilder:
             return
 
         normalized_scales = [
-            s for s in self.scale_methods if s == DataScalingTechnique.CSAW
+            s for s in self.scale_methods
+            if s == DataScalingTechnique.CSAW
         ]
         if not normalized_scales:
             return
@@ -663,15 +659,11 @@ class SeqnadoOutputBuilder:
             # Add aggregated condition bigwigs (unscaled)
             for cond in condition_groups.group_names:
                 for strand in strands:
-                    files.append(
-                        f"{self.output_dir}/bigwigs/{method_name}/aggregated/{cond}{strand}.bigWig"
-                    )
+                    files.append(f"{self.output_dir}/bigwigs/{method_name}/aggregated/{cond}{strand}.bigWig")
             # Add pairwise subtractions
             for c1, c2 in permutations(condition_groups.group_names, 2):
                 for strand in strands:
-                    files.append(
-                        f"{self.output_dir}/bigwigs/{method_name}/subtraction/{c1}_vs_{c2}{strand}.bigWig"
-                    )
+                    files.append(f"{self.output_dir}/bigwigs/{method_name}/subtraction/{c1}_vs_{c2}{strand}.bigWig")
 
             # Add spike-in normalized files if applicable
             if getattr(self.config.assay_config, "has_spikein", False):
@@ -721,7 +713,7 @@ class SeqnadoOutputBuilder:
         ]
         sentinel_files = BasicFileCollection(files=[str(pk) for pk in peaks])
         self.file_collections.append(sentinel_files)
-
+    
     def add_mcc_sentinel_contact_files(self) -> None:
         """Add MCC sentinel files to the output collection.
 
@@ -859,8 +851,7 @@ class SeqnadoOutputBuilder:
         # Filter spike-in methods to only include those supported for heatmap generation
         # (ORLANDO and WITH_INPUT are the traditional spike-in normalization methods)
         supported_spikein_methods = [
-            m
-            for m in spikein_methods
+            m for m in spikein_methods 
             if m in (SpikeInMethod.ORLANDO, SpikeInMethod.WITH_INPUT)
         ]
 
@@ -870,7 +861,7 @@ class SeqnadoOutputBuilder:
         _unscaled_only_merged = {PileupMethod.HOMER}
 
         for method in pileup_methods:
-            for is_merged in [False, True] if has_consensus else [False]:
+            for is_merged in ([False, True] if has_consensus else [False]):
                 if is_merged:
                     restricted = method in _unscaled_only_merged
                 else:
@@ -880,10 +871,7 @@ class SeqnadoOutputBuilder:
                     # Restricted methods only support UNSCALED.
                     # For individual bigwigs, unscaled files are only generated when
                     # UNSCALED is explicitly in scale_methods; skip if not present.
-                    if (
-                        not is_merged
-                        and DataScalingTechnique.UNSCALED not in self.scale_methods
-                    ):
+                    if not is_merged and DataScalingTechnique.UNSCALED not in self.scale_methods:
                         continue
                     scales = [DataScalingTechnique.UNSCALED]
                 else:
@@ -911,7 +899,7 @@ class SeqnadoOutputBuilder:
 
     def add_spikein_files(self) -> None:
         """Add spike-in files to the output collection."""
-        spikein_config = getattr(self.config.assay_config, "spikein", None)
+        spikein_config = getattr(self.config.assay_config, 'spikein', None)
         methods = spikein_config.method if spikein_config else []
 
         spikein_files = SpikeInFiles(
@@ -960,8 +948,7 @@ class SeqnadoOutputBuilder:
         # Filter spike-in methods to only include those supported for track plot generation
         # (ORLANDO and WITH_INPUT are the traditional spike-in normalization methods)
         supported_spikein_methods = [
-            m
-            for m in spikein_methods
+            m for m in spikein_methods 
             if m in (SpikeInMethod.ORLANDO, SpikeInMethod.WITH_INPUT)
         ]
 
@@ -969,32 +956,23 @@ class SeqnadoOutputBuilder:
         _unscaled_only_merged = {PileupMethod.HOMER}
 
         for method in pileup_methods:
-            for is_merged in [False, True] if has_consensus else [False]:
+            for is_merged in ([False, True] if has_consensus else [False]):
                 if is_merged:
                     restricted = method in _unscaled_only_merged
                 else:
                     restricted = method in _unscaled_only_individual
 
                 if restricted:
-                    if (
-                        not is_merged
-                        and DataScalingTechnique.UNSCALED not in self.scale_methods
-                    ):
+                    if not is_merged and DataScalingTechnique.UNSCALED not in self.scale_methods:
                         continue
                     method_scales = [DataScalingTechnique.UNSCALED]
                 else:
                     method_scales = list(self.scale_methods)
-                    if (
-                        has_spikein
-                        and DataScalingTechnique.SPIKEIN not in method_scales
-                    ):
+                    if has_spikein and DataScalingTechnique.SPIKEIN not in method_scales:
                         method_scales.append(DataScalingTechnique.SPIKEIN)
 
                 for scale in method_scales:
-                    if (
-                        scale == DataScalingTechnique.SPIKEIN
-                        and supported_spikein_methods
-                    ):
+                    if scale == DataScalingTechnique.SPIKEIN and supported_spikein_methods:
                         # Create one PlotFiles per spike-in method for separate output dirs
                         for sm in supported_spikein_methods:
                             plot_files = PlotFiles(
@@ -1147,7 +1125,6 @@ class SeqnadoOutputBuilder:
             design_df = self.samples.to_dataframe()
 
         from seqnado.inputs import FastqCollectionForIP
-
         ip_sample_names = (
             self.samples.ip_sample_names
             if isinstance(self.samples, FastqCollectionForIP)
@@ -1215,7 +1192,9 @@ class MultiomicsOutputBuilder:
         """Add the multiomics dataset output file."""
         if self.configs_per_assay:
             example_config = next(iter(self.configs_per_assay.values()))
-            relative_path = f"dataset/{example_config.project.date}_{example_config.project.name}.zarr"
+            relative_path = (
+                f"dataset/{example_config.project.date}_{example_config.project.name}.zarr"
+            )
         else:
             relative_path = "dataset/dataset.zarr"
         self.file_collections.append(

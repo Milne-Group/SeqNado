@@ -31,7 +31,7 @@ rule identify_ligation_junctions_grouped:
     input:
         bam=OUTPUT_DIR + "/mcc/{group}/{group}_qname.bam"
     output:
-        pairs=temp(expand(OUTPUT_DIR + "/mcc/{{group}}/ligation_junctions/raw/{viewpoint}.pairs", viewpoint=GROUPED_VIEWPOINT_OLIGOS)),
+        pairs=expand(OUTPUT_DIR + "/mcc/{{group}}/ligation_junctions/raw/{viewpoint}.pairs", viewpoint=GROUPED_VIEWPOINT_OLIGOS),
     params:
         outdir=OUTPUT_DIR + "/mcc/{group}/ligation_junctions/raw/",
     threads: 1
@@ -62,7 +62,6 @@ rule sort_ligation_junctions:
     log: OUTPUT_DIR + "/logs/sort_ligation_junctions/{group}_{viewpoint}.log",
     wildcard_constraints:
         group="|".join(SAMPLE_GROUPINGS.get_grouping('consensus').group_names),
-        viewpoint="[^/]+",
     benchmark: OUTPUT_DIR + "/.benchmark/sort_ligation_junctions/{group}_{viewpoint}.tsv",
     message: "Sorting ligation junctions for viewpoint {wildcards.viewpoint} in group {wildcards.group}",
     shell: """
@@ -105,7 +104,6 @@ rule identify_ligation_junctions_replicates:
     {params.outdir}
     """
 
-
 use rule sort_ligation_junctions as sort_ligation_junctions_replicates with:
     input:
         pairs=OUTPUT_DIR + "/mcc/replicates/{sample}/ligation_junctions/{viewpoint}.pairs",
@@ -118,7 +116,6 @@ use rule sort_ligation_junctions as sort_ligation_junctions_replicates with:
     log: OUTPUT_DIR + "/logs/sort_ligation_junctions/{sample}_{viewpoint}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/sort_ligation_junctions/{sample}_{viewpoint}.tsv",
     message: "Sorting ligation junctions for viewpoint {wildcards.viewpoint} in sample {wildcards.sample}",
-
 
 use rule bgzip_pairs as bgzip_pairs_replicates with:
     input:
