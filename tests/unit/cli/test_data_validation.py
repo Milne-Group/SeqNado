@@ -94,4 +94,3 @@ class TestFormatColHint:
         assert "A" in hint
 
 
-# TODO: Add integration tests once command modules are refactored

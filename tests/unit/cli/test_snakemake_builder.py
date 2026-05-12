@@ -87,4 +87,3 @@ class TestSnakemakeCommandBuilder:
         assert "--dry-run" in cmd
 
 
-# TODO: Add tests for profile resolution and pass-through args
