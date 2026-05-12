@@ -1,6 +1,6 @@
 rule extract_ligation_stats:
     input:
-        bam=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.bam",
+        bam=OUTPUT_DIR + "/aligned/{sample}.bam",
     output:
         stats=OUTPUT_DIR + "/resources/replicates/{sample}_ligation_stats.json"
     container: 'docker://ghcr.io/alsmith151/mccnado:latest'

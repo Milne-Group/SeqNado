@@ -2,8 +2,8 @@ from seqnado.workflow.helpers.mcc import identify_extracted_bam_files, redefine_
 
 use rule bam_sort_by_qname as sort_genomic_aligned_reads with:
     input:
-        bam=OUTPUT_DIR + "/aligned/{sample}.bam",
-        bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
+        bam=OUTPUT_DIR + "/aligned/filtered/{sample}.bam",
+        bai=OUTPUT_DIR + "/aligned/filtered/{sample}.bam.bai",
     output:
         bam=temp(OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}_qname_sorted.bam"),
     threads: CONFIG.third_party_tools.samtools.sort.threads
@@ -56,20 +56,21 @@ use rule bam_sort as bam_sort_viewpoints with:
     input:
         bam=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}_deduplicated.bam",
     output:
-        bam=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.bam",
+        bam=OUTPUT_DIR + "/aligned/{sample}.bam",
+    wildcard_constraints:
+        sample="[^/]+",
     log: OUTPUT_DIR + "/logs/bam_sort_viewpoints/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bam_sort_viewpoints/{sample}.tsv",
     message: "Sorting BAM file for viewpoints for sample {wildcards.sample}",
 
+
 use rule bam_index as bam_index_viewpoints with:
     input:
-        bam=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.bam",
+        bam=OUTPUT_DIR + "/aligned/{sample}.bam",
     output:
-        bai=temp(OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.bam.bai"),
+        bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
+    wildcard_constraints:
+        sample="[^/]+",
     log: OUTPUT_DIR + "/logs/bam_index_viewpoints/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bam_index_viewpoints/{sample}.tsv",
     message: "Indexing BAM file for viewpoints for sample {wildcards.sample}",
-
-
-
-

@@ -69,8 +69,8 @@ def _get_dataset_args(wildcards):
         }
 
     if assay == "mcc":
-        annotated_bam = OUTPUT_DIR + f"/mcc/replicates/{sample_id}/{sample_id}.bam"
-        annotated_bai = OUTPUT_DIR + f"/mcc/replicates/{sample_id}/{sample_id}.bam.bai"
+        annotated_bam = OUTPUT_DIR + f"/aligned/{sample_id}.bam",
+        annotated_bai = OUTPUT_DIR + f"/aligned/{sample_id}.bam.bai"
         return {
             "bam": annotated_bam,
             "bai": annotated_bai,

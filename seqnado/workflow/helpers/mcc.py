@@ -67,7 +67,7 @@ def get_mcc_bam_files_for_merge(wildcards, SAMPLE_GROUPINGS, OUTPUT_DIR):
         group = SAMPLE_GROUPINGS.get_grouping("consensus").get_group(wildcards.group)
         sample_names = group.samples
         bam_files = [
-            OUTPUT_DIR + f"/mcc/replicates/{sample}/{sample}.bam"
+            OUTPUT_DIR + f"/aligned/{sample}.bam"
             for sample in sample_names
         ]
         return bam_files

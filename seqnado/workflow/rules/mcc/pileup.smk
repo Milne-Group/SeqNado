@@ -7,8 +7,8 @@ from seqnado.workflow.helpers.mcc import (
 
 rule bigwigs_mcc_replicates:
     input:
-        bam=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.bam",
-        bai=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.bam.bai",
+        bam=OUTPUT_DIR + "/aligned/{sample}.bam",
+        bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
         excluded_regions=OUTPUT_DIR + "/resources/exclusion_regions.bed",
         cis_or_trans_stats=OUTPUT_DIR
         + "/resources/replicates/{sample}_ligation_stats.json",
