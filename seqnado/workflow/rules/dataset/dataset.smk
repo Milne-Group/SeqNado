@@ -151,3 +151,24 @@ rule dataset_combine:
     --overwrite \
     --log-file {log}
     """
+
+rule zip_dataset:
+    input:
+        dataset=DATASET_PATH,
+    output:
+        zipped_dataset=DATASET_PATH + ".gz",
+    threads: 1
+    resources:
+        mem=lambda wildcards, attempt: define_memory_requested(
+            initial_value=16, attempts=attempt, scale=SCALE_RESOURCES
+        ),
+        runtime=lambda wildcards, attempt: define_time_requested(
+            initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
+        ),
+    container: "docker://ghcr.io/milne-group/quantnado-ci:latest"
+    log: OUTPUT_DIR + "/logs/dataset/zip_dataset.log"
+    benchmark: OUTPUT_DIR + "/.benchmark/dataset/zip_dataset.tsv"
+    message: "Compressing combined dataset using gzip."
+    shell: """
+    gzip -c {input.dataset} > {output.zipped_dataset}
+    """

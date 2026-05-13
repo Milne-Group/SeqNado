@@ -58,3 +58,24 @@ rule multiomics_dataset:
     --overwrite \
     --log-file {log}
     """
+
+rule zip_multiomics_dataset:
+    input:
+        dataset=DATASET_PATH,
+    output:
+        zipped_dataset=DATASET_PATH + ".gz",
+    threads: 1
+    resources:
+        mem=lambda wildcards, attempt: define_memory_requested(
+            initial_value=32, attempts=attempt, scale=SCALE_RESOURCES
+        ),
+        runtime=lambda wildcards, attempt: define_time_requested(
+            initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
+        ),
+    container: "docker://ghcr.io/milne-group/quantnado-ci:latest"
+    log: OUTPUT_DIR + "/logs/dataset/zip_multiomics_dataset.log"
+    benchmark: OUTPUT_DIR + "/.benchmark/dataset/zip_multiomics_dataset.tsv"
+    message: "Zipping multi-omics dataset using QuantNado."
+    shell: """
+    gzip -c {input.dataset} > {output.zipped_dataset}
+    """
