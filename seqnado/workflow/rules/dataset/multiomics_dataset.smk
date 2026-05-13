@@ -77,5 +77,5 @@ rule zip_multiomics_dataset:
     benchmark: OUTPUT_DIR + "/.benchmark/dataset/zip_multiomics_dataset.tsv"
     message: "Zipping multi-omics dataset using QuantNado."
     shell: """
-    gzip -c {input.dataset} > {output.zipped_dataset}
+    tar -czf {output.zipped_dataset} -C $(dirname {input.dataset}) $(basename {input.dataset}) 2> {log}
     """
