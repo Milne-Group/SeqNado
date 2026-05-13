@@ -131,7 +131,7 @@ rule dataset_combine:
             sample_id=DATASET_SAMPLE_NAMES,
         )
     output:
-        dataset=directory(DATASET_PATH)
+        dataset=temp(directory(DATASET_PATH))
     threads: 1
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(
@@ -152,7 +152,7 @@ rule dataset_combine:
     --log-file {log}
     """
 
-rule zip_dataset:
+rule dataset_compress:
     input:
         dataset=DATASET_PATH,
     output:
@@ -166,8 +166,8 @@ rule zip_dataset:
             initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
         ),
     container: "docker://ghcr.io/milne-group/quantnado-ci:latest"
-    log: OUTPUT_DIR + "/logs/dataset/zip_dataset.log"
-    benchmark: OUTPUT_DIR + "/.benchmark/dataset/zip_dataset.tsv"
+    log: OUTPUT_DIR + "/logs/dataset/dataset_compress.log"
+    benchmark: OUTPUT_DIR + "/.benchmark/dataset/dataset_compress.tsv"
     message: "Compressing combined dataset using gzip."
     shell: """
     tar -czf {output.zipped_dataset} -C $(dirname {input.dataset}) $(basename {input.dataset}) 2> {log}

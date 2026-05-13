@@ -37,7 +37,7 @@ rule multiomics_dataset:
     input: 
         stores = lambda wildcards: _get_multiomics_store_paths(),
     output: 
-        dataset=directory(DATASET_PATH),
+        dataset=temp(directory(DATASET_PATH)),
         json=DATASET_PATH + "/zarr.json",
     threads: 1
     resources:
@@ -59,7 +59,7 @@ rule multiomics_dataset:
     --log-file {log}
     """
 
-rule zip_multiomics_dataset:
+rule multiomics_dataset_compress:
     input:
         dataset=DATASET_PATH,
     output:
