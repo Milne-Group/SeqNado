@@ -20,5 +20,6 @@ assay_config:
     pileup_method:
       - bamnado
     binsize: 10
+    perform_comparisons: True
   create_bigwigs: true
   create_dataset: true

@@ -57,7 +57,7 @@ rule confirm_peaks_generated:
             viewpoint_group=VIEWPOINT_TO_GROUPED_VIEWPOINT.values(),
         ),
     output:
-        touch(OUTPUT_DIR + "/peaks/mcc/.mcc_peaks_called.txt"),
+        touch(temp(OUTPUT_DIR + "/peaks/mcc/.mcc_peaks_called.txt")),
     message:
         "Confirming MCC peaks have been called for all groups and viewpoint groups"
     log:
