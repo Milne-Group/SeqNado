@@ -4,6 +4,10 @@ project:
   description: "Test project for MCC"
 
 assay_config:
+  call_peaks: True
+  peak_calling:
+    method:
+      - lanceotron-mcc
   mcc:
     viewpoints: ${SEQNADO_MCC_VIEWPOINTS}
     resolutions:
@@ -16,5 +20,6 @@ assay_config:
     pileup_method:
       - bamnado
     binsize: 10
+    perform_comparisons: True
   create_bigwigs: true
   create_dataset: true

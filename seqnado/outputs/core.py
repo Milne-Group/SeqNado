@@ -1060,7 +1060,7 @@ class SeqnadoOutputBuilder:
             DatasetFiles(
                 output_dir=self.output_dir,
                 relative_path=(
-                    f"dataset/{self.config.project.date}_{self.config.project.name}.zarr"
+                    f"dataset/{self.config.project.date}_{self.config.project.name}.zarr.gz"
                 ),
             )
         )

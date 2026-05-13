@@ -1,6 +1,6 @@
-rule call_mcc_peaks:  # TODO: ensure that we're using the GPU queue
+rule call_mcc_peaks: 
     input:
-        bigwig=OUTPUT_DIR + "/bigwigs/mcc/unscaled/{group}_{viewpoint_group}.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/mcc/{group}_{viewpoint_group}.bigWig",
     output:
         peaks=OUTPUT_DIR + "/peaks/lanceotron-mcc/{group}_{viewpoint_group}.bed",
     params:
@@ -57,7 +57,7 @@ rule confirm_peaks_generated:
             viewpoint_group=VIEWPOINT_TO_GROUPED_VIEWPOINT.values(),
         ),
     output:
-        touch(OUTPUT_DIR + "/peaks/mcc/.mcc_peaks_called.txt"),
+        touch(temp(OUTPUT_DIR + "/peaks/mcc/.mcc_peaks_called.txt")),
     message:
         "Confirming MCC peaks have been called for all groups and viewpoint groups"
     log:
