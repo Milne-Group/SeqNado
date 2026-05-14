@@ -53,11 +53,10 @@ rule bam_index:
     samtools index -@ {{threads}} -b {{input.bam}} >> {{log}} 2>&1
     """
 
-
 rule bam_move_to_final_location:
     input:
-        bam=OUTPUT_DIR + "/aligned/filtered/{sample}.bam",
-        bai=OUTPUT_DIR + "/aligned/filtered/{sample}.bam.bai",
+        bam=lambda wildcards: OUTPUT_DIR + f"/mcc/replicates/{wildcards.sample}/{wildcards.sample}.bam" if ASSAY == Assay.MCC else OUTPUT_DIR + f"/aligned/filtered/{wildcards.sample}.bam",
+        bai=lambda wildcards: OUTPUT_DIR + f"/mcc/replicates/{wildcards.sample}/{wildcards.sample}.bam.bai" if ASSAY == Assay.MCC else OUTPUT_DIR + f"/aligned/filtered/{wildcards.sample}.bam.bai",
     output:
         bam=OUTPUT_DIR + "/aligned/{sample,[A-Za-z\\d\\-_]+}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample,[A-Za-z\\d\\-_]+}.bam.bai",

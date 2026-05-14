@@ -55,4 +55,3 @@ class TestGetMultiomicsConfigPaths:
         assert "metadata" in result
 
 
-# TODO: Add more comprehensive tests once multiomics file structure is finalized
