@@ -6,8 +6,8 @@ rule bam_filter:
         bam=OUTPUT_DIR + "/aligned/shifted_for_tn5_insertion/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/shifted_for_tn5_insertion/{sample}.bam.bai",
     output:
-        bam=OUTPUT_DIR + "/aligned/filtered/{sample}.bam",
-        bai=OUTPUT_DIR + "/aligned/filtered/{sample}.bam.bai",
+        bam=temp(OUTPUT_DIR + "/aligned/filtered/{sample}.bam"),
+        bai=temp(OUTPUT_DIR + "/aligned/filtered/{sample}.bam.bai"),
     params:
         options=str(CONFIG.third_party_tools.samtools.view.command_line_arguments),
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),

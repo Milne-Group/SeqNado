@@ -2,3 +2,5 @@ assay: SNP
 project:
   name: test
   description: "Test project for SNP"
+assay_config:
+  create_dataset: True

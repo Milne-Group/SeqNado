@@ -2,8 +2,8 @@ from seqnado.workflow.helpers.mcc import identify_extracted_bam_files, redefine_
 
 use rule bam_sort_by_qname as sort_genomic_aligned_reads with:
     input:
-        bam=OUTPUT_DIR + "/aligned/{sample}.bam",
-        bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
+        bam=OUTPUT_DIR + "/aligned/filtered/{sample}.bam",
+        bai=OUTPUT_DIR + "/aligned/filtered/{sample}.bam.bai",
     output:
         bam=temp(OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}_qname_sorted.bam"),
     threads: CONFIG.third_party_tools.samtools.sort.threads
@@ -13,7 +13,7 @@ use rule bam_sort_by_qname as sort_genomic_aligned_reads with:
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
     log: OUTPUT_DIR + "/logs/mcc/sort_genomic_aligned_reads/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/mcc/sort_genomic_aligned_reads/{sample}.tsv",
-        
+
 
 rule identify_viewpoint_reads:
     input:
@@ -35,7 +35,7 @@ rule identify_viewpoint_reads:
         """
 
 rule bam_deduplicate_file:
-    input: 
+    input:
         bam=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}_annotated.bam",
     output:
         bam=temp(OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}_deduplicated.bam"),
@@ -51,15 +51,35 @@ rule bam_deduplicate_file:
     mccnado deduplicate-bam {input.bam} {output.bam} > {log} 2>&1
     """
 
-        
-use rule bam_sort as bam_sort_viewpoints with:
+rule bam_fix_header:
     input:
         bam=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}_deduplicated.bam",
     output:
-        bam=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.bam",
+        bam=temp(OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}_fixed_header.bam"),
+    threads: 1
+    resources:
+        mem=lambda wildcards, attempt: define_memory_requested(initial_value=3, attempts=attempt, scale=SCALE_RESOURCES),
+        runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
+    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    log: OUTPUT_DIR + "/logs/fix_bam_header/{sample}.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/fix_bam_header/{sample}.tsv",
+    message: "Adding SM tag to BAM header for sample {wildcards.sample}",
+    shell: """
+    samtools view -H {input.bam} | \
+    awk '/^@RG/ && !/SM:/ {{print $0"\\tSM:{wildcards.sample}"; next}} {{print}}' | \
+    samtools reheader - {input.bam} > {output.bam} 2> {log}
+    """
+
+
+use rule bam_sort as bam_sort_viewpoints with:
+    input:
+        bam=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}_fixed_header.bam",
+    output:
+        bam=temp(OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.bam"),
     log: OUTPUT_DIR + "/logs/bam_sort_viewpoints/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bam_sort_viewpoints/{sample}.tsv",
     message: "Sorting BAM file for viewpoints for sample {wildcards.sample}",
+
 
 use rule bam_index as bam_index_viewpoints with:
     input:
@@ -69,7 +89,3 @@ use rule bam_index as bam_index_viewpoints with:
     log: OUTPUT_DIR + "/logs/bam_index_viewpoints/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bam_index_viewpoints/{sample}.tsv",
     message: "Indexing BAM file for viewpoints for sample {wildcards.sample}",
-
-
-
-

@@ -31,7 +31,7 @@ rule identify_ligation_junctions_grouped:
     input:
         bam=OUTPUT_DIR + "/mcc/{group}/{group}_qname.bam"
     output:
-        pairs=expand(OUTPUT_DIR + "/mcc/{{group}}/ligation_junctions/raw/{viewpoint}.pairs", viewpoint=GROUPED_VIEWPOINT_OLIGOS),
+        pairs=temp(expand(OUTPUT_DIR + "/mcc/{{group}}/ligation_junctions/raw/{viewpoint}.pairs", viewpoint=GROUPED_VIEWPOINT_OLIGOS)),
     params:
         outdir=OUTPUT_DIR + "/mcc/{group}/ligation_junctions/raw/",
     threads: 1
@@ -204,7 +204,7 @@ rule create_sentinel_contact_files:
                     viewpoint=GROUPED_VIEWPOINT_OLIGOS,
                     sample=SAMPLE_NAMES) if CONFIG.assay_config.mcc.create_replicate_contact_files else [],
     output:
-        sentinel_contacts=OUTPUT_DIR + "/mcc/.mcc_contacts_identified.txt",
+        sentinel_contacts=temp(OUTPUT_DIR + "/mcc/.mcc_contacts_identified.txt"),
     resources:
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),

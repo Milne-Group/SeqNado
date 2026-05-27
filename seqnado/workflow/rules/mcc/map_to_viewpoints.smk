@@ -52,6 +52,7 @@ rule minimap2_to_viewpoints:
         viewpoints=OUTPUT_DIR + "/resources/viewpoints.fa",
     output:
         bam=temp(OUTPUT_DIR + "/aligned/to_viewpoints/{sample}.bam"),
+        bai=temp(OUTPUT_DIR + "/aligned/to_viewpoints/{sample}.bam.bai"),
     threads: 4
     resources:
         mem="4GB",

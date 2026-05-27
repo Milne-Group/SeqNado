@@ -77,6 +77,9 @@ def _get_dataset_args(wildcards):
             "primary_input_flag": f"--bam-file {bam}",
             "extra_args": "",
         }
+
+    if assay == "crispr":
+        raise ValueError("Dataset creation for CRISPR assay is not currently supported.")
     raise ValueError(f"Unsupported assay type: {assay}")
 
 
@@ -126,7 +129,7 @@ rule dataset_combine:
             sample_id=DATASET_SAMPLE_NAMES,
         )
     output:
-        dataset=directory(DATASET_PATH)
+        dataset=temp(directory(DATASET_PATH))
     threads: 1
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(
@@ -145,4 +148,25 @@ rule dataset_combine:
     --output {output.dataset} \
     --overwrite \
     --log-file {log}
+    """
+
+rule dataset_compress:
+    input:
+        dataset=DATASET_PATH,
+    output:
+        zipped_dataset=DATASET_PATH + ".gz",
+    threads: 1
+    resources:
+        mem=lambda wildcards, attempt: define_memory_requested(
+            initial_value=16, attempts=attempt, scale=SCALE_RESOURCES
+        ),
+        runtime=lambda wildcards, attempt: define_time_requested(
+            initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
+        ),
+    container: "docker://ghcr.io/milne-group/quantnado-ci:latest"
+    log: OUTPUT_DIR + "/logs/dataset/dataset_compress.log"
+    benchmark: OUTPUT_DIR + "/.benchmark/dataset/dataset_compress.tsv"
+    message: "Compressing combined dataset using gzip."
+    shell: """
+    tar -czf {output.zipped_dataset} -C $(dirname {input.dataset}) $(basename {input.dataset}) 2> {log}
     """

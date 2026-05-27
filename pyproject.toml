@@ -1,8 +1,8 @@
 [build-system]
 requires = [
-    "setuptools >= 61.0",
+    "setuptools >= 82.0.1",
     "wheel",
-    "setuptools_scm[toml]>=6.2",
+    "setuptools_scm[toml]>=10.0.5",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -10,7 +10,7 @@ build-backend = "setuptools.build_meta"
 name = "seqnado"
 authors = [
     {name = "Alastair Smith", email = "alastair.smith@ndcls.ox.ac.uk"},
-    {name = "Catherine Chahrour", email = "catherine.chahrour@msdtc.ox.ac.uk"}
+    {name = "Catherine Chahrour", email = "catherine.chahrour@ndcls.ox.ac.uk"}
 ]
 description = "Pipelines for genomics analysis"
 readme = "README.md"
@@ -18,23 +18,23 @@ requires-python = ">=3.10"
 license = {file = "LICENSE"}
 dynamic = ["version"]
 dependencies = [
-    "click<=8.3.2",
+    "click<=8.4.0",
     "cookiecutter<=2.7.1",
-    "numpy>=1.24,<=2.2.6",
-    "pandas>=2.0,<=2.3.3",
+    "numpy>=2,<=2.2.6",
+    "pandas>=2,<3.0.0",
     "pandera<=0.31.1",
     "pexpect<=4.9.0",
     "pip",
-    "pulp<=3.3.0",
+    "pulp<=3.3.1",
     "pybtex",
-    "pydantic<=2.13.2",
+    "pydantic==2.13.4",
     "pyyaml<=6.0.3",
     "rich<=15.0.0",
     "seaborn<=0.13.2",
     "snakemake-wrapper-utils<=0.8.0",
     "snakemake>=9.12.0,<=9.14.5",
     "tracknado>=0.3.1,<1.0.0",
-    "typer<=0.24.1",
+    "typer<=0.25.1",
     "wget<=3.2",
 ]
 

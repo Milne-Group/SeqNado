@@ -4,6 +4,7 @@
 rule split_reads_aligned_to_viewpoints:
     input:
         bam=OUTPUT_DIR + "/aligned/to_viewpoints/{sample}.bam",
+        bai=OUTPUT_DIR + "/aligned/to_viewpoints/{sample}.bam.bai",
     output:
         fq=temp(OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.sliced.fastq.gz"),
     threads: 1

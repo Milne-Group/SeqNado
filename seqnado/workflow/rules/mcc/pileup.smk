@@ -125,7 +125,7 @@ rule confirm_bigwigs_generated:
             and len(SAMPLE_GROUPINGS.get_grouping("condition").group_names) >= 2
         ) else [],
     output:
-        touch(OUTPUT_DIR + "/bigwigs/mcc/.mcc_bigwigs_generated.txt"),
+        touch(temp(OUTPUT_DIR + "/bigwigs/mcc/.mcc_bigwigs_generated.txt")),
     message:
         "Confirming all MCC bigWigs have been generated"
     log:
