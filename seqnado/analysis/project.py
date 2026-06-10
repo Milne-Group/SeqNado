@@ -11,7 +11,7 @@ Usage:
     proj.samples          # list[str]
     proj.conditions       # list[str]
     proj.antibodies       # list[str]  (ChIP / CUT&Tag)
-    proj.design           # pd.DataFrame
+    proj.design           # pd.DataFrame  (read/write — see below)
 
     # File paths (list[Path], filtered to existing files)
     proj.bigwigs(condition="treated", method="deeptools", scale="unscaled")
@@ -44,6 +44,20 @@ Usage:
     # DataFrame indexes with full metadata
     proj.bigwig_dataframe()
     proj.peak_dataframe()
+
+    # Updating metadata
+    # ------------------
+    # ``proj.design`` is writable.  Assigning a new DataFrame clears all cached
+    # metadata (conditions, antibodies, groups, _sample_meta) so that every
+    # subsequent access re-derives from the new data.  Use this to add or
+    # correct columns that are absent from the original design file.
+    #
+    # Example — add conditions by stripping the replicate suffix from sample IDs:
+    #
+    #     df = proj.design.copy()
+    #     df["condition"] = df["sample_id"].str.replace(r"-\\d+$", "", regex=True)
+    #     proj.design = df
+    #     proj.conditions   # now populated
 """
 
 from __future__ import annotations
@@ -205,28 +219,35 @@ class SeqNadoProject:
         from seqnado.config import SeqnadoConfig as _SeqnadoConfig
 
         if isinstance(config, _SeqnadoConfig):
+            self._config_path: Path | None = None
             return config
 
         path: Path | None = None
         if config is not None:
             path = Path(config)
         else:
-            # Search: parent of output_dir, grandparent (multiomics sub-dir case), cwd
+            # CLI writes configs as config_{assay}.yaml; also accept legacy *_config.yml
+            patterns = ["config_*.yaml", "config_*.yml", "*_config.yml"]
             for search_dir in [
                 self._output_dir.parent,
                 self._output_dir.parent.parent,
                 Path("."),
             ]:
-                candidates = sorted(search_dir.glob("*_config.yml"))
-                if candidates:
-                    path = candidates[0]
+                for pattern in patterns:
+                    candidates = sorted(search_dir.glob(pattern))
+                    if candidates:
+                        path = candidates[0]
+                        break
+                if path is not None:
                     break
 
-        if path is None or not path.exists():
+        self._config_path = path if (path is not None and path.exists()) else None
+
+        if self._config_path is None:
             return None
 
         try:
-            data = _load_yaml(path)
+            data = _load_yaml(self._config_path)
             return _SeqnadoConfig.model_validate(
                 data, context={"skip_path_validation": True}
             )
@@ -241,8 +262,11 @@ class SeqNadoProject:
         if design is not None:
             path = Path(design)
         elif self._config is not None and self._config.metadata is not None:
-            # Primary source: metadata path recorded in the config YAML
+            # Primary source: metadata path recorded in the config YAML.
+            # Resolve relative paths against the config file's directory.
             config_meta = Path(self._config.metadata)
+            if not config_meta.is_absolute() and self._config_path is not None:
+                config_meta = self._config_path.parent / config_meta
             if config_meta.exists():
                 path = config_meta
         if path is None:
@@ -271,7 +295,13 @@ class SeqNadoProject:
             return None
 
         sep = "," if path.suffix == ".csv" else "\t"
-        return pd.read_csv(path, sep=sep)
+        df = pd.read_csv(path, sep=sep)
+
+        # Normalise non-standard column aliases to the canonical names defined in
+        # seqnado.inputs.validation.DesignDataFrame / seqnado.inputs.core.Metadata
+        _ALIASES = {"sample_name": "sample_id", "scale_group": "scaling_group"}
+        df = df.rename(columns={k: v for k, v in _ALIASES.items() if k in df.columns})
+        return df
 
     # ------------------------------------------------------------------ #
     #  Indexes (lazily built, cached)                                      #
@@ -314,31 +344,39 @@ class SeqNadoProject:
     @cached_property
     def _sample_meta(self) -> pd.DataFrame:
         """DataFrame indexed by sample name with condition / antibody columns."""
+        from seqnado.inputs.core import Metadata
+
         if self._design_df is None:
             return pd.DataFrame(columns=["condition", "antibody", "group"])
 
         df = self._design_df.copy()
 
-        # Normalise column names
+        # ip is the canonical name in DesignDataFrame; rename to antibody for internal use
         if "ip" in df.columns and "antibody" not in df.columns:
             df = df.rename(columns={"ip": "antibody"})
 
+        if "sample_id" not in df.columns:
+            return pd.DataFrame(columns=["condition", "antibody", "group"])
+
+        _meta_fields = set(Metadata.model_fields)
         rows = []
         for _, row in df.iterrows():
             sid = str(row["sample_id"])
-            cond = row.get("condition") if "condition" in df.columns else None
-            ab = row.get("antibody") if "antibody" in df.columns else None
-            grp = row.get("scaling_group") if "scaling_group" in df.columns else None
 
-            # Non-IP sample (ATAC, RNA, etc.)
-            rows.append({"sample": sid, "condition": cond, "antibody": ab, "group": grp})
+            # Use Metadata model for proper coercion of None-like values
+            meta = Metadata.model_validate(
+                {k: row[k] for k in _meta_fields if k in df.columns}
+            )
 
-            # IP-based sample: full name is sample_id + "_" + antibody
-            if pd.notna(ab) and ab:
-                rows.append({"sample": f"{sid}_{ab}", "condition": cond, "antibody": ab, "group": grp})
+            ab_raw = row.get("antibody") if "antibody" in df.columns else None
+            ab = None if pd.isna(ab_raw) else ab_raw
 
-        meta = pd.DataFrame(rows).drop_duplicates("sample").set_index("sample")
-        return meta
+            rows.append({"sample": sid, "condition": meta.condition, "antibody": ab, "group": meta.scaling_group})
+
+            if ab:
+                rows.append({"sample": f"{sid}_{ab}", "condition": meta.condition, "antibody": ab, "group": meta.scaling_group})
+
+        return pd.DataFrame(rows).drop_duplicates("sample").set_index("sample")
 
     def _resolve_samples(
         self,
@@ -384,6 +422,20 @@ class SeqNadoProject:
     @property
     def design(self) -> pd.DataFrame | None:
         return self._design_df
+
+    @design.setter
+    def design(self, df: pd.DataFrame) -> None:
+        """Replace the design DataFrame and invalidate all derived metadata.
+
+        Use this to add or correct columns (e.g. ``condition``) that are
+        absent from the original file::
+
+            df = proj.design.copy()
+            df["condition"] = df["sample_id"].str.replace(r"-\\d+$", "", regex=True)
+            proj.design = df
+        """
+        self._design_df = df
+        self.reload()
 
     @cached_property
     def samples(self) -> list[str]:
