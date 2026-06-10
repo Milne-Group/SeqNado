@@ -21,7 +21,7 @@ from .core import (
 )
 
 from . import analysis, data, config, inputs, outputs
-from .analysis import SeqNadoProject
+from .analysis import SeqNadoProject, SeqNadoMultiProject, open_project
 
 
 
@@ -41,6 +41,8 @@ __all__ = [
     "QuantificationMethod",
     "MethylationMethod",
     "SeqNadoProject",
+    "SeqNadoMultiProject",
+    "open_project",
     "analysis",
     "data",
     "config",

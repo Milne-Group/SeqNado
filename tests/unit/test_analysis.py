@@ -4,8 +4,8 @@ import pytest
 import pandas as pd
 from pathlib import Path
 
-from seqnado.analysis import SeqNadoProject
-from seqnado.analysis.project import _parse_bigwig_path, _parse_peak_path
+from seqnado.analysis import SeqNadoProject, SeqNadoMultiProject, open_project
+from seqnado.analysis.project import _parse_bigwig_path, _parse_peak_path, _is_multiomics_root
 
 
 # ---------------------------------------------------------------------------
@@ -577,3 +577,141 @@ def test_summary_simple(fake_project):
     assert "File type" in df.columns
     assert "Present" in df.columns
     assert "Detail" not in df.columns
+
+
+# ---------------------------------------------------------------------------
+# Multiomics
+# ---------------------------------------------------------------------------
+
+@pytest.fixture()
+def fake_multi_root(tmp_path):
+    """Minimal multiomics output root: chip/ and atac/ sub-directories."""
+    bed_content = "chr1\t1000\t2000\tpeak1\t100\t.\n"
+    for assay in ("chip", "atac"):
+        base = tmp_path / "seqnado_output" / assay
+        bam_dir = base / "aligned"
+        bam_dir.mkdir(parents=True)
+        (bam_dir / "sampleA.bam").touch()
+        (bam_dir / "sampleA.bam.bai").touch()
+        pk_dir = base / "peaks" / "macs2"
+        pk_dir.mkdir(parents=True)
+        (pk_dir / "sampleA.bed").write_text(bed_content)
+    return tmp_path / "seqnado_output"
+
+
+@pytest.mark.unit
+def test_is_multiomics_root(fake_multi_root, tmp_path):
+    assert _is_multiomics_root(fake_multi_root) is True
+    # single-assay dir is not a multi root
+    assert _is_multiomics_root(fake_multi_root / "chip") is False
+
+
+@pytest.mark.unit
+def test_multi_project_assays(fake_multi_root):
+    mp = SeqNadoMultiProject(fake_multi_root)
+    assert set(mp.assays) == {"chip", "atac"}
+
+
+@pytest.mark.unit
+def test_multi_project_item_access(fake_multi_root):
+    mp = SeqNadoMultiProject(fake_multi_root)
+    assert isinstance(mp["chip"], SeqNadoProject)
+
+
+@pytest.mark.unit
+def test_multi_project_attr_access(fake_multi_root):
+    mp = SeqNadoMultiProject(fake_multi_root)
+    assert isinstance(mp.atac, SeqNadoProject)
+
+
+@pytest.mark.unit
+def test_multi_project_summary(fake_multi_root):
+    mp = SeqNadoMultiProject(fake_multi_root)
+    df = mp.summary()
+    assert "assay" in df.columns
+    assert set(df["assay"].unique()) == {"chip", "atac"}
+
+
+@pytest.mark.unit
+def test_open_project_single(tmp_path):
+    out = tmp_path / "seqnado_output"
+    (out / "aligned").mkdir(parents=True)
+    (out / "aligned" / "sampleA.bam").touch()
+    proj = open_project(out)
+    assert isinstance(proj, SeqNadoProject)
+
+
+@pytest.mark.unit
+def test_open_project_multi(fake_multi_root):
+    proj = open_project(fake_multi_root)
+    assert isinstance(proj, SeqNadoMultiProject)
+
+
+@pytest.mark.unit
+def test_multi_project_invalid(tmp_path):
+    with pytest.raises(ValueError):
+        SeqNadoMultiProject(tmp_path)
+
+
+@pytest.mark.unit
+def test_multi_project_bigwigs(fake_multi_root):
+    # Add bigwigs to one assay
+    bw_dir = fake_multi_root / "chip" / "bigwigs" / "deeptools" / "unscaled"
+    bw_dir.mkdir(parents=True)
+    (bw_dir / "sampleA.bigWig").touch()
+    mp = SeqNadoMultiProject(fake_multi_root)
+    df = mp.bigwigs()
+    assert "assay" in df.columns
+    assert "path" in df.columns
+    assert df["assay"].iloc[0] == "chip"
+
+
+@pytest.mark.unit
+def test_multi_project_peaks(fake_multi_root):
+    mp = SeqNadoMultiProject(fake_multi_root)
+    df = mp.peaks()
+    assert "assay" in df.columns
+    assert set(df["assay"].unique()) == {"chip", "atac"}
+
+
+@pytest.mark.unit
+def test_multi_project_bams(fake_multi_root):
+    mp = SeqNadoMultiProject(fake_multi_root)
+    df = mp.bams()
+    assert "assay" in df.columns
+    assert set(df["assay"].unique()) == {"chip", "atac"}
+
+
+@pytest.mark.unit
+def test_multi_project_filter(fake_multi_root):
+    # Add design with conditions to both assays
+    for assay in ("chip", "atac"):
+        design = pd.DataFrame({
+            "sample_id": ["sampleA"],
+            "condition": ["DMSO"],
+            "r1": ["sampleA_R1.fq.gz"],
+        })
+        design.to_csv(fake_multi_root / assay / "design.tsv", sep="\t", index=False)
+
+    mp = SeqNadoMultiProject(fake_multi_root)
+    fv = mp.filter(condition="DMSO")
+    assert set(fv.assays) == {"chip", "atac"}
+    df = fv.bams()
+    assert "assay" in df.columns
+
+
+@pytest.mark.unit
+def test_multi_project_filter_assay_subset(fake_multi_root):
+    mp = SeqNadoMultiProject(fake_multi_root)
+    fv = mp.filter(assays=["chip"])
+    assert fv.assays == ["chip"]
+    df = fv.bams()
+    assert set(df["assay"].unique()) == {"chip"}
+
+
+@pytest.mark.unit
+def test_multi_what_exists(fake_multi_root):
+    mp = SeqNadoMultiProject(fake_multi_root)
+    df = mp.what_exists()
+    assert "assay" in df.columns
+    assert set(df["assay"].unique()) == {"chip", "atac"}

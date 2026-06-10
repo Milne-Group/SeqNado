@@ -1637,3 +1637,392 @@ class _FilteredProject:
     def __repr__(self) -> str:
         n = len(self._targets) if self._targets is not None else len(self._project.samples)
         return f"_FilteredProject(samples={n}, from={self._project!r})"
+
+
+# ---------------------------------------------------------------------------
+# Multiomics wrapper
+# ---------------------------------------------------------------------------
+
+def _is_multiomics_root(path: Path) -> bool:
+    """Return True if *path* looks like a multiomics seqnado_output root.
+
+    Detected when it contains at least one subdirectory whose name matches
+    a known assay clean-name (atac, chip, rna, …) AND that subdirectory
+    itself contains an ``aligned/`` directory.
+    """
+    from seqnado.core import Assay
+    known = set(Assay.all_assay_clean_names())
+    for child in path.iterdir():
+        if child.is_dir() and child.name in known:
+            if (child / "aligned").exists() or (child / "bigwigs").exists():
+                return True
+    return False
+
+
+class SeqNadoMultiProject:
+    """Analysis interface for a multiomics SeqNado output directory.
+
+    Multiomics runs place each assay's outputs under
+    ``seqnado_output/{assay}/``, e.g.:
+
+    .. code-block:: text
+
+        seqnado_output/
+        ├── chip/
+        ├── atac/
+        └── rna/
+
+    ``SeqNadoMultiProject`` wraps one :class:`SeqNadoProject` per detected
+    assay and exposes them via attribute / item access.
+
+    Parameters
+    ----------
+    output_dir:
+        Top-level output directory (e.g. ``seqnado_output/``).
+
+    Examples
+    --------
+    ::
+
+        mp = SeqNadoMultiProject("seqnado_output/")
+        mp.assays              # ['atac', 'chip', 'rna']
+        mp.chip                # SeqNadoProject for chip sub-directory
+        mp["atac"]             # SeqNadoProject for atac sub-directory
+
+        mp.chip.bigwigs(scale="csaw")
+        mp.rna.load_counts()
+
+        # Iterate all assays
+        for name, proj in mp.items():
+            print(name, proj.samples)
+    """
+
+    def __init__(self, output_dir: str | Path):
+        self._root = Path(output_dir)
+        from seqnado.core import Assay
+        known = set(Assay.all_assay_clean_names())
+        self._projects: dict[str, SeqNadoProject] = {}
+        for child in sorted(self._root.iterdir()):
+            if child.is_dir() and child.name in known:
+                if (child / "aligned").exists() or (child / "bigwigs").exists():
+                    self._projects[child.name] = SeqNadoProject(child)
+
+        if not self._projects:
+            raise ValueError(
+                f"{self._root} does not appear to be a multiomics output root "
+                f"(no assay subdirectories with aligned/ or bigwigs/ found)."
+            )
+
+    @property
+    def assays(self) -> list[str]:
+        """Assay names present in the output directory."""
+        return list(self._projects)
+
+    def __getitem__(self, assay: str) -> SeqNadoProject:
+        if assay not in self._projects:
+            raise KeyError(f"Assay '{assay}' not found. Available: {self.assays}")
+        return self._projects[assay]
+
+    def __getattr__(self, name: str) -> SeqNadoProject:
+        if name.startswith("_"):
+            raise AttributeError(name)
+        if name in self._projects:
+            return self._projects[name]
+        raise AttributeError(
+            f"No assay '{name}' found. Available: {self.assays}"
+        )
+
+    def items(self):
+        """Iterate ``(assay_name, SeqNadoProject)`` pairs."""
+        return self._projects.items()
+
+    def values(self):
+        return self._projects.values()
+
+    # ------------------------------------------------------------------ #
+    #  Cross-assay file access                                             #
+    # ------------------------------------------------------------------ #
+
+    def _cross(
+        self,
+        method_name: str,
+        assays: list[str] | None,
+        kwargs: dict,
+    ) -> pd.DataFrame:
+        """Call *method_name* on each per-assay project and concatenate results.
+
+        Returns a DataFrame with an ``assay`` column prepended.  File-access
+        methods that return ``list[Path]`` are expanded into a ``path`` column;
+        methods that already return a DataFrame have the column inserted.
+        """
+        target_assays = assays if assays is not None else self.assays
+        frames = []
+        for name in target_assays:
+            proj = self._projects.get(name)
+            if proj is None:
+                continue
+            result = getattr(proj, method_name)(**kwargs)
+            if isinstance(result, list):
+                if not result:
+                    continue
+                df = pd.DataFrame({"path": result})
+                df.insert(0, "assay", name)
+            else:
+                if result.empty:
+                    continue
+                df = result.copy()
+                df.insert(0, "assay", name)
+            frames.append(df)
+        return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+    def bigwigs(
+        self,
+        *,
+        assays: list[str] | None = None,
+        sample: str | list[str] | None = None,
+        condition: str | list[str] | None = None,
+        antibody: str | list[str] | None = None,
+        group: str | list[str] | None = None,
+        method: "_MethodArg | None" = None,
+        scale: "_ScaleArg | None" = None,
+        spikein_method: "_SpikeInArg | None" = None,
+        merged: bool | None = None,
+        strand: str | None = None,
+        only_existing: bool = True,
+    ) -> pd.DataFrame:
+        """Return bigWig paths across all assays as a DataFrame.
+
+        Accepts the same filter kwargs as :meth:`SeqNadoProject.bigwigs` plus
+        an optional ``assays`` list to restrict which assays are queried.
+
+        Returns a ``pd.DataFrame`` with an ``assay`` column followed by a
+        ``path`` column.
+
+        Examples
+        --------
+        ::
+
+            mp.bigwigs(condition="DMSO")
+            mp.bigwigs(condition="DMSO", assays=["chip", "cat"])
+            mp.bigwigs(scale="unscaled", merged=False)
+        """
+        kw = dict(
+            sample=sample, condition=condition, antibody=antibody, group=group,
+            method=method, scale=scale, spikein_method=spikein_method,
+            merged=merged, strand=strand, only_existing=only_existing,
+        )
+        return self._cross("bigwigs", assays, kw)
+
+    def peaks(
+        self,
+        *,
+        assays: list[str] | None = None,
+        sample: str | list[str] | None = None,
+        condition: str | list[str] | None = None,
+        antibody: str | list[str] | None = None,
+        group: str | list[str] | None = None,
+        method: "_PeakMethodArg | None" = None,
+        merged: bool | None = None,
+        only_existing: bool = True,
+    ) -> pd.DataFrame:
+        """Return peak paths across all assays as a DataFrame.
+
+        Same filters as :meth:`SeqNadoProject.peaks` plus optional ``assays``.
+        Returns ``pd.DataFrame`` with ``assay`` and ``path`` columns.
+        """
+        kw = dict(
+            sample=sample, condition=condition, antibody=antibody, group=group,
+            method=method, merged=merged, only_existing=only_existing,
+        )
+        return self._cross("peaks", assays, kw)
+
+    def bams(
+        self,
+        *,
+        assays: list[str] | None = None,
+        sample: str | list[str] | None = None,
+        condition: str | list[str] | None = None,
+        antibody: str | list[str] | None = None,
+        group: str | list[str] | None = None,
+        merged: bool = False,
+        only_existing: bool = True,
+    ) -> pd.DataFrame:
+        """Return BAM paths across all assays as a DataFrame.
+
+        Same filters as :meth:`SeqNadoProject.bams` plus optional ``assays``.
+        Returns ``pd.DataFrame`` with ``assay`` and ``path`` columns.
+        """
+        kw = dict(
+            sample=sample, condition=condition, antibody=antibody, group=group,
+            merged=merged, only_existing=only_existing,
+        )
+        return self._cross("bams", assays, kw)
+
+    def load_peaks(
+        self,
+        *,
+        assays: list[str] | None = None,
+        **kwargs,
+    ) -> pd.DataFrame:
+        """Load and concatenate peak BED files across assays.
+
+        Returns a DataFrame with an ``assay`` column plus the standard peak
+        columns (``chrom``, ``start``, ``end``, ``sample``, ``peak_method``, …).
+        """
+        return self._cross("load_peaks", assays, kwargs)
+
+    # ------------------------------------------------------------------ #
+    #  Cross-assay filter                                                  #
+    # ------------------------------------------------------------------ #
+
+    def filter(
+        self,
+        *,
+        condition: str | list[str] | None = None,
+        antibody: str | list[str] | None = None,
+        sample: str | list[str] | None = None,
+        group: str | list[str] | None = None,
+        assays: list[str] | None = None,
+    ) -> "_MultiFilteredProject":
+        """Return a filtered cross-assay view.
+
+        The returned :class:`_MultiFilteredProject` pre-applies sample /
+        condition / antibody filters to every file-access method **and**
+        optionally restricts which assays are included.
+
+        Examples
+        --------
+        ::
+
+            mp.filter(condition="DMSO").bigwigs()
+            mp.filter(condition="DMSO", assays=["chip", "cat"]).peaks()
+        """
+        target_assays = assays if assays is not None else self.assays
+        filtered: dict[str, "_FilteredProject"] = {}
+        for name in target_assays:
+            proj = self._projects.get(name)
+            if proj is not None:
+                filtered[name] = proj.filter(
+                    condition=condition, antibody=antibody,
+                    sample=sample, group=group,
+                )
+        return _MultiFilteredProject(self, filtered)
+
+    # ------------------------------------------------------------------ #
+    #  Diagnostics                                                         #
+    # ------------------------------------------------------------------ #
+
+    def summary(self) -> pd.DataFrame:
+        """Combined summary table across all assays."""
+        frames = []
+        for name, proj in self._projects.items():
+            df = proj.summary()
+            df.insert(0, "assay", name)
+            frames.append(df)
+        return pd.concat(frames, ignore_index=True)
+
+    def what_exists(self) -> pd.DataFrame:
+        """Per-sample availability table across all assays."""
+        frames = []
+        for name, proj in self._projects.items():
+            df = proj.what_exists()
+            df.insert(0, "assay", name)
+            frames.append(df)
+        return pd.concat(frames, ignore_index=True)
+
+    def __repr__(self) -> str:
+        return f"SeqNadoMultiProject(root={str(self._root)!r}, assays={self.assays})"
+
+
+# ---------------------------------------------------------------------------
+# Cross-assay filtered view
+# ---------------------------------------------------------------------------
+
+class _MultiFilteredProject:
+    """Cross-assay view pre-filtered to a subset of samples.
+
+    Created by :meth:`SeqNadoMultiProject.filter`.
+    """
+
+    def __init__(
+        self,
+        multi: SeqNadoMultiProject,
+        filtered: "dict[str, _FilteredProject]",
+    ):
+        self._multi = multi
+        self._filtered = filtered
+
+    @property
+    def assays(self) -> list[str]:
+        return list(self._filtered)
+
+    def _cross(self, method_name: str, kwargs: dict) -> pd.DataFrame:
+        frames = []
+        for name, fproj in self._filtered.items():
+            result = getattr(fproj, method_name)(**kwargs)
+            if isinstance(result, list):
+                if not result:
+                    continue
+                df = pd.DataFrame({"path": result})
+                df.insert(0, "assay", name)
+            else:
+                if result.empty:
+                    continue
+                df = result.copy()
+                df.insert(0, "assay", name)
+            frames.append(df)
+        return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+    def bigwigs(self, **kwargs) -> pd.DataFrame:
+        return self._cross("bigwigs", kwargs)
+
+    def peaks(self, **kwargs) -> pd.DataFrame:
+        return self._cross("peaks", kwargs)
+
+    def bams(self, **kwargs) -> pd.DataFrame:
+        return self._cross("bams", kwargs)
+
+    def load_peaks(self, **kwargs) -> pd.DataFrame:
+        return self._cross("load_peaks", kwargs)
+
+    def filter(
+        self,
+        *,
+        condition: str | list[str] | None = None,
+        antibody: str | list[str] | None = None,
+        sample: str | list[str] | None = None,
+        group: str | list[str] | None = None,
+        assays: list[str] | None = None,
+    ) -> "_MultiFilteredProject":
+        target = assays if assays is not None else self.assays
+        new_filtered = {}
+        for name in target:
+            fproj = self._filtered.get(name)
+            if fproj is not None:
+                new_filtered[name] = fproj.filter(
+                    condition=condition, antibody=antibody,
+                    sample=sample, group=group,
+                )
+        return _MultiFilteredProject(self._multi, new_filtered)
+
+    def __repr__(self) -> str:
+        counts = {n: len(f.samples) for n, f in self._filtered.items()}
+        return f"_MultiFilteredProject(assays={counts})"
+
+
+def open_project(output_dir: str | Path, **kwargs) -> "SeqNadoProject | SeqNadoMultiProject":
+    """Open a SeqNado output directory, auto-detecting single vs multiomics.
+
+    Returns a :class:`SeqNadoMultiProject` when the directory is a
+    multiomics root (contains assay subdirectories), otherwise a
+    :class:`SeqNadoProject`.
+
+    Parameters
+    ----------
+    output_dir: Path to the output directory.
+    **kwargs:   Forwarded to :class:`SeqNadoProject` (``config``, ``design``).
+    """
+    path = Path(output_dir)
+    if _is_multiomics_root(path):
+        return SeqNadoMultiProject(path)
+    return SeqNadoProject(path, **kwargs)
