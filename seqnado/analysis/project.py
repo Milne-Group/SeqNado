@@ -211,8 +211,12 @@ class SeqNadoProject:
         if config is not None:
             path = Path(config)
         else:
-            # auto-discover in project dir (parent of output_dir) or cwd
-            for search_dir in [self._output_dir.parent, Path(".")]:
+            # Search: parent of output_dir, grandparent (multiomics sub-dir case), cwd
+            for search_dir in [
+                self._output_dir.parent,
+                self._output_dir.parent.parent,
+                Path("."),
+            ]:
                 candidates = sorted(search_dir.glob("*_config.yml"))
                 if candidates:
                     path = candidates[0]
@@ -237,13 +241,27 @@ class SeqNadoProject:
         if design is not None:
             path = Path(design)
         elif self._config is not None and self._config.metadata is not None:
-            path = Path(self._config.metadata)
-        else:
+            # Primary source: metadata path recorded in the config YAML
+            config_meta = Path(self._config.metadata)
+            if config_meta.exists():
+                path = config_meta
+        if path is None:
+            # Assay name used to find multiomics-style metadata_{assay}.csv
+            assay_name = (
+                self._config.assay.clean_name
+                if self._config is not None
+                else self._output_dir.name
+            )
             for candidate in [
                 self._output_dir.parent / "design.tsv",
                 self._output_dir.parent / "design.csv",
                 self._output_dir / "design.tsv",
                 self._output_dir / "design.csv",
+                # project root when output_dir is a multiomics assay sub-dir
+                self._output_dir.parent.parent / "design.tsv",
+                self._output_dir.parent.parent / "design.csv",
+                self._output_dir.parent.parent / f"metadata_{assay_name}.csv",
+                self._output_dir.parent / f"metadata_{assay_name}.csv",
             ]:
                 if candidate.exists():
                     path = candidate
@@ -1717,6 +1735,38 @@ class SeqNadoMultiProject:
     def assays(self) -> list[str]:
         """Assay names present in the output directory."""
         return list(self._projects)
+
+    @property
+    def samples(self) -> list[str]:
+        """All sample names across all assays (union, sorted)."""
+        s: set[str] = set()
+        for proj in self._projects.values():
+            s.update(proj.samples)
+        return sorted(s)
+
+    @property
+    def conditions(self) -> list[str]:
+        """All condition labels across all assays (union, sorted)."""
+        s: set[str] = set()
+        for proj in self._projects.values():
+            s.update(proj.conditions)
+        return sorted(s)
+
+    @property
+    def antibodies(self) -> list[str]:
+        """All antibody / IP targets across all assays (union, sorted)."""
+        s: set[str] = set()
+        for proj in self._projects.values():
+            s.update(proj.antibodies)
+        return sorted(s)
+
+    @property
+    def groups(self) -> list[str]:
+        """All scaling groups across all assays (union, sorted)."""
+        s: set[str] = set()
+        for proj in self._projects.values():
+            s.update(proj.groups)
+        return sorted(s)
 
     def __getitem__(self, assay: str) -> SeqNadoProject:
         if assay not in self._projects:
