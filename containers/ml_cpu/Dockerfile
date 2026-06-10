@@ -35,8 +35,7 @@ RUN python -m pip install --no-cache-dir \
 
 # Install local packages
 RUN python -m pip install --no-cache-dir --no-deps \
-    QuantNado \
-    /opt/repos/lanceotron-mcc \
+    git+https://github.com/alsmith151/lanceotron-mcc \
     lanceotron
 
 # Clean up to reduce image size

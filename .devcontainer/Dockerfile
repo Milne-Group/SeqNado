@@ -1,53 +1,35 @@
-# Use official Ubuntu base image, forcing x86_64 (amd64) architecture for consistency across Apple Silicon and other builders
-FROM --platform=linux/amd64 ubuntu:latest
+FROM mambaorg/micromamba:2-noble
 
-# Prevent interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
+# Build context is repo root (set in devcontainer.json) so we can share
+# the pipeline environment directly instead of duplicating it.
+COPY containers/pipeline/environment_pipeline.yml /opt/environment_pipeline.yml
+COPY containers/pipeline/multiqc_config.yaml /opt/seqnado/multiqc_config.yaml
+COPY containers/pipeline/seqnado.png /opt/seqnado/seqnado.png
 
-# Install system dependencies (compiler basics, networking, Apptainer runtime deps)
-# Notes:
-#  - squashfs-tools / squashfuse: needed for sandboxing and mounting images
-#  - fuse3 & libfuse3-dev: runtime FUSE support
-#  - uidmap, slirp4netns: enable unprivileged (user namespace) execution
-#  - wget, curl, git: common utilities
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget curl git ca-certificates gnupg lsb-release software-properties-common \
-    build-essential pkg-config libseccomp-dev squashfs-tools squashfuse \
-    fuse3 libfuse3-dev uidmap slirp4netns fakeroot fuse-overlayfs \
- && rm -rf /var/lib/apt/lists/*
+ENV PATH="/opt/conda/bin:$PATH" \
+    CONDA_DEFAULT_ENV=base \
+    CONDA_PREFIX="/opt/conda" \
+    LD_LIBRARY_PATH="/usr/lib:/lib" \
+    MAMBA_ROOT_PREFIX="/opt/conda"
 
+USER root
 
-# Install Apptainer
-RUN add-apt-repository -y ppa:apptainer/ppa \
-    && apt-get update && apt-get install -y apptainer-suid \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -eux && \
+    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      ca-certificates curl gcc libc6-dev pkg-config libssl-dev && \
+    rm -rf /var/lib/apt/lists/* && \
+    micromamba install -y -n base -f /opt/environment_pipeline.yml && \
+    apt-get purge -y gcc libc6-dev pkg-config libssl-dev && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    find /opt/conda/ -type f -name '*.a' -delete && \
+    find /opt/conda/ -type f -name '*.pyc' -delete && \
+    find /opt/conda/ -name '__pycache__' -type d -exec rm -rf {} + && \
+    rm -rf /root/.cache && \
+    micromamba clean -ay
 
-# Install uv (copy static binaries from upstream image)
+# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-# Create non-root user for better security
-RUN useradd -m -s /bin/bash seqnado_user && \
-    mkdir -p /home/seqnado_user/.apptainer/cache /home/seqnado_user/workspace && \
-    chown -R seqnado_user:seqnado_user /home/seqnado_user
-
-# Switch to non-root user
-USER seqnado_user
-WORKDIR /home/seqnado_user/workspace
-
-# Create virtual environment with uv and clone seqnado for editable install
-RUN uv venv .venv
-
-# Update PATH to include virtual environment explicitly (ensure /usr/bin present first for apptainer)
-ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/seqnado_user/workspace/.venv/bin:$PATH"
-
-# Environment variables for Apptainer/Singularity
-ENV APPTAINER_TMPDIR=/home/seqnado_user/.apptainer \
-    APPTAINER_CACHEDIR=/home/seqnado_user/.apptainer/cache \
-    SINGULARITY_TMPDIR=/home/seqnado_user/.apptainer \
-    SINGULARITY_CACHEDIR=/home/seqnado_user/.apptainer/cache \
-    APPTAINER_DISABLE_CACHE=false \
-    SINGULARITY_DISABLE_CACHE=false \
-    APPTAINER_WRITABLE_TMPFS=1
-
-# Default command with helpful message about running Apptainer
-CMD ["/bin/bash", "-c", "echo 'Apptainer Docker container ready. Use --privileged flag when running this container.'; echo 'Example: docker run --privileged -it <image_name>'; echo 'For unprivileged mode, use: apptainer --userns <command>'; /bin/bash"]
+WORKDIR /workspace
+CMD ["/bin/bash"]

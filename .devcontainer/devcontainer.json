@@ -2,12 +2,16 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
 {
 	"name": "Seqnado Dev Container",
-	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 	"build": {
-        "dockerfile": "./Dockerfile",
-        "context": "."
-    },
-	"runArgs": ["--privileged"]
+		// Context is repo root so the Dockerfile can access containers/pipeline/
+		"context": "..",
+		"dockerfile": ".devcontainer/Dockerfile"
+	},
+	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+	"workspaceFolder": "/workspace",
+	"remoteUser": "root",
+	// Install seqnado in editable mode and pytest after container starts
+	"postCreateCommand": "uv pip install --system -e . pytest"
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
@@ -15,12 +19,6 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "uname -a",
-
 	// Configure tool-specific properties.
-	// "customizations": {},
-
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
+	// "customizations": {}
 }

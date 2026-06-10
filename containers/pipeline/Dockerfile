@@ -1,4 +1,4 @@
-FROM mambaorg/micromamba:latest
+FROM mambaorg/micromamba:2-noble
 
 # Copy files
 COPY environment_pipeline.yml /opt/environment_pipeline.yml
