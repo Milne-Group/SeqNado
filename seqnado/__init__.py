@@ -20,7 +20,8 @@ from .core import (
     GenomicCoordinate
 )
 
-from . import data, config, inputs, outputs
+from . import analysis, data, config, inputs, outputs
+from .analysis import SeqNadoProject
 
 
 
@@ -39,6 +40,8 @@ __all__ = [
     "SNPCallingMethod",
     "QuantificationMethod",
     "MethylationMethod",
+    "SeqNadoProject",
+    "analysis",
     "data",
     "config",
     "inputs",
