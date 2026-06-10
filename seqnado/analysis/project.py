@@ -13,33 +13,70 @@ Usage:
     proj.antibodies       # list[str]  (ChIP / CUT&Tag)
     proj.design           # pd.DataFrame
 
-    proj.bigwigs()                                      # all bigWigs
-    proj.bigwigs(condition="treated")                   # by condition
-    proj.bigwigs(antibody="H3K27ac", scale="unscaled")  # by antibody + scale
-    proj.bigwigs(method="deeptools", merged=True)       # merged tracks
+    # File paths (list[Path], filtered to existing files)
+    proj.bigwigs(condition="treated", method="deeptools", scale="unscaled")
+    proj.bigwigs(antibody="H3K27ac", merged=True)
+    proj.peaks(method="macs2", merged=False)
+    proj.bams(antibody="H3K27ac")
+    proj.track_plots(method="deeptools", scale="unscaled")
+    proj.contacts()
+    proj.logs(rule="bowtie2", sample="sample1")
 
-    proj.peaks(method="macs2")
-    proj.bams()
-    proj.counts()                    # Path to counts TSV
-    proj.load_counts()               # pd.DataFrame
+    # Load data as DataFrames
+    proj.load_counts()                 # featureCounts / Salmon matrix
+    proj.load_peaks()                  # all BED peaks concatenated
+    proj.load_alignment_stats()        # per-sample alignment step counts
+    proj.load_frip()                   # FRiP scores per sample / peak method
+    proj.load_library_complexity()     # Picard duplicate metrics
+    proj.load_benchmarks()             # Snakemake rule runtimes
+    proj.load_normalisation_factors()  # spike-in / CSAW factors
 
+    # Convenience
+    proj.protocol()                    # Path to protocol.txt
+    proj.bai_for(bam_path)             # BAI index for a BAM
+    proj.sample_files("sample1")       # dict of all files for one sample
+    proj.condition_pairs()             # [("ctrl", "treated"), ...]
+
+    # Filtered views (chainable)
     proj.filter(condition="treated").bigwigs()
     proj.filter(antibody="H3K27ac").peaks(merged=True)
 
-    proj.bigwig_dataframe()          # DataFrame with path + metadata columns
+    # DataFrame indexes with full metadata
+    proj.bigwig_dataframe()
     proj.peak_dataframe()
 """
 
 from __future__ import annotations
 
+from enum import Enum
 from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import pandas as pd
 
+from seqnado.core import DataScalingTechnique, PeakCallingMethod, PileupMethod, SpikeInMethod
+
 if TYPE_CHECKING:
     from seqnado.config import SeqnadoConfig
+
+
+# ---------------------------------------------------------------------------
+# Type aliases
+# ---------------------------------------------------------------------------
+
+# Enum-or-string convenience type for filter parameters
+_MethodArg = Union[str, PileupMethod]
+_ScaleArg = Union[str, DataScalingTechnique]
+_PeakMethodArg = Union[str, PeakCallingMethod]
+_SpikeInArg = Union[str, SpikeInMethod]
+
+
+def _ev(v: Enum | str | None) -> str | None:
+    """Extract string value from an enum, or return the string unchanged."""
+    if v is None:
+        return None
+    return v.value if isinstance(v, Enum) else v
 
 
 # ---------------------------------------------------------------------------
@@ -370,6 +407,158 @@ class SeqNadoProject:
         return None
 
     # ------------------------------------------------------------------ #
+    #  Discovery helpers                                                   #
+    # ------------------------------------------------------------------ #
+
+    @cached_property
+    def pileup_methods(self) -> list[str]:
+        """BigWig pileup methods present in the output (e.g. ``["deeptools", "bamnado"]``)."""
+        if self._bw_index.empty:
+            return []
+        return sorted(self._bw_index["method"].dropna().unique().tolist())
+
+    @cached_property
+    def scales(self) -> list[str]:
+        """Scaling methods present across all bigWigs (e.g. ``["unscaled", "csaw"]``)."""
+        if self._bw_index.empty:
+            return []
+        return sorted(self._bw_index["scale"].dropna().unique().tolist())
+
+    @cached_property
+    def spikein_methods(self) -> list[str]:
+        """Spike-in normalisation methods present (e.g. ``["orlando"]``)."""
+        if self._bw_index.empty:
+            return []
+        vals = self._bw_index["spikein_method"].dropna().unique().tolist()
+        return sorted(vals)
+
+    @cached_property
+    def peak_methods(self) -> list[str]:
+        """Peak-calling methods present (e.g. ``["macs2", "homer"]``)."""
+        if self._peak_index.empty:
+            return []
+        return sorted(self._peak_index["method"].dropna().unique().tolist())
+
+    @cached_property
+    def consensus_groups(self) -> list[str]:
+        """Merged / consensus group names found in bigWig or peak outputs."""
+        groups: set[str] = set()
+        if not self._bw_index.empty:
+            merged_bws = self._bw_index[self._bw_index["merged"]]
+            groups.update(merged_bws["sample"].dropna().unique().tolist())
+        if not self._peak_index.empty:
+            merged_peaks = self._peak_index[self._peak_index["merged"]]
+            groups.update(merged_peaks["sample"].dropna().unique().tolist())
+        return sorted(groups)
+
+    @cached_property
+    def log_rules(self) -> list[str]:
+        """Rule names that have log files present under ``logs/``."""
+        log_dir = self._output_dir / "logs"
+        if not log_dir.exists():
+            return []
+        return sorted(p.name for p in log_dir.iterdir() if p.is_dir())
+
+    @cached_property
+    def benchmark_rules(self) -> list[str]:
+        """Rule names that have benchmark files present under ``.benchmark/``."""
+        bench_dir = self._output_dir / ".benchmark"
+        if not bench_dir.exists():
+            return []
+        return sorted(p.name for p in bench_dir.iterdir() if p.is_dir())
+
+    def samples_for(
+        self,
+        condition: str | list[str] | None = None,
+        antibody: str | list[str] | None = None,
+        group: str | list[str] | None = None,
+    ) -> list[str]:
+        """Return sample names matching the given metadata filters.
+
+        Equivalent to ``proj.filter(...).samples`` but without building
+        a filtered view object.
+
+        Examples
+        --------
+        ::
+
+            proj.samples_for(condition="treated")
+            proj.samples_for(antibody="H3K27ac")
+            proj.samples_for(condition="treated", antibody="H3K27ac")
+        """
+        targets = self._resolve_samples(None, condition, antibody, group)
+        if targets is None:
+            return self.samples
+        return sorted(targets & set(self.samples))
+
+    def metadata_for(self, sample: str) -> dict:
+        """Return metadata dict for a single sample (condition, antibody, group).
+
+        Returns an empty dict if the sample is not in the design.
+        """
+        meta = self._sample_meta
+        if sample not in meta.index:
+            return {}
+        row = meta.loc[sample]
+        # Ensure scalar row (unique index guaranteed by _sample_meta build)
+        if isinstance(row, pd.DataFrame):
+            row = row.iloc[0]
+        return {k: v for k, v in row.items() if not pd.isna(v)}
+
+    def what_exists(self) -> pd.DataFrame:
+        """Per-sample availability table.
+
+        Returns a DataFrame with one row per sample (inferred from BAMs and
+        bigWig index) and boolean columns for each major file type.
+        Includes both individual and merged samples.
+        """
+        aligned_dir = self._output_dir / "aligned"
+        bam_set: set[str] = set()
+        if aligned_dir.exists():
+            for p in aligned_dir.glob("*.bam"):
+                if not p.name.endswith(".bai"):
+                    bam_set.add(p.stem)
+            merged_dir = aligned_dir / "merged"
+            if merged_dir.exists():
+                for p in merged_dir.glob("*.bam"):
+                    if not p.name.endswith(".bai"):
+                        bam_set.add(p.stem)
+
+        bw_samples = set(self._bw_index["sample"].tolist()) if not self._bw_index.empty else set()
+        peak_samples = set(self._peak_index["sample"].tolist()) if not self._peak_index.empty else set()
+
+        meth_dir = self._output_dir / "methylation" / "methyldackel"
+        meth_samples: set[str] = set()
+        if meth_dir.exists():
+            for p in meth_dir.glob("*.bedGraph"):
+                meth_samples.add(p.stem.split("_")[0])
+
+        vcf_dir = self._output_dir / "variant"
+        vcf_samples: set[str] = set()
+        if vcf_dir.exists():
+            vcf_samples = {
+                p.name.replace(".vcf.gz", "").replace(".anno", "")
+                for p in vcf_dir.glob("*.vcf.gz")
+            }
+
+        all_samples = sorted(bam_set | bw_samples | peak_samples)
+        rows = []
+        for s in all_samples:
+            meta = self.metadata_for(s)
+            rows.append({
+                "sample": s,
+                "condition": meta.get("condition"),
+                "antibody": meta.get("antibody"),
+                "group": meta.get("group"),
+                "bam": s in bam_set,
+                "bigwig": s in bw_samples,
+                "peaks": s in peak_samples,
+                "methylation": s in meth_samples,
+                "vcf": s in vcf_samples,
+            })
+        return pd.DataFrame(rows)
+
+    # ------------------------------------------------------------------ #
     #  BigWig access                                                        #
     # ------------------------------------------------------------------ #
 
@@ -384,9 +573,9 @@ class SeqNadoProject:
         condition: str | list[str] | None = None,
         antibody: str | list[str] | None = None,
         group: str | list[str] | None = None,
-        method: str | None = None,
-        scale: str | None = None,
-        spikein_method: str | None = None,
+        method: _MethodArg | None = None,
+        scale: _ScaleArg | None = None,
+        spikein_method: _SpikeInArg | None = None,
         merged: bool | None = None,
         strand: str | None = None,
         only_existing: bool = True,
@@ -399,9 +588,12 @@ class SeqNadoProject:
         condition:   Condition label(s) from the design file.
         antibody:    IP antibody / target name(s) (ChIP / CUT&Tag).
         group:       Scaling group name(s).
-        method:      Pileup method, e.g. ``"deeptools"``, ``"bamnado"``.
-        scale:       Scaling method, e.g. ``"unscaled"``, ``"csaw"``, ``"spikein"``.
-        spikein_method: Spike-in normalisation method, e.g. ``"orlando"``.
+        method:      :class:`~seqnado.core.PileupMethod` enum or string,
+                     e.g. ``PileupMethod.DEEPTOOLS`` or ``"deeptools"``.
+        scale:       :class:`~seqnado.core.DataScalingTechnique` enum or string,
+                     e.g. ``DataScalingTechnique.UNSCALED`` or ``"unscaled"``.
+        spikein_method: :class:`~seqnado.core.SpikeInMethod` enum or string,
+                     e.g. ``SpikeInMethod.ORLANDO`` or ``"orlando"``.
         merged:      ``True`` = consensus merged tracks only.
         strand:      ``"plus"`` or ``"minus"`` (RNA-seq).
         only_existing: Skip paths that don't exist on disk (default ``True``).
@@ -415,11 +607,11 @@ class SeqNadoProject:
             df = df[df["sample"].isin(targets)]
 
         if method is not None:
-            df = df[df["method"] == method]
+            df = df[df["method"] == _ev(method)]
         if scale is not None:
-            df = df[df["scale"] == scale]
+            df = df[df["scale"] == _ev(scale)]
         if spikein_method is not None:
-            df = df[df["spikein_method"] == spikein_method]
+            df = df[df["spikein_method"] == _ev(spikein_method)]
         if merged is not None:
             df = df[df["merged"] == merged]
         if strand is not None:
@@ -445,11 +637,15 @@ class SeqNadoProject:
         condition: str | list[str] | None = None,
         antibody: str | list[str] | None = None,
         group: str | list[str] | None = None,
-        method: str | None = None,
+        method: _PeakMethodArg | None = None,
         merged: bool | None = None,
         only_existing: bool = True,
     ) -> list[Path]:
-        """Return peak BED paths matching the given filters."""
+        """Return peak BED paths matching the given filters.
+
+        ``method`` accepts a :class:`~seqnado.core.PeakCallingMethod` enum or
+        string, e.g. ``PeakCallingMethod.MACS2`` or ``"macs2"``.
+        """
         df = self._peak_index
         if df.empty:
             return []
@@ -458,7 +654,7 @@ class SeqNadoProject:
         if targets is not None:
             df = df[df["sample"].isin(targets)]
         if method is not None:
-            df = df[df["method"] == method]
+            df = df[df["method"] == _ev(method)]
         if merged is not None:
             df = df[df["merged"] == merged]
 
@@ -655,8 +851,8 @@ class SeqNadoProject:
     def heatmaps(
         self,
         *,
-        method: str | None = None,
-        scale: str | None = None,
+        method: _MethodArg | None = None,
+        scale: _ScaleArg | None = None,
         merged: bool | None = None,
         plot_type: str = "heatmap",
         only_existing: bool = True,
@@ -665,6 +861,8 @@ class SeqNadoProject:
 
         Parameters
         ----------
+        method:    :class:`~seqnado.core.PileupMethod` enum or string.
+        scale:     :class:`~seqnado.core.DataScalingTechnique` enum or string.
         plot_type: ``"heatmap"`` (default) or ``"metaplot"``.
         """
         heatmap_dir = self._output_dir / "heatmap"
@@ -673,10 +871,12 @@ class SeqNadoProject:
 
         paths = list(heatmap_dir.rglob(f"{plot_type}.pdf"))
 
-        if method is not None:
-            paths = [p for p in paths if f"/{method}/" in p.as_posix()]
-        if scale is not None:
-            paths = [p for p in paths if f"/{scale}/" in p.as_posix() or p.parent.name == scale]
+        method_s = _ev(method)
+        scale_s = _ev(scale)
+        if method_s is not None:
+            paths = [p for p in paths if f"/{method_s}/" in p.as_posix()]
+        if scale_s is not None:
+            paths = [p for p in paths if f"/{scale_s}/" in p.as_posix() or p.parent.name == scale_s]
         if merged is True:
             paths = [p for p in paths if "/merged/" in p.as_posix()]
         elif merged is False:
@@ -687,18 +887,41 @@ class SeqNadoProject:
         return sorted(paths)
 
     def normalisation_factors(
-        self, method: str | None = None
+        self, method: _SpikeInArg | None = None
     ) -> list[Path]:
-        """Return normalisation factor TSV files."""
+        """Return normalisation factor TSV files.
+
+        ``method`` accepts a :class:`~seqnado.core.SpikeInMethod` enum or string.
+        """
         resources_dir = self._output_dir / "resources"
         if not resources_dir.exists():
             return []
         if method is not None:
-            p = resources_dir / method / "normalisation_factors.tsv"
+            method_s = _ev(method) or ""
+            p = resources_dir / method_s / "normalisation_factors.tsv"
             return [p] if p.exists() else []
         return sorted(resources_dir.rglob("normalisation_factors.tsv"))
 
-    def load_normalisation_factors(self, method: str | None = None) -> pd.DataFrame:
+    def load_spikein_stats(self) -> pd.DataFrame:
+        """Load per-sample spike-in alignment counts as a ``pd.DataFrame``.
+
+        Reads all ``aligned/spikein/{sample}_stats.tsv`` files produced by
+        the ``bam_split`` rule.  Columns: ``sample``, ``reference_reads``,
+        ``spikein_reads``.
+        """
+        spikein_dir = self._output_dir / "aligned" / "spikein"
+        if not spikein_dir.exists():
+            raise FileNotFoundError(f"Spike-in directory not found: {spikein_dir}")
+
+        frames = []
+        for p in sorted(spikein_dir.glob("*_stats.tsv")):
+            frames.append(pd.read_csv(p, sep="\t"))
+
+        if not frames:
+            raise FileNotFoundError("No spike-in stats files found.")
+        return pd.concat(frames, ignore_index=True)
+
+    def load_normalisation_factors(self, method: _SpikeInArg | None = None) -> pd.DataFrame:
         """Load normalisation factors as a ``pd.DataFrame``."""
         paths = self.normalisation_factors(method)
         if not paths:
@@ -709,6 +932,338 @@ class SeqNadoProject:
             df["method"] = p.parent.name
             frames.append(df)
         return pd.concat(frames, ignore_index=True)
+
+    # ------------------------------------------------------------------ #
+    #  Track plots / contacts / logs                                       #
+    # ------------------------------------------------------------------ #
+
+    def track_plots(
+        self,
+        *,
+        method: _MethodArg | None = None,
+        scale: _ScaleArg | None = None,
+        spikein_method: _SpikeInArg | None = None,
+        merged: bool | None = None,
+        only_existing: bool = True,
+    ) -> list[Path]:
+        """Return PlotNado track plot files.
+
+        Track plots live under ``track_plots/{method}/{scale}/`` or
+        ``track_plots/merged/{method}/{scale}/`` and may use any image format
+        (svg, png, pdf) depending on the pipeline configuration.
+
+        ``method``, ``scale``, and ``spikein_method`` accept enums or strings.
+        """
+        tp_dir = self._output_dir / "track_plots"
+        if not tp_dir.exists():
+            return []
+
+        paths = list(tp_dir.rglob("*"))
+        paths = [p for p in paths if p.is_file() and p.suffix in {".svg", ".png", ".pdf"}]
+
+        method_s = _ev(method)
+        scale_s = _ev(scale)
+        spikein_s = _ev(spikein_method)
+
+        if method_s is not None:
+            paths = [p for p in paths if f"/{method_s}/" in p.as_posix()]
+        if spikein_s is not None:
+            paths = [p for p in paths if f"/spikein/{spikein_s}/" in p.as_posix()]
+        elif scale_s is not None:
+            paths = [p for p in paths if f"/{scale_s}/" in p.as_posix()]
+        if merged is True:
+            paths = [p for p in paths if "/merged/" in p.as_posix()]
+        elif merged is False:
+            paths = [p for p in paths if "/merged/" not in p.as_posix()]
+
+        if only_existing:
+            paths = [p for p in paths if p.exists()]
+        return sorted(paths)
+
+    def contacts(self, only_existing: bool = True) -> list[Path]:
+        """Return MCC contact matrix paths (``.mcool`` files)."""
+        contacts_dir = self._output_dir / "mcc" / "contacts"
+        if not contacts_dir.exists():
+            return []
+        paths = sorted(contacts_dir.rglob("*.mcool"))
+        if only_existing:
+            paths = [p for p in paths if p.exists()]
+        return paths
+
+    def logs(
+        self,
+        rule: str | None = None,
+        sample: str | None = None,
+        only_existing: bool = True,
+    ) -> list[Path]:
+        """Return Snakemake log file paths.
+
+        Parameters
+        ----------
+        rule:   Rule name directory, e.g. ``"bowtie2"``, ``"macs2_callpeak"``.
+        sample: Sample name stem to filter within the rule directory.
+        """
+        log_dir = self._output_dir / "logs"
+        if not log_dir.exists():
+            return []
+
+        if rule is not None:
+            search_dir = log_dir / rule
+            if not search_dir.exists():
+                return []
+            paths = sorted(search_dir.glob("*.log"))
+        else:
+            paths = sorted(log_dir.rglob("*.log"))
+
+        if sample is not None:
+            paths = [p for p in paths if p.stem == sample or p.stem.startswith(f"{sample}.")]
+
+        if only_existing:
+            paths = [p for p in paths if p.exists()]
+        return paths
+
+    # ------------------------------------------------------------------ #
+    #  Load QC / performance data                                          #
+    # ------------------------------------------------------------------ #
+
+    def load_alignment_stats(self) -> pd.DataFrame:
+        """Load per-sample alignment step counts as a ``pd.DataFrame``.
+
+        Reads ``qc/alignment_stats.tsv`` which is produced by the
+        ``alignment_stats`` aggregation rule.  Columns include ``sample``
+        plus one column per processing step (reads lost / retained).
+        """
+        p = self._output_dir / "qc" / "alignment_stats.tsv"
+        if not p.exists():
+            raise FileNotFoundError(f"alignment_stats.tsv not found at {p}")
+        return pd.read_csv(p, sep="\t")
+
+    def load_frip(self) -> pd.DataFrame:
+        """Load FRiP (Fraction of Reads in Peaks) scores as a ``pd.DataFrame``.
+
+        Reads all ``qc/frip_enrichment/{method}/{sample}_frip.txt`` files and
+        concatenates them with ``sample`` and ``peak_method`` columns added.
+        The files are deeptools ``plotEnrichment --outRawCounts`` output.
+        """
+        frip_dir = self._output_dir / "qc" / "frip_enrichment"
+        if not frip_dir.exists():
+            raise FileNotFoundError(f"FRiP directory not found: {frip_dir}")
+
+        frames = []
+        for p in sorted(frip_dir.rglob("*_frip.txt")):
+            try:
+                df = pd.read_csv(p, sep="\t", comment="#")
+                # Strip leading '#' from header if present
+                df.columns = [c.lstrip("#").strip() for c in df.columns]
+                # Derive sample and peak_method from path:
+                # frip_enrichment/{peak_method}/{sample}_frip.txt
+                peak_method = p.parent.name
+                sample_name = p.stem.removesuffix("_frip")
+                df.insert(0, "sample", sample_name)
+                df.insert(1, "peak_method", peak_method)
+                frames.append(df)
+            except Exception as e:
+                import warnings
+                warnings.warn(f"Failed to parse FRiP file {p}: {e}", stacklevel=2)
+                continue
+
+        if not frames:
+            raise FileNotFoundError("No FRiP files found or parseable.")
+        return pd.concat(frames, ignore_index=True)
+
+    def load_library_complexity(self) -> pd.DataFrame:
+        """Load Picard MarkDuplicates library complexity metrics as a ``pd.DataFrame``.
+
+        Reads all ``qc/library_complexity/{sample}.metrics`` files.
+        Returns the METRICS section rows with a ``sample`` column prepended.
+        """
+        lc_dir = self._output_dir / "qc" / "library_complexity"
+        if not lc_dir.exists():
+            raise FileNotFoundError(f"Library complexity directory not found: {lc_dir}")
+
+        _SAMTOOLS_HEADER = {"FILENAME", "COMMAND", "FRAMES", "READ_EXAMINED", "DUPLICATE_TOTAL"}
+
+        frames = []
+        for p in sorted(lc_dir.glob("*.metrics")):
+            sample_name = p.stem
+            try:
+                import io
+                lines = p.read_text().splitlines()
+                non_empty = [ln for ln in lines if ln.strip()]
+
+                # samtools markdup TSV: first line is tab-separated header
+                if non_empty and _SAMTOOLS_HEADER & set(non_empty[0].split("\t")):
+                    df = pd.read_csv(io.StringIO("\n".join(non_empty)), sep="\t")
+                    df = df.dropna(how="all")
+                else:
+                    # Picard metrics files: header block then TSV starting with "LIBRARY"
+                    header_idx = next(
+                        (i for i, line in enumerate(lines)
+                         if line.startswith("LIBRARY") or line.startswith("ESTIMATED_LIBRARY")),
+                        None,
+                    )
+                    if header_idx is not None:
+                        df = pd.read_csv(io.StringIO("\n".join(lines[header_idx:])), sep="\t")
+                        df = df.dropna(how="all")
+                    else:
+                        # Fallback: skip comment/blank lines
+                        data_lines = [ln for ln in lines if ln and not ln.startswith("#")]
+                        if len(data_lines) < 2:
+                            continue
+                        df = pd.read_csv(io.StringIO("\n".join(data_lines)), sep="\t")
+
+                df.insert(0, "sample", sample_name)
+                frames.append(df)
+            except Exception:
+                continue
+
+        if not frames:
+            raise FileNotFoundError("No library complexity metrics files found or parseable.")
+        return pd.concat(frames, ignore_index=True)
+
+    def load_benchmarks(self, rule: str | None = None) -> pd.DataFrame:
+        """Load Snakemake benchmark timing / memory data as a ``pd.DataFrame``.
+
+        Reads all ``.benchmark/{rule}/{sample}.tsv`` files.  Adds ``rule``
+        and ``sample`` columns derived from the path.
+
+        Parameters
+        ----------
+        rule: Limit to a single rule directory, e.g. ``"bowtie2"``.
+        """
+        bench_dir = self._output_dir / ".benchmark"
+        if not bench_dir.exists():
+            raise FileNotFoundError(f"Benchmark directory not found: {bench_dir}")
+
+        if rule is not None:
+            search_dir = bench_dir / rule
+            tsv_files = sorted(search_dir.rglob("*.tsv")) if search_dir.exists() else []
+        else:
+            tsv_files = sorted(bench_dir.rglob("*.tsv"))
+
+        frames = []
+        for p in tsv_files:
+            try:
+                df = pd.read_csv(p, sep="\t")
+                df.insert(0, "rule", p.parent.name)
+                df.insert(1, "sample", p.stem)
+                frames.append(df)
+            except Exception:
+                continue
+
+        if not frames:
+            raise FileNotFoundError("No benchmark files found or parseable.")
+        return pd.concat(frames, ignore_index=True)
+
+    def load_peaks(
+        self,
+        *,
+        sample: str | list[str] | None = None,
+        condition: str | list[str] | None = None,
+        antibody: str | list[str] | None = None,
+        group: str | list[str] | None = None,
+        method: str | None = None,
+        merged: bool | None = None,
+        extra_cols: list[str] | None = None,
+    ) -> pd.DataFrame:
+        """Load peak BED files as a concatenated ``pd.DataFrame``.
+
+        Applies the same filters as :meth:`peaks`.  Adds ``sample``,
+        ``peak_method``, and ``merged`` columns.  BED columns are named
+        ``chrom``, ``start``, ``end``, ``name``, ``score``, ``strand``
+        (extra columns numbered ``col_7``, ``col_8``, …).
+
+        Parameters
+        ----------
+        extra_cols: Override names for columns beyond the standard 6.
+        """
+        paths = self.peaks(
+            sample=sample, condition=condition, antibody=antibody,
+            group=group, method=method, merged=merged,
+        )
+        if not paths:
+            return pd.DataFrame()
+
+        peaks_dir = self._output_dir / "peaks"
+        std_cols = ["chrom", "start", "end", "name", "score", "strand"]
+        frames = []
+
+        for p in paths:
+            try:
+                df = pd.read_csv(p, sep="\t", header=None, comment="#")
+                n = len(df.columns)
+                if n <= len(std_cols):
+                    df.columns = std_cols[:n]
+                else:
+                    extra = extra_cols or [f"col_{i+7}" for i in range(n - len(std_cols))]
+                    df.columns = std_cols + extra[: n - len(std_cols)]
+                # Derive metadata from path
+                rec = _parse_peak_path(p, peaks_dir) or {}
+                df["sample"] = rec.get("sample", p.stem)
+                df["peak_method"] = rec.get("method", "unknown")
+                df["merged"] = rec.get("merged", False)
+                frames.append(df)
+            except Exception:
+                continue
+
+        return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+    # ------------------------------------------------------------------ #
+    #  Convenience helpers                                                 #
+    # ------------------------------------------------------------------ #
+
+    def protocol(self) -> Path | None:
+        """Path to the auto-generated ``protocol.txt`` file."""
+        p = self._output_dir / "protocol.txt"
+        return p if p.exists() else None
+
+    def bai_for(self, bam: str | Path) -> Path:
+        """Return the BAI index path for a BAM file.
+
+        Checks both ``{bam}.bai`` and ``{bam_stem}.bai`` conventions.
+        Raises ``FileNotFoundError`` if neither exists.
+        """
+        bam = Path(bam)
+        candidates = [Path(str(bam) + ".bai"), bam.with_suffix(".bai")]
+        for c in candidates:
+            if c.exists():
+                return c
+        raise FileNotFoundError(f"No BAI index found for {bam}")
+
+    def sample_files(self, sample: str) -> dict:
+        """Return a dict of all existing files for a single sample.
+
+        Keys: ``bam``, ``bai``, ``bigwigs``, ``peaks``, ``qc``,
+        ``methylation``, ``vcf``.
+        """
+        bam_list = self.bams(sample=sample)
+        bam = bam_list[0] if bam_list else None
+        try:
+            bai = self.bai_for(bam) if bam else None
+        except FileNotFoundError:
+            bai = None
+
+        return {
+            "bam": bam,
+            "bai": bai,
+            "bigwigs": self.bigwigs(sample=sample),
+            "peaks": self.peaks(sample=sample),
+            "qc": self.qc(sample=sample),
+            "methylation": self.methylation(sample=sample),
+            "vcf": self.vcf(sample=sample),
+        }
+
+    def condition_pairs(self) -> list[tuple[str, str]]:
+        """Return all ordered condition pairs for pairwise comparisons.
+
+        Useful when constructing DESeq2 contrasts or subtraction bigWig paths.
+
+        Returns
+        -------
+        list of ``(condition_a, condition_b)`` tuples (all permutations).
+        """
+        from itertools import permutations
+        return list(permutations(self.conditions, 2))
 
     # ------------------------------------------------------------------ #
     #  Filtering view                                                      #
@@ -742,9 +1297,187 @@ class SeqNadoProject:
     #  Diagnostics                                                         #
     # ------------------------------------------------------------------ #
 
-    def summary(self) -> pd.DataFrame:
-        """Return a DataFrame summarising which file types are present."""
-        rows = []
+    # ------------------------------------------------------------------ #
+    #  Escape hatches / utilities                                         #
+    # ------------------------------------------------------------------ #
+
+    def reload(self) -> None:
+        """Clear all cached properties so they are recomputed on next access."""
+        for name in (
+            "_bw_index", "_peak_index", "_sample_meta",
+            "samples", "conditions", "antibodies", "groups", "assay",
+            "pileup_methods", "scales", "spikein_methods", "peak_methods",
+            "consensus_groups", "log_rules", "benchmark_rules",
+        ):
+            self.__dict__.pop(name, None)
+
+    def select_files(self, pattern: str, recursive: bool = True) -> list[Path]:
+        """Glob for files matching *pattern* under the output directory.
+
+        Parameters
+        ----------
+        pattern:   Glob pattern, e.g. ``"logs/bowtie2/*.log"`` or ``"**/*.bam"``.
+        recursive: When ``True`` (default) and the pattern contains no ``**``,
+                   use ``rglob``; otherwise ``glob`` is used as-is.
+        """
+        if "**" in pattern or not recursive:
+            return sorted(self._output_dir.glob(pattern))
+        return sorted(self._output_dir.rglob(pattern))
+
+    def enrich(self, paths: list[Path]) -> pd.DataFrame:
+        """Annotate file paths with sample metadata from the design.
+
+        Extracts sample names from file stems (stripping ``_plus`` / ``_minus``
+        strand suffixes) and left-joins ``condition``, ``antibody``, ``group``
+        from the design.
+
+        Parameters
+        ----------
+        paths: Iterable of ``pathlib.Path`` objects (e.g. from :meth:`bigwigs`).
+        """
+        records = []
+        for p in paths:
+            stem = p.stem
+            for suffix in ("_plus", "_minus"):
+                if stem.endswith(suffix):
+                    stem = stem[: -len(suffix)]
+                    break
+            records.append({"path": p, "sample": stem})
+
+        df = pd.DataFrame(records)
+        if df.empty:
+            return df
+
+        meta = self._sample_meta.reset_index()
+        return df.merge(meta, on="sample", how="left")
+
+    # ------------------------------------------------------------------ #
+    #  DE / CRISPR loaders                                                #
+    # ------------------------------------------------------------------ #
+
+    def load_deseq2(self, contrast: str | None = None) -> pd.DataFrame:
+        """Load DESeq2 differential expression results as a ``pd.DataFrame``.
+
+        Searches ``{output_dir}/deseq2_results/DEseq2_*.csv`` and the parent
+        directory (where Quarto renders by default).  Normalised-counts CSVs
+        are excluded.
+
+        Parameters
+        ----------
+        contrast: Load a single named contrast.  When ``None``, all contrasts
+                  are concatenated with a ``contrast`` column added.
+        """
+        search_dirs = [
+            self._output_dir / "deseq2_results",
+            self._output_dir.parent,
+        ]
+        if contrast is not None:
+            for d in search_dirs:
+                p = d / f"DEseq2_{contrast}.csv"
+                if p.exists():
+                    df = pd.read_csv(p)
+                    df.insert(0, "contrast", contrast)
+                    return df
+            raise FileNotFoundError(
+                f"DESeq2 results for contrast '{contrast}' not found in {search_dirs}."
+            )
+
+        frames = []
+        seen: set[str] = set()
+        for d in search_dirs:
+            if not d.exists():
+                continue
+            for p in sorted(d.glob("DEseq2_*.csv")):
+                name = p.stem.removeprefix("DEseq2_")
+                if "_normalised_counts" in name or p.stem in seen:
+                    continue
+                seen.add(p.stem)
+                df = pd.read_csv(p)
+                df.insert(0, "contrast", name)
+                frames.append(df)
+
+        if not frames:
+            raise FileNotFoundError("No DESeq2 result CSVs found.")
+        return pd.concat(frames, ignore_index=True)
+
+    def load_mageck(
+        self,
+        type: str = "gene",
+        analysis: str = "test",
+    ) -> pd.DataFrame:
+        """Load a MAGeCK CRISPR screen summary as a ``pd.DataFrame``.
+
+        Reads ``readcounts/mageck/mageck_{analysis}.{type}_summary.txt``.
+
+        Parameters
+        ----------
+        type:     ``"gene"`` (default) or ``"sgrna"``.
+        analysis: ``"test"`` (default) or ``"mle"``.
+        """
+        p = (
+            self._output_dir
+            / "readcounts"
+            / "mageck"
+            / f"mageck_{analysis}.{type}_summary.txt"
+        )
+        if not p.exists():
+            raise FileNotFoundError(f"MAGeCK summary not found: {p}")
+        return pd.read_csv(p, sep="\t")
+
+    # ------------------------------------------------------------------ #
+    #  Diagnostics                                                         #
+    # ------------------------------------------------------------------ #
+
+    def summary(self, detail: bool = False) -> pd.DataFrame:
+        """Return a DataFrame summarising which file types are present.
+
+        Parameters
+        ----------
+        detail: When ``True``, expand BigWig and peak rows to show
+                per-(method, scale) and per-method counts.
+        """
+        if detail:
+            rows: list[dict] = []
+            bam_count = len(self.bams())
+            rows.append({
+                "File type": "BAMs", "Detail": "all samples",
+                "Count": bam_count, "Present": "✓" if bam_count else "–",
+            })
+
+            if not self._bw_index.empty:
+                for (method, scale), grp in self._bw_index.groupby(["method", "scale"]):
+                    rows.append({
+                        "File type": "BigWig", "Detail": f"{method} / {scale}",
+                        "Count": len(grp), "Present": "✓",
+                    })
+            else:
+                rows.append({"File type": "BigWig", "Detail": "–", "Count": 0, "Present": "–"})
+
+            if not self._peak_index.empty:
+                for method, grp in self._peak_index.groupby("method"):
+                    rows.append({
+                        "File type": "Peaks", "Detail": method,
+                        "Count": len(grp), "Present": "✓",
+                    })
+            else:
+                rows.append({"File type": "Peaks", "Detail": "–", "Count": 0, "Present": "–"})
+
+            for name, present in [
+                ("Counts",         self.counts() is not None),
+                ("QC reports",     bool(self.qc())),
+                ("MultiQC report", self.report() is not None),
+                ("Methylation",    bool(self.methylation())),
+                ("VCF",            bool(self.vcf())),
+                ("Heatmaps",       bool(self.heatmaps())),
+                ("Norm. factors",  bool(self.normalisation_factors())),
+            ]:
+                rows.append({
+                    "File type": name, "Detail": "–",
+                    "Count": None, "Present": "✓" if present else "–",
+                })
+            return pd.DataFrame(rows)
+
+        rows_simple = []
         checks = [
             ("BAMs",            bool(self.bams())),
             ("BigWigs",         not self._bw_index.empty),
@@ -758,8 +1491,8 @@ class SeqNadoProject:
             ("Norm. factors",   bool(self.normalisation_factors())),
         ]
         for name, present in checks:
-            rows.append({"File type": name, "Present": "✓" if present else "–"})
-        return pd.DataFrame(rows)
+            rows_simple.append({"File type": name, "Present": "✓" if present else "–"})
+        return pd.DataFrame(rows_simple)
 
     def __repr__(self) -> str:
         return (
@@ -796,6 +1529,47 @@ class _FilteredProject:
         return sorted(self._targets & set(self._project.samples))
 
     @property
+    def conditions(self) -> list[str]:
+        meta = self._project._sample_meta
+        if self._targets is None or meta.empty:
+            return self._project.conditions
+        sub = meta[meta.index.isin(self._targets)]
+        return sorted(sub["condition"].dropna().unique().tolist())
+
+    @property
+    def antibodies(self) -> list[str]:
+        meta = self._project._sample_meta
+        if self._targets is None or meta.empty:
+            return self._project.antibodies
+        sub = meta[meta.index.isin(self._targets)]
+        return sorted(sub["antibody"].dropna().unique().tolist())
+
+    @property
+    def pileup_methods(self) -> list[str]:
+        df = self._project._bw_index
+        if df.empty or self._targets is None:
+            return self._project.pileup_methods
+        return sorted(df[df["sample"].isin(self._targets)]["method"].dropna().unique().tolist())
+
+    @property
+    def scales(self) -> list[str]:
+        df = self._project._bw_index
+        if df.empty or self._targets is None:
+            return self._project.scales
+        return sorted(df[df["sample"].isin(self._targets)]["scale"].dropna().unique().tolist())
+
+    @property
+    def peak_methods(self) -> list[str]:
+        df = self._project._peak_index
+        if df.empty or self._targets is None:
+            return self._project.peak_methods
+        return sorted(df[df["sample"].isin(self._targets)]["method"].dropna().unique().tolist())
+
+    @property
+    def consensus_groups(self) -> list[str]:
+        return self._project.consensus_groups
+
+    @property
     def design(self) -> pd.DataFrame | None:
         df = self._project.design
         if df is None or self._targets is None:
@@ -826,6 +1600,25 @@ class _FilteredProject:
 
     def qc(self, **kwargs) -> list[Path]:
         return self._project.qc(**kwargs)
+
+    def track_plots(self, **kwargs) -> list[Path]:
+        return self._project.track_plots(**kwargs)
+
+    def contacts(self, **kwargs) -> list[Path]:
+        return self._project.contacts(**kwargs)
+
+    def logs(self, **kwargs) -> list[Path]:
+        return self._project.logs(**kwargs)
+
+    def load_peaks(self, **kwargs) -> "pd.DataFrame":
+        kwargs.setdefault("sample", self._sample_kwarg())
+        return self._project.load_peaks(**kwargs)
+
+    def sample_files(self, sample: str) -> dict:
+        return self._project.sample_files(sample)
+
+    def condition_pairs(self) -> list[tuple[str, str]]:
+        return self._project.condition_pairs()
 
     def filter(
         self,
