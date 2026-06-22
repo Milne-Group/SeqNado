@@ -7,13 +7,24 @@ import pytest
 _REPO_ROOT = Path(__file__).parent.parent
 _DOCKER_IMAGE = "seqnado-devcontainer:test"
 _VENV_PATH = "/tmp/seqnado_venv"
+_DOCKER_FALLBACK_PRESET = "ld"
+
+
+def _has_apptainer_runtime() -> bool:
+    """Return whether a local Apptainer/Singularity runtime is available."""
+    return bool(shutil.which("apptainer") or shutil.which("singularity"))
+
+
+def _has_docker_runtime() -> bool:
+    """Return whether Docker is available for the local_docker test fallback."""
+    return bool(shutil.which("docker"))
+
 
 def pytest_sessionstart(session: pytest.Session) -> None:
     """Ensure a clean pytest basetemp directory for this repo."""
     test_output = Path(__file__).parent.parent / "test_output"
     if test_output.exists():
         shutil.rmtree(test_output, ignore_errors=True)
-
 
 
 @pytest.fixture
@@ -115,6 +126,10 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]):
     """Modify test collection to add markers based on test names and locations."""
+    preset = config.getoption("--preset", default="t")
+    apptainer_available = _has_apptainer_runtime()
+    docker_available = _has_docker_runtime()
+
     for item in items:
         # Add unit marker to all tests by default
         if not any(
@@ -151,6 +166,23 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
                     )
                 )
 
+        # Tests that use containerized Snakemake profiles need either a local
+        # runtime or the Docker-based local_docker fallback runner.
+        if any(m.name == "requires_apptainer" for m in item.iter_markers()):
+            uses_docker_fallback = (
+                preset == _DOCKER_FALLBACK_PRESET
+                and "seqnado_runner" in item.fixturenames
+                and docker_available
+            )
+            if not apptainer_available and not uses_docker_fallback:
+                item.add_marker(
+                    pytest.mark.skip(
+                        reason=(
+                            "requires Apptainer/Singularity, or Docker with "
+                            "--preset=ld for Docker-backed pipeline tests"
+                        )
+                    )
+                )
 
 
 # -------------------------
@@ -175,11 +207,11 @@ def docker_image(pytestconfig):
     available locally (i.e. macOS without Apptainer).
     """
     preset = pytestconfig.getoption("--preset", default="t")
-    apptainer_available = bool(shutil.which("apptainer") or shutil.which("singularity"))
+    apptainer_available = _has_apptainer_runtime()
     if preset != "ld" or apptainer_available:
         return None
 
-    if not shutil.which("docker"):
+    if not _has_docker_runtime():
         pytest.skip("Docker not found — required for --preset=ld without Apptainer")
 
     result = subprocess.run(
@@ -208,7 +240,7 @@ def seqnado_runner(pytestconfig, docker_image):
     embedded in config files remain valid inside the container.
     """
     preset = pytestconfig.getoption("--preset", default="t")
-    apptainer_available = bool(shutil.which("apptainer") or shutil.which("singularity"))
+    apptainer_available = _has_apptainer_runtime()
     use_docker = preset == "ld" and not apptainer_available and docker_image is not None
 
     def run(cmd, cwd, **kwargs):
