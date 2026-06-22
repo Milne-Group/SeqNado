@@ -1,6 +1,7 @@
 import re
 
 from seqnado.workflow.helpers.common import define_memory_requested, define_time_requested
+from seqnado.workflow.helpers.dataset import get_quantnado_pairedness_flag
 
 DATASET_SAMPLE_NAMES = OUTPUT.ip_sample_names or OUTPUT.sample_names
 DATASET_PATH = f"{OUTPUT_DIR}/dataset/{CONFIG.project.date}_{CONFIG.project.name}.zarr"
@@ -83,6 +84,13 @@ def _get_dataset_args(wildcards):
     raise ValueError(f"Unsupported assay type: {assay}")
 
 
+def _get_dataset_pairedness_flag(wildcards):
+    if not _get_dataset_args(wildcards)["bam"]:
+        return ""
+
+    return get_quantnado_pairedness_flag(INPUT_FILES, wildcards.sample_id)
+
+
 rule dataset_create:
     input:
         bam=lambda wc: _get_dataset_args(wc)["bam"],
@@ -98,6 +106,7 @@ rule dataset_create:
         output_dir=OUTPUT_DIR + "/dataset",
         primary_input_flag=lambda wc: _get_dataset_args(wc)["primary_input_flag"],
         extra_args=lambda wc: _get_dataset_args(wc)["extra_args"],
+        pairedness_flag=lambda wc: _get_dataset_pairedness_flag(wc),
     threads: 1
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(
@@ -106,7 +115,7 @@ rule dataset_create:
         runtime=lambda wildcards, attempt: define_time_requested(
             initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
         ),
-    container: "docker://ghcr.io/milne-group/quantnado-ci:latest"
+    container: "docker://ghcr.io/milne-group/quantnado:latest"
     log: OUTPUT_DIR + "/logs/dataset/{sample_id}.log"
     benchmark: OUTPUT_DIR + "/.benchmark/dataset/{sample_id}.tsv"
     message: "Creating dataset for sample {wildcards.sample_id} using QuantNado."
@@ -117,6 +126,7 @@ rule dataset_create:
     --overwrite \
     --log-file {log} \
     --assay "{params.assay}" \
+    {params.pairedness_flag} \
     {params.primary_input_flag} \
     {params.extra_args}
     """
@@ -138,7 +148,7 @@ rule dataset_combine:
         runtime=lambda wildcards, attempt: define_time_requested(
             initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
         ),
-    container: "docker://ghcr.io/milne-group/quantnado-ci:latest"
+    container: "docker://ghcr.io/milne-group/quantnado:latest"
     log: OUTPUT_DIR + "/logs/dataset/dataset_combine.log"
     benchmark: OUTPUT_DIR + "/.benchmark/dataset/dataset_combine.tsv"
     message: "Combining single-assay datasets using QuantNado."
@@ -163,7 +173,7 @@ rule dataset_compress:
         runtime=lambda wildcards, attempt: define_time_requested(
             initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
         ),
-    container: "docker://ghcr.io/milne-group/quantnado-ci:latest"
+    container: "docker://ghcr.io/milne-group/quantnado:latest"
     log: OUTPUT_DIR + "/logs/dataset/dataset_compress.log"
     benchmark: OUTPUT_DIR + "/.benchmark/dataset/dataset_compress.tsv"
     message: "Compressing combined dataset using gzip."
