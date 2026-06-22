@@ -331,7 +331,7 @@
             "description": "SeqNado multiomics quantification and dataset creation tool",
             "command": "create-dataset",
             "category": "Quantification",
-            "container": "docker://ghcr.io/milne-group/quantnado-ci:latest",
+            "container": "docker://ghcr.io/milne-group/quantnado:latest",
             "citation": "quantnado",
             "version": "0.4.3"
         },

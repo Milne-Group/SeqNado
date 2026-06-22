@@ -1,4 +1,3 @@
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -25,6 +24,8 @@ def test_multiomics(
     multiomics_configs: dict[str, dict[str, Path]],
     multiomics_run_directory: Path,
     cores: int,
+    pytestconfig,
+    seqnado_runner,
 ):
     """Test running multiple assays in a single seqnado project using Snakefile_multi.
 
@@ -46,6 +47,8 @@ def test_multiomics(
         multiomics_run_directory: Path to the run directory for the Multiomic test
         cores: Number of cores to use for the pipeline
     """
+    preset = pytestconfig.getoption("--preset", default="t")
+
     # Verify that config_multiomics.yaml was created by the fixture
     multiomics_config = multiomics_run_directory / "config_multiomics.yaml"
     assert multiomics_config.exists(), (
@@ -65,14 +68,14 @@ def test_multiomics(
         )
 
     # Run the multiomics pipeline
-    res = subprocess.run(
+    res = seqnado_runner(
         [
             "seqnado",
             "pipeline",
             "-c",
             str(cores),
             "--preset",
-            "t",
+            preset,
         ],
         cwd=multiomics_run_directory,
         capture_output=False,

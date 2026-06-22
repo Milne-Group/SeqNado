@@ -153,6 +153,7 @@ def _stage_genome(resources: GenomeResources, out_dir: Path, genome_name: str) -
 @pytest.mark.pipeline
 @pytest.mark.genome_build
 @pytest.mark.snakemake
+@pytest.mark.requires_apptainer
 @pytest.mark.slow
 class TestGenomeBuild:
     """Build indices from pre-staged chr21 test data."""
