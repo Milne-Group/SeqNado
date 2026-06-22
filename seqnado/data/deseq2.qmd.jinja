@@ -17,8 +17,9 @@ editor_options:
 
 params:
   counts: "seqnado_output/readcounts/feature_counts/read_counts.tsv"
+  metadata: "metadata.csv"
   de_dir: "seqnado_output/deseq2_results/"
-  spikein_genes: 
+  spikein_genes:
     - "AmpR_seq"
     - "Cas9_5p_seq"
     - "Cas9_3p_seq"
@@ -62,9 +63,11 @@ suppressPackageStartupMessages(library(rjson))
 ## Sample information
 
 ```{r sample_information}
-sample_info <- read.csv("metadata.csv") %>%
-  dplyr::select(-contains("fq")) %>%
-  mutate(deseq2 = fct_relevel(deseq2, "control")) %>%
+sample_info <- read.csv(params$metadata) %>%
+  dplyr::select(-contains("fq"))
+reference_level <- sample_info$group[sample_info$deseq2 == 0][1]
+sample_info <- sample_info %>%
+  mutate(deseq2 = fct_relevel(group, reference_level)) %>%
   arrange(deseq2)
 
 print(kable(sample_info, align = "l", format = "simple", row.names = FALSE))
@@ -74,11 +77,11 @@ print(kable(sample_info, align = "l", format = "simple", row.names = FALSE))
 ## Counts
 
 ```{r counts}
-counts <- read.delim(params$counts, comment.char = "#") %>%
-  rename_with(~ gsub("(seqnado_output.aligned.)(.+)(.bam)", "\\2", .), everything()) %>%
+counts <- read.delim(params$counts, comment.char = "#", check.names = FALSE) %>%
   column_to_rownames(var = "Geneid") %>%
-  dplyr::select(one_of(make.names(sample_info$sample_name))) %>%
-  setNames(sample_info$sample_name) %>%
+  dplyr::select(ends_with(".bam")) %>%
+  rename_with(~ gsub(".*/aligned/(.+)\\.bam$", "\\1", .)) %>%
+  dplyr::select(all_of(sample_info$sample_id)) %>%
   filter(rowSums(.) > 0)
 
 total_counts <- data.frame(
@@ -116,7 +119,7 @@ if (has_spikein) {
   
   # Output size factors
   size_factors <- colData(dds)[, "sizeFactor"]
-  names(size_factors) <- colData(dds)[, "sample_name"]
+  names(size_factors) <- colData(dds)[, "sample_id"]
   sf <- toJSON(size_factors)
   writeLines(sf, params$size_factors_out)
 
@@ -137,6 +140,17 @@ if (nrow(counts) > 1000){
 }
 
 res_names <- resultsNames(dds)[-1]
+
+# Save DE results for every contrast; report visualises the first
+for (rn in res_names) {
+  r <- results(dds, name = rn)
+  de <- as.data.frame(r) %>%
+    mutate(gene = rownames(.)) %>%
+    filter(!is.na(padj)) %>%
+    arrange(padj)
+  write.csv(de, paste0(de_dir, "DEseq2_", rn, ".csv"), row.names = FALSE)
+}
+res_names <- res_names[1]
 res <- results(dds, name = res_names)
 
 
@@ -181,8 +195,9 @@ Normalisation was performed in DESeq2 and data vst transformed to allow for visu
 vst_count <- assay(vst)
 sampleDists <- as.matrix(dist(t(vst_count)))
 
-cond_col <- brewer.pal(3, "Set2")[1:2] %>% 
-  set_names(unique(sample_info$deseq2))
+n_groups <- nlevels(sample_info$deseq2)
+cond_col <- brewer.pal(max(3, n_groups), "Set2")[seq_len(n_groups)] %>%
+  set_names(levels(sample_info$deseq2))
 
 row_ha = rowAnnotation(group = sample_info$deseq2,
                        col = list(group = cond_col))
@@ -481,11 +496,11 @@ top_DE_genes <- normCounts %>%
   as.data.frame() %>%
   filter(gene %in% DE_results$gene[1:12]) %>%
   pivot_longer(
-    cols = sample_info$sample_name, 
-    values_to = "count", 
+    cols = sample_info$sample_id,
+    values_to = "count",
     names_to = "sample"
   ) %>%
-  left_join(sample_info, by = c("sample" = "sample_name")) %>%
+  left_join(sample_info, by = c("sample" = "sample_id")) %>%
   mutate(gene = factor(gene, levels = unique(gene)))
 
 p <- ggplot(data = top_DE_genes, aes(x = deseq2, y = count, color = deseq2)) +
