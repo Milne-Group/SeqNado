@@ -47,7 +47,7 @@ rule multiomics_dataset:
         runtime=lambda wildcards, attempt: define_time_requested(
             initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
         ),
-    container: "docker://ghcr.io/milne-group/quantnado-ci:latest"
+    container: "docker://ghcr.io/milne-group/quantnado:latest"
     log: OUTPUT_DIR + "/logs/dataset/multiomics_dataset.log"
     benchmark: OUTPUT_DIR + "/.benchmark/dataset/multiomics_dataset.tsv"
     message: "Combining multi-omics datasets using QuantNado."
@@ -72,7 +72,7 @@ rule multiomics_dataset_compress:
         runtime=lambda wildcards, attempt: define_time_requested(
             initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
         ),
-    container: "docker://ghcr.io/milne-group/quantnado-ci:latest"
+    container: "docker://ghcr.io/milne-group/quantnado:latest"
     log: OUTPUT_DIR + "/logs/dataset/zip_multiomics_dataset.log"
     benchmark: OUTPUT_DIR + "/.benchmark/dataset/zip_multiomics_dataset.tsv"
     message: "Zipping multi-omics dataset using QuantNado."
