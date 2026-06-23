@@ -10,6 +10,7 @@
     * [GEO/SRA Download](geo_download.md)
     * [Pipeline Overview](pipeline.md)
     * [Outputs](outputs.md)
+    * [Python Analysis API](analysis.md)
     * [Output Examples](examples.md)
     * [Normalisation Methods](normalisation.md)
     * [Third-Party Tools](tools.md)
