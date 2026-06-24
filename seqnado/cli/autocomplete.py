@@ -8,7 +8,7 @@ from typing import List, Optional
 
 def _assay_names() -> List[str]:
     """Get list of available assay names for autocomplete."""
-    from seqnado.inputs import Assay  # local import to keep CLI startup snappy
+    from seqnado.core import Assay
 
     return list(Assay.all_assay_clean_names())
 

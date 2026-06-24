@@ -27,6 +27,7 @@ from .configs import (
     SNPCallingConfig,
     MCCConfig,
     MethylationConfig,
+    GenomicCoordinate,
 )
 
 from .user_input import (
@@ -75,4 +76,5 @@ __all__ = [
     "MultiomicsConfig",
     "build_multiomics_config",
     "render_multiomics_configs",
+    "GenomicCoordinate",
 ]

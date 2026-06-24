@@ -15,7 +15,6 @@ from pydantic import (
 
 from seqnado import (
     Assay,
-    GenomicCoordinate,
     MethylationMethod,
     MotifMethod,
     PCRDuplicateHandling,
@@ -30,6 +29,32 @@ from seqnado import (
 from .mixins import (
     PathValidatorMixin,
 )
+
+
+class GenomicCoordinate(BaseModel):
+    """Configuration for genomic coordinates."""
+
+    chromosome: str
+    start: int
+    end: int
+
+    @field_validator("start", "end")
+    def validate_coordinates(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Genomic coordinates must be non-negative.")
+        return v
+
+    @field_validator("end")
+    def validate_end_greater_than_start(cls, v: int, info) -> int:
+        if "start" in info.data and v < info.data["start"]:
+            raise ValueError("End coordinate must be greater than start coordinate.")
+        return v
+
+    @classmethod
+    def from_string(cls, coord_str: str) -> "GenomicCoordinate":
+        chromosome, positions = coord_str.split(":")
+        start, end = map(int, positions.split("-"))
+        return cls(chromosome=chromosome, start=start, end=end)
 
 
 def none_str_to_none(v):

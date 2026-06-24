@@ -8,16 +8,6 @@ import typer
 from loguru import logger
 
 from seqnado.cli.app_instance import app
-from seqnado.cli.benchmark_helpers import (
-    compute_assay_output_sizes,
-    discover_snakemake_logs,
-    format_compact_number,
-    load_benchmark_table,
-    parse_alignment_processing_logs,
-    parse_snakemake_logs_timeline,
-    summarize_benchmarks,
-    write_html_report,
-)
 from seqnado.cli.utils import _configure_logging, cli_print_table, verbose_option
 
 
@@ -101,6 +91,16 @@ def run_benchmark_report(
     verbose: bool = False,
 ) -> None:
     """Generate benchmark outputs from plain Python code without Typer option wrappers."""
+    from seqnado.cli.benchmark_helpers import (
+        compute_assay_output_sizes,
+        discover_snakemake_logs,
+        format_compact_number,
+        load_benchmark_table,
+        parse_alignment_processing_logs,
+        parse_snakemake_logs_timeline,
+        summarize_benchmarks,
+        write_html_report,
+    )
     _configure_logging(verbose)
 
     resolved_benchmark_dir = _resolve_benchmark_dir(benchmark_dir)
