@@ -21,7 +21,13 @@ tryCatch({
   cat("Loading metadata...\n")
   metadata <- read_csv(snakemake@input[[2]], show_col_types = FALSE)
   design_candidates <- c("deseq2", "group", "condition", "scaling_group")
-  design_col <- design_candidates[design_candidates %in% colnames(metadata)][1]
+  # A candidate column that exists but is entirely NA means the user isn't
+  # using it (e.g. deseq2 left blank) - fall through to the next candidate
+  # instead of building a design factor of all NA, which edgeR rejects.
+  usable <- sapply(design_candidates, function(col) {
+    col %in% colnames(metadata) && any(!is.na(metadata[[col]]))
+  })
+  design_col <- design_candidates[usable][1]
   if (is.na(design_col)) {
     cat("  No design column found; using a single-level factor\n")
     metadata <- metadata %>% mutate(design_group = factor("all_samples"))
