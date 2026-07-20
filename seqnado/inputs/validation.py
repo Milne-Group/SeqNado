@@ -7,6 +7,11 @@ from .core import Assay
 
 AssayCategory = pd.CategoricalDtype(categories=[a.value for a in Assay])
 
+# Columns are used to build output file/directory names (sample_id, grouping
+# keys, ip/control labels), so whitespace and other special characters are
+# disallowed to avoid producing invalid or ambiguous paths.
+NO_WHITESPACE_PATTERN = r"^[a-zA-Z0-9_-]+$"
+
 class ViewpointsFile(pa.DataFrameModel):
     Chromosome: Series[str] = pa.Field(coerce=True)
     Start: Series[int] = pa.Field(coerce=True)
@@ -85,12 +90,34 @@ class DesignDataFrame(pa.DataFrameModel):
     @pa.check("sample_id")
     def check_sample_id(cls, s: Series[str]) -> Series[bool]:
         """Ensure sample IDs do not contain spaces or special characters."""
-        # Check that the sample IDs do not contain spaces or special characters
-        allowed_chars = r"^[a-zA-Z0-9_-]+$"
-        return s.str.match(allowed_chars)
-    
+        return s.str.match(NO_WHITESPACE_PATTERN)
 
+    @pa.check(
+        "scaling_group", "consensus_group", "condition", "group", "ip", "control"
+    )
+    def check_metadata_columns_no_whitespace(cls, s: Series[str]) -> Series[bool]:
+        """Ensure grouping/label columns used to build output paths do not contain
+        spaces or special characters."""
+        return s.str.match(NO_WHITESPACE_PATTERN)
 
-        
+    @pa.check("deseq2")
+    def check_deseq2_is_binary(cls, s: Series[pd.Int64Dtype]) -> Series[bool]:
+        """Ensure deseq2 is a binary 0/1 encoding, not an arbitrary int."""
+        return s.isin([0, 1])
 
-    
+    @pa.dataframe_check
+    def check_deseq2_requires_group(cls, df: pd.DataFrame) -> Series[bool]:
+        """A binary deseq2 encoding is meaningless without a group label."""
+        if "deseq2" not in df.columns or "group" not in df.columns:
+            return pd.Series(True, index=df.index)
+        return ~(df["deseq2"].notna() & df["group"].isna())
+
+    @pa.dataframe_check
+    def check_control_label_present_when_control_reads_given(
+        cls, df: pd.DataFrame
+    ) -> Series[bool]:
+        """A control fastq (r1_control) needs a 'control' label, otherwise the
+        control's output filename embeds a literal 'None'/'nan'."""
+        if "r1_control" not in df.columns or "control" not in df.columns:
+            return pd.Series(True, index=df.index)
+        return ~(df["r1_control"].notna() & df["control"].isna())
