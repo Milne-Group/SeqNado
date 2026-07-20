@@ -66,26 +66,6 @@ Below are recommended naming strategies for each assay type:
 
 Using these naming conventions ensures that the pipeline can correctly parse and process your data.
 
-#### Metadata Column Rules
-
-The design CSV columns that get embedded directly into output file and directory names — `sample_id`, `ip`, `control`, `condition`, `group`, `consensus_group`, `scaling_group` — must match `^[a-zA-Z0-9_-]+$`: letters, numbers, underscores, and hyphens only. Spaces and other special characters are rejected at validation time (before the pipeline runs) because they would otherwise produce broken or ambiguous paths.
-
-```
-# Bad
-condition: "WT treated"
-group: "KO#1"
-
-# Good
-condition: "WT-treated"
-group: "KO_1"
-```
-
-A few additional cross-field rules are enforced on the design CSV:
-
-- If `r1_control`/`r2_control` (control FASTQ paths) are set for a row, `control` (the control label) must also be set — it's used to build the control sample's output filename.
-- If `deseq2` is set, `group` must also be set — see [RNA-seq grouping for DESeq2](#rna-seq-grouping-for-deseq2).
-- `deseq2` must be `0` or `1` — it is not a general-purpose numeric code.
-
 ### Example Usage
 
 #### Generate a Design CSV for ATAC-seq
@@ -126,7 +106,7 @@ The control will either be left blank if no appropriate files are in the directo
 | ChIP  | SAMPLE1   | Menin   | input   | SAMPLE1_Menin_R1.fastq.gz    | SAMPLE1_Menin_R2.fastq.gz    | SAMPLE1_input_R1.fastq.gz | SAMPLE1_input_R2.fastq.gz | default       |
 | ChIP  | SAMPLE_2  | H3K27ac |         | SAMPLE_2_H3K27ac_R1.fastq.gz | SAMPLE_2_H3K27ac_R2.fastq.gz |                           |                           | default       |
 
-Note `control` and `r1_control`/`r2_control` are always set together: `SAMPLE_2` has no control files, so `control` is also blank. If you edit the CSV by hand, leaving `control` blank while `r1_control` is set (or vice versa) is rejected at validation time.
+
 
 #### Complex Case with Multiple Controls and Ambiguity in Pairing
 
@@ -252,10 +232,11 @@ The automatic binary encoding (`deseq2` column with 0/1) only works for 2-group 
 2. Leave the `deseq2` column empty
 3. Display a warning message
 
-For multi-group comparisons, you must manually edit the design CSV file to specify contrasts. `deseq2` only accepts `0` or `1` — it is not a general-purpose numeric code, so it cannot represent more than two groups by itself. Instead:
+For multi-group comparisons, you must manually edit the design CSV file to specify contrasts. Common approaches:
 
-- **Reference-level coding**: Assign `0` to every row in your reference group (e.g., control), and `1` to every other row. `group` still holds the full group name for each row — `deseq2` only marks which rows are the reference. Run separate pairwise contrasts for each non-reference group against the reference.
-- Every row where `deseq2` is set requires a non-blank `group` value in the same row, and at least one row must have `deseq2 = 0` so the pipeline can determine the reference group.
+- **Reference-level coding**: Assign `0` to your reference group (e.g., control), and `1` to all other groups. This requires running separate contrasts pairwise.
+- **Treatment contrasts**: Map each group to a numeric code (e.g., `0` = DMSO, `1` = dTAG-00hr, `2` = dTAG-24hr) — but note that standard DESeq2 design formulas expect binary columns, so this requires advanced configuration in the `config.yaml`.
+- **Design matrix**: Use the `~0 + group` formula in your DESeq2 configuration to compare all groups simultaneously.
 
 Consult the [Tools Reference](tools.md#deseq2) and the [Troubleshooting guide](troubleshooting.md) if you need help configuring multi-group contrasts.
 

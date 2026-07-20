@@ -207,27 +207,24 @@ name: my-chip-experiment-2024
 
 ## Design Files (`seqnado design`)
 
-### Sample ID or metadata column contains invalid characters
+### Sample ID contains invalid characters
 
 ```
-Column 'sample_id' failed element-wise validator ...: <Check check_sample_id>
-Column 'condition' failed element-wise validator ...: <Check check_metadata_columns_no_whitespace>
+ValueError: sample_id must match ^[a-zA-Z0-9_-]+$
 ```
 
-**Cause:** Any design CSV column that gets embedded in output file/directory names — `sample_id`, `ip`, `control`, `condition`, `group`, `consensus_group`, `scaling_group` — contains spaces, dots, or other special characters. Only letters, numbers, hyphens, and underscores are allowed (`^[a-zA-Z0-9_-]+$`).
+**Cause:** Sample names in your FASTQ filenames or design CSV contain spaces, dots, or other special characters.
 
-**Fix:** Rename your FASTQ files / edit the offending design CSV column to use only letters, numbers, hyphens, and underscores. For example:
+**Fix:** Rename your FASTQ files to use only letters, numbers, hyphens, and underscores. For example:
 
 ```
 # Bad
 Sample 1.Rep1_R1.fastq.gz
 sample.name_R1.fastq.gz
-condition: "WT treated"
 
 # Good
 Sample1-Rep1_R1.fastq.gz
 sample_name_R1.fastq.gz
-condition: "WT-treated"
 ```
 
 ### Duplicate sample IDs
@@ -295,36 +292,6 @@ ValueError: Multiple control samples matched ..., but no manual mapping provided
 **Cause:** SeqNado found more than one "input" sample and cannot automatically determine which control belongs to which IP sample.
 
 **Fix:** Explicitly map controls in your design CSV by ensuring each IP sample has a unique control, or add a `control` column to specify the pairing manually.
-
-### Control reads given without a control label
-
-```
-DataFrameSchema 'DesignDataFrame' failed element-wise validator ...: <Check check_control_label_present_when_control_reads_given>
-```
-
-**Cause:** The design CSV has `r1_control` (and optionally `r2_control`) set for a row, but the `control` column is blank. `control` is used to build the control sample's output filename, so it can't be empty when control FASTQ files are provided.
-
-**Fix:** Fill in the `control` column with the antibody/label for the control sample (e.g. `input`, `igg`) for every row that has `r1_control` set.
-
-### deseq2 value is not 0 or 1
-
-```
-Column 'deseq2' failed element-wise validator ...: <Check check_deseq2_is_binary>
-```
-
-**Cause:** The `deseq2` column contains a value other than `0` or `1`. `deseq2` marks the reference group (`0`) vs. everything else (`1`) — it is not a general-purpose numeric code, even for experiments with more than two groups (see [RNA-seq grouping for DESeq2](design.md#rna-seq-grouping-for-deseq2)).
-
-**Fix:** Set `deseq2` to `0` for your reference/control rows and `1` for all other rows. Use the `group` column to record the actual (possibly multi-valued) group name.
-
-### deseq2 set without a group value
-
-```
-DataFrameSchema 'DesignDataFrame' failed element-wise validator ...: <Check check_deseq2_requires_group>
-```
-
-**Cause:** A row has `deseq2` set but `group` is blank. The DESeq2 report determines the reference level from `group`, filtered by `deseq2 == 0`, so `group` must be populated wherever `deseq2` is.
-
-**Fix:** Fill in the `group` column for every row that has `deseq2` set.
 
 ---
 
