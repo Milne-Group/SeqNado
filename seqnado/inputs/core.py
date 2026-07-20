@@ -23,11 +23,6 @@ ILLUMINA_FILENAME_PATTERNS = {
 
 INPUT_CONTROL_SUBSTRINGS = ["input", "mock", "igg", "control"]
 
-# These metadata fields are embedded in output file/directory names (as
-# grouping wildcards or IP/control labels), so whitespace and other special
-# characters are disallowed to avoid producing invalid or ambiguous paths.
-METADATA_FIELD_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
-
 
 # =============================================================================
 # Models
@@ -113,17 +108,6 @@ class Metadata(BaseModel):
             if validate_deseq2 and validate_assay == Assay.RNA and v is None:
                 raise ValueError("deseq2 field is required for RNA assay when spikein is configured")
             
-        return v
-
-    @field_validator("consensus_group", "scaling_group", "group", "condition", mode="after")
-    @classmethod
-    def check_no_whitespace(cls, v: str | None, info: ValidationInfo) -> str | None:
-        """Reject whitespace/special characters in fields used to build output paths."""
-        if v is not None and not METADATA_FIELD_PATTERN.match(v):
-            raise ValueError(
-                f"{info.field_name} must contain only letters, numbers, underscores, "
-                f"or hyphens (no whitespace or special characters), got {v!r}"
-            )
         return v
 
     @model_validator(mode='after')

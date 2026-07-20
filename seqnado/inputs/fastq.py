@@ -17,7 +17,6 @@ from pydantic import BaseModel, Field, computed_field, field_validator
 from .core import (
     Assay,
     BaseCollection,
-    METADATA_FIELD_PATTERN,
     Metadata,
     clean_sample_name,
     extract_read_number,
@@ -165,11 +164,6 @@ class FastqFileIP(FastqFile):
             return v
         if not isinstance(v, str):
             raise ValueError("ip must be a string, None, pd.NA, or np.nan")
-        if not METADATA_FIELD_PATTERN.match(v):
-            raise ValueError(
-                f"ip must contain only letters, numbers, underscores, or hyphens "
-                f"(no whitespace or special characters), got {v!r}"
-            )
         return v
 
 
