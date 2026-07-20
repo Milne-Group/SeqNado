@@ -13,6 +13,7 @@ from seqnado import (
     QuantificationMethod,
     SNPCallingMethod,
     MethylationMethod,
+    SpikeInMethod,
 )
 from seqnado.config import (
     ATACAssayConfig,
@@ -862,5 +863,179 @@ class TestGetUserInput:
         monkeypatch.setattr('builtins.input', lambda _: next(inputs))
         result = get_user_input("Required?", required=True)
         assert result == "value"
+
+
+class TestFillMissingConfig:
+    """Tests for fill_missing_config: revisiting a generated config to fill in
+    optional sections (hub, spikein, ...) that were left null."""
+
+    @pytest.fixture
+    def template_path(self):
+        from importlib import resources
+
+        template = resources.files("seqnado.data").joinpath("config_template.jinja")
+        with resources.as_file(template) as tpl_path:
+            yield Path(tpl_path)
+
+    def _write_rna_config(self, tmp_path, *, ucsc_hub=None, spikein=None):
+        """Build an RNA SeqnadoConfig with the given hub/spikein state and dump it to YAML."""
+        from seqnado.config.configs import BowtieIndex, GenomeConfig
+        from seqnado.config.user_input import build_default_assay_config, render_config
+        from importlib import resources as _resources
+
+        genome = GenomeConfig(name="hg38", index=BowtieIndex(prefix=None))
+        assay_config = build_default_assay_config(Assay.RNA, genome)
+        assay_config.ucsc_hub = ucsc_hub
+        assay_config.spikein = spikein
+
+        project = ProjectConfig(name="test_project", date=datetime.strftime(datetime.today(), "%Y-%m-%d"))
+        config = SeqnadoConfig(
+            assay=Assay.RNA,
+            project=project,
+            genome=genome,
+            metadata=tmp_path / "metadata.csv",
+            assay_config=assay_config,
+        )
+
+        out_file = tmp_path / "config_rna.yaml"
+        template = _resources.files("seqnado.data").joinpath("config_template.jinja")
+        with _resources.as_file(template) as tpl_path:
+            render_config(Path(tpl_path), config, out_file, seqnado_version="9.9.9")
+        return out_file
+
+    def test_fill_missing_interactive_fills_hub_and_spikein(self, tmp_path, monkeypatch, template_path):
+        from seqnado.config.user_input import fill_missing_config
+
+        out_file = self._write_rna_config(tmp_path, ucsc_hub=None, spikein=None)
+
+        # Order: ucsc_hub (5 prompts) then spikein (5 prompts) — see
+        # _FILLABLE_SECTION_GETTERS iteration order in user_input.py.
+        inputs = iter([
+            "yes", "", "", "mm10", "",       # Make hub? dir, email, genome, color_by
+            "yes", "", "", "", "",           # Have spikein? method, ref genome, spikein genome, control genes
+        ])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        result = fill_missing_config(
+            path=out_file, template=template_path, seqnado_version="9.9.9", interactive=True
+        )
+
+        assert result == out_file
+        loaded = SeqnadoConfig.from_yaml(out_file)
+        assert loaded.assay_config.ucsc_hub is not None
+        # Regression test for the genome_name kwarg bug: user's genome answer
+        # must actually land on UCSCHubConfig.genome, not silently drop to hg38.
+        assert loaded.assay_config.ucsc_hub.genome == "mm10"
+        assert loaded.assay_config.create_ucsc_hub is True
+        assert loaded.assay_config.spikein is not None
+        assert loaded.assay_config.has_spikein is True
+
+    def test_fill_missing_nothing_to_fill(self, tmp_path, monkeypatch, template_path):
+        from seqnado.config.configs import SpikeInConfig
+        from seqnado.config.user_input import fill_missing_config
+
+        out_file = self._write_rna_config(
+            tmp_path, ucsc_hub=None, spikein=SpikeInConfig(method=[SpikeInMethod.DESEQ2])
+        )
+        # build_default_assay_config always sets ucsc_hub, so re-null it after the
+        # fact via the fixture args above is already covered; here we want a fully
+        # populated config, so fill in hub too before asserting nothing-to-do.
+        loaded = SeqnadoConfig.from_yaml(out_file)
+        from seqnado.config.configs import UCSCHubConfig
+        loaded.assay_config.ucsc_hub = UCSCHubConfig()
+        from seqnado.config.user_input import render_config
+        render_config(template_path, loaded, out_file, seqnado_version="9.9.9")
+
+        def _fail(_):
+            raise AssertionError("input() should not be called when nothing is fillable")
+
+        monkeypatch.setattr("builtins.input", _fail)
+
+        result = fill_missing_config(
+            path=out_file, template=template_path, seqnado_version="9.9.9", interactive=True
+        )
+        assert result is None
+
+    def test_fill_missing_skips_hard_locked_and_unsupported_sections(self, tmp_path, template_path, monkeypatch):
+        """CRISPR: ucsc_hub is type-locked to None, bigwigs/plotting are excluded by
+        assay even though the type allows them — none of these should be prompted."""
+        from seqnado.config.configs import BowtieIndex, GenomeConfig
+        from seqnado.config.user_input import fill_missing_config, render_config
+
+        genome = GenomeConfig(name="hg38", index=BowtieIndex(prefix=None))
+        assay_config = CRISPRAssayConfig(genome=genome, bigwigs=None, plotting=None, ucsc_hub=None)
+        project = ProjectConfig(name="test_project", date=datetime.strftime(datetime.today(), "%Y-%m-%d"))
+        config = SeqnadoConfig(
+            assay=Assay.CRISPR,
+            project=project,
+            genome=genome,
+            metadata=tmp_path / "metadata.csv",
+            assay_config=assay_config,
+        )
+        out_file = tmp_path / "config_crispr.yaml"
+        render_config(template_path, config, out_file, seqnado_version="9.9.9")
+
+        def _fail(_):
+            raise AssertionError("input() should not be called; CRISPR has no fillable sections")
+
+        monkeypatch.setattr("builtins.input", _fail)
+
+        result = fill_missing_config(
+            path=out_file, template=template_path, seqnado_version="9.9.9", interactive=True
+        )
+        assert result is None
+
+    def test_fill_missing_noninteractive_scaffolds_without_prompting(self, tmp_path, monkeypatch, template_path):
+        import yaml
+        from seqnado.config.user_input import fill_missing_config
+
+        out_file = self._write_rna_config(tmp_path, ucsc_hub=None, spikein=None)
+
+        def _fail(_):
+            raise AssertionError("scaffold mode must not call input()")
+
+        monkeypatch.setattr("builtins.input", _fail)
+
+        result = fill_missing_config(
+            path=out_file, template=template_path, seqnado_version="9.9.9", interactive=False
+        )
+
+        assert result == out_file
+        raw = yaml.safe_load(out_file.read_text())
+        hub = raw["assay_config"]["ucsc_hub"]
+        assert hub is not None
+        # Fully-keyed scaffold, not a bare null — every field visible for hand-editing.
+        for key in ("directory", "name", "genome", "email", "color_by"):
+            assert key in hub
+        spikein = raw["assay_config"]["spikein"]
+        assert spikein is not None
+        assert "method" in spikein
+
+    def test_fill_missing_output_writes_new_file_leaves_original(self, tmp_path, monkeypatch, template_path):
+        from seqnado.config.user_input import fill_missing_config
+
+        out_file = self._write_rna_config(tmp_path, ucsc_hub=None, spikein=None)
+        original_contents = out_file.read_text()
+        new_file = tmp_path / "config_rna.filled.yaml"
+
+        inputs = iter([
+            "yes", "", "", "", "",
+            "yes", "", "", "", "",
+        ])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        result = fill_missing_config(
+            path=out_file,
+            template=template_path,
+            seqnado_version="9.9.9",
+            output=new_file,
+            interactive=True,
+        )
+
+        assert result == new_file
+        assert new_file.exists()
+        assert out_file.read_text() == original_contents
+        loaded = SeqnadoConfig.from_yaml(new_file)
+        assert loaded.assay_config.ucsc_hub is not None
 
 
