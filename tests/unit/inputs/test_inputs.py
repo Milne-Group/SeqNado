@@ -99,6 +99,11 @@ class TestMetadata:
         with pytest.raises(ValidationError):
             Metadata(assay=Assay.CHIP, consensus_group=pd.NA)
 
+    def test_metadata_retains_extra_fields(self):
+        md = Metadata(assay=Assay.CHIP, donor="D1", treatment="VTP")
+        assert md.model_dump()["donor"] == "D1"
+        assert md.model_dump()["treatment"] == "VTP"
+
 
 class TestUtilityFunctions:
     """Tests for utility functions in core module."""
@@ -597,6 +602,18 @@ class TestFastqCollection:
         )
         assert len(fc.fastq_sets) == 1
         assert fc.fastq_sets[0].is_paired is True
+
+    def test_fastqcollection_round_trips_custom_metadata(self, tmp_path):
+        r1 = _write_fastq(tmp_path, "sample_R1.fastq.gz")
+        r2 = _write_fastq(tmp_path, "sample_R2.fastq.gz")
+        df = pd.DataFrame(
+            [{"sample_id": "sample", "r1": r1, "r2": r2, "donor": "D1"}]
+        )
+
+        collection = FastqCollection.from_dataframe(assay=Assay.RNA, df=df)
+        exported = collection.to_dataframe(validate=False)
+
+        assert exported.iloc[0]["donor"] == "D1"
 
     def test_fastqcollection_from_directory(self, tmp_path):
         """Test FastqCollection.from_directory."""
@@ -1162,6 +1179,25 @@ class TestFastqCollectionForIP:
         assert fc.experiments[0].has_control is True
         assert fc.experiments[0].ip.is_paired is True
         assert fc.experiments[0].control.is_paired is True
+
+    def test_fastqcollectionforip_round_trips_custom_metadata(self, tmp_path):
+        r1_ip = _write_fastq(tmp_path, "sample_H3K4me3_R1.fastq.gz")
+        r1_ctrl = _write_fastq(tmp_path, "sample_IGG_R1.fastq.gz")
+        df = pd.DataFrame(
+            [{
+                "sample_id": "sample",
+                "ip": "H3K4me3",
+                "control": "IGG",
+                "r1": r1_ip,
+                "r1_control": r1_ctrl,
+                "donor": "D1",
+            }]
+        )
+
+        collection = FastqCollectionForIP.from_dataframe(assay=Assay.CHIP, df=df)
+        exported = collection.to_dataframe()
+
+        assert exported.iloc[0]["donor"] == "D1"
 
 
 # =============================================================================

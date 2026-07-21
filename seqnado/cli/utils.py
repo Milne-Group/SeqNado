@@ -10,7 +10,7 @@ import sys
 import tempfile
 from importlib import resources
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import click
 import typer
@@ -290,6 +290,7 @@ def generate_design_dataframe(
     interactive: bool = True,
     accept_all_defaults: bool = False,
     deseq2_pattern: str | None = None,
+    metadata_extractor: Callable[["pandas.DataFrame"], "pandas.DataFrame"] | None = None,
 ) -> "pandas.DataFrame":
     """
     Generate a design dataframe from FASTQ files for a given assay.
@@ -307,6 +308,8 @@ def generate_design_dataframe(
         interactive: Whether to interactively prompt for defaults
         accept_all_defaults: Non-interactive: use only columns with schema defaults
         deseq2_pattern: Regex pattern to extract DESeq2 groups from sample names
+        metadata_extractor: Optional transformation that adds filename-derived
+            columns before schema defaults and DESeq2 grouping are applied.
         
     Returns:
         Pandas DataFrame with design metadata
@@ -337,6 +340,9 @@ def generate_design_dataframe(
     
     # Convert to dataframe and sort
     df = design_obj.to_dataframe().sort_values("sample_id")
+
+    if metadata_extractor:
+        df = metadata_extractor(df)
     
     # Extract schema candidates and apply defaults
     schema_candidates = _extract_candidate_defaults_from_schema(DesignDataFrame, assay_obj)

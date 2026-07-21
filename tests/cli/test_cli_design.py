@@ -142,3 +142,138 @@ def test_cli_design_condition_by_regex(tmp_path: Path):
 
     assert "condition" in df.columns
     assert set(df["condition"]) == {"control", "treated"}
+
+
+def test_cli_design_extracts_named_filename_metadata(tmp_path: Path):
+    """Named captures become columns and can drive existing grouping options."""
+    for name in [
+        "SEM-RES5-VTP-Rep1_MLL_R1.fastq.gz",
+        "SEM-RES5-VTP-Rep1_MLL_R2.fastq.gz",
+        "SEM-STOCK-VTP-Rep2_MLL_R1.fastq.gz",
+        "SEM-STOCK-VTP-Rep2_MLL_R2.fastq.gz",
+    ]:
+        _write_fastq(tmp_path, name)
+
+    pattern = (
+        r"^(?P<cell_line>SEM-(?:RES5|STOCK))-(?P<condition>VTP)-"
+        r"(?P<replicate>Rep\d+)_(?P<target>[^_]+)_R[12]\.fastq\.gz$"
+    )
+    result = subprocess.run(
+        [
+            "seqnado",
+            "design",
+            "chip",
+            "--no-interactive",
+            "--accept-all-defaults",
+            "--metadata-regex",
+            pattern,
+            "--consensus-by",
+            "target",
+            "-o",
+            "metadata.csv",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    df = pd.read_csv(tmp_path / "metadata.csv")
+    assert set(df["cell_line"]) == {"SEM-RES5", "SEM-STOCK"}
+    assert set(df["replicate"]) == {"Rep1", "Rep2"}
+    assert set(df["condition"]) == {"VTP"}
+    assert set(df["target"]) == {"MLL"}
+    assert (df["consensus_group"] == df["target"]).all()
+
+
+def test_cli_design_accepts_pcre_named_capture_syntax(tmp_path: Path):
+    _write_fastq(tmp_path, "SEM-RES5-VTP-Rep1_MLL_R1.fastq.gz")
+    _write_fastq(tmp_path, "SEM-RES5-VTP-Rep1_MLL_R2.fastq.gz")
+    result = subprocess.run(
+        [
+            "seqnado",
+            "design",
+            "chip",
+            "--no-interactive",
+            "--accept-all-defaults",
+            "--metadata-regex",
+            r"^(?<cell_line>SEM)-(?<state>RES5)-(?<treatment>VTP)-Rep\d+_(?<target>[^_]+)_R[12]\.fastq\.gz$",
+            "-o",
+            "metadata.csv",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    df = pd.read_csv(tmp_path / "metadata.csv")
+    assert df.loc[0, "cell_line"] == "SEM"
+    assert df.loc[0, "state"] == "RES5"
+    assert df.loc[0, "treatment"] == "VTP"
+    assert df.loc[0, "target"] == "MLL"
+
+
+def test_cli_design_extracts_explicit_field_and_keeps_unmatched_blank(tmp_path: Path):
+    _write_fastq(tmp_path, "SEM-RES5-VTP-Rep1_R1.fastq.gz")
+    _write_fastq(tmp_path, "SEM-RES5-VTP-Rep1_R2.fastq.gz")
+    _write_fastq(tmp_path, "other-sample_R1.fastq.gz")
+    _write_fastq(tmp_path, "other-sample_R2.fastq.gz")
+
+    result = subprocess.run(
+        [
+            "seqnado",
+            "design",
+            "atac",
+            "--no-interactive",
+            "--accept-all-defaults",
+            "--metadata-field",
+            r"cell_line=^SEM-(RES5|STOCK)-",
+            "-o",
+            "metadata.csv",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    df = pd.read_csv(tmp_path / "metadata.csv")
+    assert set(df.loc[df["cell_line"].notna(), "cell_line"]) == {"RES5"}
+    assert df["cell_line"].isna().sum() == 1
+
+
+@pytest.mark.parametrize(
+    ("options", "error"),
+    [
+        (["--metadata-regex", "["], "Invalid --metadata-regex"),
+        (["--metadata-regex", "(not_named)"], "named capture group"),
+        (["--metadata-field", "batch=(one)(two)"], "exactly one capture group"),
+        (
+            ["--metadata-regex", "(?P<batch>one)", "--metadata-field", "batch=(two)"],
+            "Duplicate metadata destination",
+        ),
+        (["--metadata-regex", "(?P<r1>sample)"], "protected FASTQ path"),
+    ],
+)
+def test_cli_design_rejects_invalid_metadata_extractors(tmp_path: Path, options, error):
+    _write_fastq(tmp_path, "sample_R1.fastq.gz")
+    _write_fastq(tmp_path, "sample_R2.fastq.gz")
+    result = subprocess.run(
+        [
+            "seqnado",
+            "design",
+            "atac",
+            "--no-interactive",
+            "--accept-all-defaults",
+            *options,
+            "-o",
+            "metadata.csv",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 2
+    assert error in result.stderr

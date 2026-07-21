@@ -284,6 +284,8 @@ $ seqnado design [OPTIONS] [ASSAY] [FASTQ ...]
 * `--interactive / --no-interactive`: Interactively offer to add missing columns using schema defaults.  [default: interactive]
 * `--accept-all-defaults`: Non-interactive: auto-add only columns that have a schema default.
 * `--deseq2-pattern TEXT`: Regex pattern to extract DESeq2 groups from sample names. First capture group will be used. Example: r'-(\w+)-rep' for 'sample-GROUP-rep1'
+* `--metadata-regex TEXT`: Regex matched against each R1 FASTQ basename. Every named capture group becomes a metadata column; repeat the option for multiple patterns.
+* `--metadata-field TEXT`: Extract one metadata column using `NAME=REGEX`; the regex must contain exactly one capture group. Repeatable.
 * `-v, --verbose`: Increase logging verbosity.
 * `--help`: Show this message and exit.
 

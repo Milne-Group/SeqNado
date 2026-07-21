@@ -7,6 +7,7 @@ from typing import List, Optional
 
 import typer
 from loguru import logger
+import pandas as pd
 
 from seqnado import Assay
 from seqnado.cli.app_instance import app
@@ -17,6 +18,97 @@ from seqnado.cli.utils import (
     generate_design_dataframe,
     verbose_option,
 )
+
+
+_PROTECTED_EXTRACTION_COLUMNS = {"uid", "r1", "r2", "r1_control", "r2_control"}
+
+
+def _compile_metadata_pattern(expression: str, option: str) -> re.Pattern[str]:
+    """Compile a metadata pattern, accepting Python and PCRE named groups."""
+    # Python spells a named group ``(?P<name>...)`` while PCRE users commonly
+    # write ``(?<name>...)``. Convert only valid group names, leaving lookbehind
+    # expressions such as ``(?<=...)`` and ``(?<!...)`` untouched.
+    python_expression = re.sub(
+        r"\(\?<([A-Za-z_]\w*)>", r"(?P<\1>", expression
+    )
+    try:
+        return re.compile(python_expression)
+    except re.error as exc:
+        raise ValueError(f"Invalid {option} {expression!r}: {exc}") from exc
+
+
+def _parse_metadata_extractors(
+    metadata_regex: list[str] | None,
+    metadata_field: list[str] | None,
+) -> list[tuple[str, re.Pattern[str], int | str]]:
+    """Validate extraction options and return their destination columns.
+
+    Named-group patterns contribute one extractor per named group. Explicit
+    ``NAME=REGEX`` patterns must contain exactly one capture group.
+    """
+    extractors: list[tuple[str, re.Pattern[str], int | str]] = []
+    destinations: set[str] = set()
+
+    def add(destination: str, pattern: re.Pattern[str], group: int | str) -> None:
+        if destination in _PROTECTED_EXTRACTION_COLUMNS:
+            raise ValueError(
+                f"'{destination}' is a protected FASTQ path/index column and cannot be extracted"
+            )
+        if destination in destinations:
+            raise ValueError(f"Duplicate metadata destination column '{destination}'")
+        destinations.add(destination)
+        extractors.append((destination, pattern, group))
+
+    for expression in metadata_regex or []:
+        pattern = _compile_metadata_pattern(expression, "--metadata-regex")
+        if not pattern.groupindex:
+            raise ValueError(
+                f"--metadata-regex {expression!r} must contain at least one named capture group"
+            )
+        for name in pattern.groupindex:
+            add(name, pattern, name)
+
+    for specification in metadata_field or []:
+        if "=" not in specification:
+            raise ValueError(
+                f"Invalid --metadata-field {specification!r}; expected NAME=REGEX"
+            )
+        name, expression = specification.split("=", 1)
+        if not name or not expression:
+            raise ValueError(
+                f"Invalid --metadata-field {specification!r}; expected NAME=REGEX"
+            )
+        pattern = _compile_metadata_pattern(
+            expression, f"--metadata-field {specification!r}"
+        )
+        if pattern.groups != 1:
+            raise ValueError(
+                f"--metadata-field {name!r} must contain exactly one capture group"
+            )
+        add(name, pattern, 1)
+
+    return extractors
+
+
+def _apply_metadata_extraction(
+    df: pd.DataFrame,
+    metadata_regex: list[str] | None,
+    metadata_field: list[str] | None,
+) -> pd.DataFrame:
+    """Add regex-derived metadata columns using each row's R1 FASTQ basename."""
+    try:
+        extractors = _parse_metadata_extractors(metadata_regex, metadata_field)
+    except ValueError as exc:
+        logger.error(str(exc))
+        raise typer.Exit(code=2) from exc
+
+    for destination, pattern, group in extractors:
+        df[destination] = [
+            (match.group(group) if (match := pattern.search(Path(path).name)) else None)
+            for path in df["r1"]
+        ]
+        logger.info(f"Extracted '{destination}' from FASTQ filenames.")
+    return df
 
 
 def _parse_ip_to_control_pairings(
@@ -40,11 +132,11 @@ def _parse_ip_to_control_pairings(
 
 
 def _populate_grouping_column(
-    df: "pandas.DataFrame",
+    df: pd.DataFrame,
     assay: Optional[str],
     by: str,
     target_column: str,
-) -> "pandas.DataFrame":
+) -> pd.DataFrame:
     """
     Populate `target_column` (e.g. 'consensus_group', 'condition') from `by`, which is
     either an existing column name (used as-is) or a regex extracted from sample names.
@@ -137,6 +229,16 @@ def design(
         help="Regex pattern to extract DESeq2 groups from sample names. "
         "First capture group will be used. Example: r'-(\\w+)-rep' for 'sample-GROUP-rep1'",
     ),
+    metadata_regex: List[str] = typer.Option(
+        None,
+        "--metadata-regex",
+        help="Regex matched against each R1 FASTQ basename; named capture groups become metadata columns. Repeatable.",
+    ),
+    metadata_field: List[str] = typer.Option(
+        None,
+        "--metadata-field",
+        help="Metadata extraction in NAME=REGEX form; REGEX must contain exactly one capture group. Repeatable.",
+    ),
     verbose: bool = verbose_option(),
 ) -> None:
     """
@@ -217,6 +319,9 @@ def design(
                 interactive=interactive,
                 accept_all_defaults=accept_all_defaults,
                 deseq2_pattern=deseq2_pattern,
+                metadata_extractor=lambda frame: _apply_metadata_extraction(
+                    frame, metadata_regex, metadata_field
+                ),
             )
 
             if group_by:
@@ -271,6 +376,9 @@ def design(
         interactive=interactive,
         accept_all_defaults=accept_all_defaults,
         deseq2_pattern=deseq2_pattern,
+        metadata_extractor=lambda frame: _apply_metadata_extraction(
+            frame, metadata_regex, metadata_field
+        ),
     )
 
     if group_by:

@@ -27,6 +27,36 @@ from .core import (
 from .validation import DesignDataFrame
 
 
+# These fields describe files or the IP/control experiment itself rather than
+# per-sample Metadata.  All other design-table columns are retained as
+# Metadata extras when a collection is reconstructed from CSV.
+_STRUCTURAL_DESIGN_COLUMNS = {
+    "sample_id",
+    "uid",
+    "r1",
+    "r2",
+    "r1_control",
+    "r2_control",
+    "ip",
+    "control",
+}
+
+
+def _metadata_from_record(
+    record: dict[str, Any], *, validate_deseq2: bool, assay: Assay
+) -> Metadata:
+    """Create Metadata while retaining user-defined design columns."""
+    values = {
+        key: (None if pd.isna(value) else value)
+        for key, value in record.items()
+        if key not in _STRUCTURAL_DESIGN_COLUMNS
+    }
+    return Metadata.model_validate(
+        values,
+        context={"validate_deseq2": validate_deseq2, "assay": assay},
+    )
+
+
 # =============================================================================
 # BASE FASTQ CLASSES
 # =============================================================================
@@ -583,8 +613,6 @@ class FastqCollection(BaseFastqCollection):
         df = DesignDataFrame.validate(df)
         fastq_sets: list[FastqSet] = []
         metadata: list[Metadata] = []
-        metadata_fields = set(Metadata.model_fields.keys())
-        
         # Use provided assay_for_validation or fall back to assay
         validation_assay = assay_for_validation or assay
 
@@ -599,9 +627,13 @@ class FastqCollection(BaseFastqCollection):
             )
             fastq_sets.append(fs)
 
-            # Collect metadata with validation context
-            meta_fields = {k: rec.get(k) for k in metadata_fields if k in rec}
-            metadata.append(Metadata.model_validate(meta_fields, context={'validate_deseq2': validate_deseq2, 'assay': validation_assay}))
+            metadata.append(
+                _metadata_from_record(
+                    rec,
+                    validate_deseq2=validate_deseq2,
+                    assay=validation_assay,
+                )
+            )
 
         return cls(assay=assay, fastq_sets=fastq_sets, metadata=metadata)
 
@@ -1041,8 +1073,6 @@ class FastqCollectionForIP(BaseFastqCollection):
         df = DesignDataFrame.validate(df)
         experiments: list[ExperimentIP] = []
         metadata: list[Metadata] = []
-        metadata_fields = set(Metadata.model_fields.keys())
-        
         # Use provided assay_for_validation or fall back to assay
         validation_assay = assay_for_validation or assay
 
@@ -1072,9 +1102,13 @@ class FastqCollectionForIP(BaseFastqCollection):
                 ExperimentIP(ip=ip_set, control=control_set, **exp_kwargs)
             )
 
-            # Collect metadata with validation context
-            meta_fields = {k: rec.get(k) for k in metadata_fields if k in rec}
-            metadata.append(Metadata.model_validate(meta_fields, context={'validate_deseq2': validate_deseq2, 'assay': validation_assay}))
+            metadata.append(
+                _metadata_from_record(
+                    rec,
+                    validate_deseq2=validate_deseq2,
+                    assay=validation_assay,
+                )
+            )
         return cls(assay=assay, experiments=experiments, metadata=metadata)
 
     def symlink_fastq_files(self, output_dir):
