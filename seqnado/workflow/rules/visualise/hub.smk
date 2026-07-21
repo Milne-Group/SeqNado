@@ -11,6 +11,7 @@ if CONFIG.assay_config.create_ucsc_hub and (OUTPUT.bigwig_files or OUTPUT.bigbed
         input:
             data=lambda wc: get_hub_input_files(wc, OUTPUT, ASSAY, rules),
             report=OUTPUT_DIR + f"/seqnado_report_{ASSAY.clean_name}.html",
+            metadata=str(CONFIG.metadata),
         output:
             hub=OUTPUT.ucsc_hub_files,
         params:

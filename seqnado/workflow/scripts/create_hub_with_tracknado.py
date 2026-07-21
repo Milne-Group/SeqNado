@@ -1,57 +1,13 @@
-import re
 import sys
+import inspect
 from pathlib import Path
 import tracknado as tn
+from seqnado.workflow.helpers.hub import (
+    format_hub_labels,
+    load_design_metadata,
+    make_seqnado_extractor,
+)
 from loguru import logger
-
-
-def determine_seqnado_assay(parts_lower: list[str]) -> str:
-    for i, part in enumerate(parts_lower):
-        if part == "seqnado_output":
-            return parts_lower[i + 1]
-
-    raise ValueError("Could not determine assay from path")
-
-
-def from_seqnado_path(path: Path) -> dict[str, str]:
-    """
-    Extract metadata from seqnado file paths.
-
-    Arguments:
-        path (Path): The file path from which to extract metadata.
-    Returns:
-        dict[str, str]: A dictionary containing extracted metadata fields.
-
-    Assumed that the path follows the seqnado output structure:
-        Pattern: .../seqnado_output/{assay}/[bigwigs/peaks]/{method}/{norm}/{sample}_{strand|viewpoint}.[bigWig|bed]
-        Example: .../seqnado_output/atac/bigwigs/atac_tn5/cpm/sample1.bigWig
-
-    """
-    metadata = {}
-    parts = path.parts
-    parts_lower = [p.lower() for p in parts]
-
-    metadata["assay"] = determine_seqnado_assay(parts_lower)
-    metadata["norm"] = parts[-2]
-    metadata["method"] = parts[-3]
-    metadata["file_type"] = parts[-4]  # bigwigs or peaks for now
-
-    # samplename is usually the stem, but seqnado sometimes has extensions like .plus/.minus
-    # We'll take the first part before any dots or underscores commonly used
-    stem = path.stem
-    metadata["samplename"] = re.split(r"[._]", stem)[0]
-
-    # If the assay is "MCC" we need to extract the viewpoint from the filename
-    # Pattern looks like: /bigwigs/mcc/replicates/{sample}_{viewpoint_group}.bigWig
-    if metadata["assay"] == "MCC":
-        metadata["viewpoint"] = re.split(r"[._]", stem)[-1].split(".")[0]
-
-    # For RNA we need to extract the strandedness from the filename
-    # Pattern looks like: /bigwigs/{method}/{norm}/{sample}_{strand}.bigWig
-    elif metadata["assay"] == "RNA":
-        metadata["strand"] = re.split(r"[._]", stem)[-1].split(".")[0]
-
-    return metadata
 
 
 def create_hub_with_tracknado():
@@ -78,12 +34,20 @@ def create_hub_with_tracknado():
         overlay_by = snakemake.params.overlay_by
         color_by = snakemake.params.color_by
 
+        # The assay is known here (not guessable from the path), so bind the
+        # assay-aware extractor to it - see seqnado.workflow.helpers.hub.
+        assay = snakemake.params.assay
+        assay_name = assay.clean_name if hasattr(assay, "clean_name") else str(assay)
+        design_metadata = load_design_metadata(snakemake.input.metadata)
+
         builder = (
             tn.HubBuilder()
             .add_tracks(snakemake.input.data)
-            # 2. Use the built-in seqnado path extractor
-            # This automatically handles directory structures like assay/method/norm/sample.bw
-            .with_metadata_extractor(from_seqnado_path)
+            # 2. Extract grouping metadata (method/norm/antibody/strand/viewpoint)
+            # from SeqNado's real output layout.
+            .with_metadata_extractor(
+                make_seqnado_extractor(assay_name, design_metadata)
+            )
         )
 
         if supergroup_by:
@@ -131,8 +95,19 @@ def create_hub_with_tracknado():
             if hasattr(snakemake.input, "report")
             else None,
         )
+        format_hub_labels(hub, supergroup_by)
 
-        hub.stage_hub()
+        # remove_existing so reruns don't leave stale tracks behind (e.g. a
+        # sample removed from the design) - the hub dir's bigWig/bigBed
+        # symlinks aren't Snakemake-tracked outputs, only the *.txt files are.
+        if "remove_existing" in inspect.signature(hub.stage_hub).parameters:
+            hub.stage_hub(remove_existing=True)
+        else:
+            logger.warning(
+                "Installed TrackNado does not support removing stale staged tracks; "
+                "staging the current hub contents."
+            )
+            hub.stage_hub()
 
         logger.info(f"✓ Hub successfully generated in {outdir}")
         logger.info("💡 You can merge multiple hubs later using 'tracknado merge'")

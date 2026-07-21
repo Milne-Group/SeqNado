@@ -407,39 +407,61 @@ class UCSCHubConfig(BaseModel):
 
     @classmethod
     def for_assay(cls, assay: Assay) -> "UCSCHubConfig":
+        """Per-assay hub layout defaults.
+
+        Fields referenced here must be produced for *every* track of the assay by
+        seqnado.workflow.helpers.hub.extract_seqnado_track_metadata, otherwise
+        tracknado's TrackDesign raises a missing-column assertion. Grouping
+        semantics: supergroup_by -> collapsible SuperTracks (coarsest split);
+        subgroup_by -> composite-track filter dimensions; overlay_by -> multiWig
+        overlay (signals drawn in one track); color_by -> track colouring.
+        """
         match assay:
             case Assay.RNA:
+                # Overlay the +/- strands of each sample (at a given method/scale)
+                # into one stranded multiWig track, coloured by strand.
                 return cls(
-                    supergroup_by=["file_type"],
+                    supergroup_by=None,
                     subgroup_by=["method", "norm", "strand"],
                     overlay_by=["samplename", "method", "norm"],
-                    color_by=["samplename", "strand"],
+                    color_by=["strand"],
                 )
 
             case Assay.MCC:
+                # One collapsible section per viewpoint (and signal vs peaks),
+                # split by track kind (replicate/aggregated/subtraction).
                 return cls(
-                    supergroup_by=["norm", "file_type"],
-                    color_by=["viewpoint", "samplename"],
-                    subgroup_by=["viewpoint"],
-                    overlay_by=["samplename"],
+                    supergroup_by=["file_type", "viewpoint"],
+                    subgroup_by=["track_kind"],
+                    overlay_by=None,
+                    color_by=["samplename"],
                 )
 
             case Assay.CHIP | Assay.CAT:
+                # One collapsible section per antibody (and signal vs peaks);
+                # samples/methods/scales are composite dimensions within.
                 return cls(
-                    supergroup_by=["file_type"],
-                    subgroup_by=["method", "norm", "antibody"],
-                    color_by=["antibody", "samplename"],
+                    supergroup_by=["file_type", "antibody"],
+                    subgroup_by=["method", "norm"],
+                    overlay_by=None,
+                    color_by=["samplename"],
                 )
 
             case Assay.ATAC:
                 return cls(
                     supergroup_by=["file_type"],
                     subgroup_by=["method", "norm"],
+                    overlay_by=None,
                     color_by=["samplename"],
                 )
 
             case _:
-                return cls()
+                return cls(
+                    supergroup_by=["file_type"],
+                    subgroup_by=["method", "norm"],
+                    overlay_by=None,
+                    color_by=["samplename"],
+                )
 
 
 class RNAQuantificationConfig(BaseModel, PathValidatorMixin):
