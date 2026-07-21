@@ -7,6 +7,7 @@ import pytest
 
 from seqnado import Assay, PCRDuplicateHandling, PCRDuplicateTool
 from seqnado.config.configs import (
+    BigwigConfig,
     PeakCallingConfig,
     PeakCallingMethod,
     PCRDuplicatesConfig,
@@ -237,6 +238,39 @@ class TestSeqnadoConfigValidation:
         assert config.third_party_tools.seacr.threshold == 0.01
         assert config.third_party_tools.seacr.normalization == "non"
         assert config.third_party_tools.seacr.stringency == "stringent"
+
+    def test_perform_comparisons_populates_bamnado_tool_defaults(self, tmp_metadata, tmp_bowtie_index):
+        """Enabling bigwig comparisons must auto-populate the bamnado tool config.
+
+        The condition aggregation/subtraction rules invoke bamnado directly, so
+        without this the output factory requests bigwigs that no rule can build.
+        """
+        config = SeqnadoConfig(
+            assay=Assay.CHIP,
+            project=ProjectConfig(name="test"),
+            genome=GenomeConfig(name="hg38", index=BowtieIndex(prefix=str(tmp_bowtie_index))),
+            metadata=tmp_metadata,
+            assay_config=ChIPAssayConfig(
+                bigwigs=BigwigConfig(perform_comparisons=True)
+            ),
+        )
+
+        assert config.third_party_tools is not None
+        assert config.third_party_tools.bamnado is not None
+
+    def test_no_comparisons_leaves_bamnado_unset(self, tmp_metadata, tmp_bowtie_index):
+        """Bamnado should not be auto-populated when comparisons are disabled."""
+        config = SeqnadoConfig(
+            assay=Assay.CHIP,
+            project=ProjectConfig(name="test"),
+            genome=GenomeConfig(name="hg38", index=BowtieIndex(prefix=str(tmp_bowtie_index))),
+            metadata=tmp_metadata,
+            assay_config=ChIPAssayConfig(
+                bigwigs=BigwigConfig(perform_comparisons=False)
+            ),
+        )
+
+        assert config.third_party_tools.bamnado is None
 
 
 class TestAssayConfigMatching:

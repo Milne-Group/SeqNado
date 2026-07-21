@@ -35,7 +35,7 @@ from .mixins import (
     PeakCallingMixin,
     SNPCallingMixin,
 )
-from .third_party_tools import Seacr, ThirdPartyToolsConfig
+from .third_party_tools import Bamnado, Seacr, ThirdPartyToolsConfig
 
 
 class BaseAssayConfig(CommonComputedFieldsMixin):
@@ -240,6 +240,25 @@ class SeqnadoConfig(BaseModel):
 
         if PeakCallingMethod.SEACR in methods and self.third_party_tools.seacr is None:
             self.third_party_tools.seacr = Seacr()
+
+        return self
+
+    @model_validator(mode="after")
+    def sync_comparison_tool_defaults(self) -> "SeqnadoConfig":
+        """Ensure bamnado is configured when condition comparisons are enabled.
+
+        The condition-based aggregation/subtraction rules
+        (rules/pileup/pileup_condition_compare.smk) invoke ``bamnado`` directly,
+        and the output factory lists their bigwigs whenever
+        ``bigwigs.perform_comparisons`` is set. Auto-populate bamnado so the
+        rules that produce those files are actually included in the workflow.
+        """
+        bigwigs = getattr(self.assay_config, "bigwigs", None)
+        if getattr(bigwigs, "perform_comparisons", False):
+            if self.third_party_tools is None:
+                self.third_party_tools = ThirdPartyToolsConfig.for_assay(self.assay)
+            if self.third_party_tools.bamnado is None:
+                self.third_party_tools.bamnado = Bamnado()
 
         return self
 
