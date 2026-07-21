@@ -278,7 +278,8 @@ $ seqnado design [OPTIONS] [ASSAY] [FASTQ ...]
 
 * `-o, --output PATH`: Output CSV filename (default: metadata_{assay}.csv).
 * `--ip-to-control TEXT`: List of antibody,control pairings for IP assays (e.g. ChIP). Format: 'antibody1:control1,antibody2:control2'. If provided will assign a control with a specified name to that ip in the metadata. If not provided, controls will be assigned based on a best-effort matching of sample names.
-* `--group-by`: Group samples by a regular expression or a column.
+* `--consensus-by, --group-by TEXT`: Populate 'consensus_group' from an existing column name or a regex extracted from sample names. e.g. `--consensus-by ip` groups ChIP-seq/CUT&Tag samples by antibody for consensus peak calling/counting.
+* `--condition-by TEXT`: Populate 'condition' from an existing column name or a regex extracted from sample names. e.g. `--condition-by "-(control|treated)-"` extracts the condition from sample names for bigwig comparisons.
 * `--auto-discover / --no-auto-discover`: Search common folders if none provided.  [default: auto-discover]
 * `--interactive / --no-interactive`: Interactively offer to add missing columns using schema defaults.  [default: interactive]
 * `--accept-all-defaults`: Non-interactive: auto-add only columns that have a schema default.

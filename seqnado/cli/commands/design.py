@@ -39,6 +39,41 @@ def _parse_ip_to_control_pairings(
     return pairings
 
 
+def _populate_grouping_column(
+    df: "pandas.DataFrame",
+    assay: Optional[str],
+    by: str,
+    target_column: str,
+) -> "pandas.DataFrame":
+    """
+    Populate `target_column` (e.g. 'consensus_group', 'condition') from `by`, which is
+    either an existing column name (used as-is) or a regex extracted from sample names.
+    """
+    if by in df.columns:
+        df[target_column] = df[by].astype(str)
+        logger.info(f"Set '{target_column}' from column '{by}'.")
+        return df
+
+    try:
+        # For IP assays (ChIP, CAT), match against sample_id + ip so patterns can target antibodies
+        if assay and assay.lower() in ["chip", "cat"] and "ip" in df.columns:
+            samples = df["sample_id"] + df["ip"]
+        else:
+            samples = df["sample_id"]
+
+        extracted = samples.str.extract(by, expand=False)
+        if extracted.isnull().all():
+            raise ValueError(f"No matches found with the provided regex '{by}'")
+
+        df[target_column] = extracted.fillna("unknown")
+        logger.info(f"Set '{target_column}' from regex '{by}'.")
+    except Exception as e:
+        logger.error(f"Failed to set '{target_column}' from '{by}': {e}")
+        raise typer.Exit(code=3)
+
+    return df
+
+
 @app.command(
     help="Generate a SeqNado design CSV from FASTQ files for ASSAY. If no assay is provided, multiomics mode is used."
 )
@@ -69,7 +104,17 @@ def design(
         """,
     ),
     group_by: Optional[str] = typer.Option(
-        None, "--group-by", help="Group samples by a regular expression or a column name."
+        None,
+        "--consensus-by",
+        "--group-by",
+        help="Populate 'consensus_group' from an existing column name or a regex extracted from sample names. "
+        "e.g. '--consensus-by ip' groups ChIP-seq/CUT&Tag samples by antibody for consensus peak calling/counting.",
+    ),
+    condition_by: Optional[str] = typer.Option(
+        None,
+        "--condition-by",
+        help="Populate 'condition' from an existing column name or a regex extracted from sample names. "
+        "e.g. '--condition-by \"-(control|treated)-\"' extracts the condition from sample names for bigwig comparisons.",
     ),
     auto_discover: bool = typer.Option(
         True,
@@ -104,7 +149,8 @@ def design(
         files: FASTQ files to process
         output: Output CSV filename (default: metadata_{assay}.csv)
         ip_to_control: List of antibody,control pairings for IP assays
-        group_by: Group samples by a regular expression or a column name
+        group_by: Populate 'consensus_group' from a column name or regex (e.g. 'ip' for antibody-based grouping)
+        condition_by: Populate 'condition' from a column name or regex
         auto_discover: Search common folders if none provided
         interactive: Interactively offer to add missing columns using schema defaults
         accept_all_defaults: Non-interactive: auto-add only columns with schema default
@@ -173,6 +219,11 @@ def design(
                 deseq2_pattern=deseq2_pattern,
             )
 
+            if group_by:
+                df = _populate_grouping_column(df, assay_name, group_by, "consensus_group")
+            if condition_by:
+                df = _populate_grouping_column(df, assay_name, condition_by, "condition")
+
             # Save metadata file
             metadata_file = Path(f"metadata_{assay_name}.csv")
             metadata_file.parent.mkdir(parents=True, exist_ok=True)
@@ -223,34 +274,9 @@ def design(
     )
 
     if group_by:
-        # Try matching against a column name first
-        if group_by in df.columns:
-            df["consensus_group"] = df[group_by].astype(str)
-            logger.info(
-                f"Grouped samples by column '{group_by}' into 'consensus_group'."
-            )
-        else:
-            # Treat group_by as a regex pattern to extract from sample_id
-            try:
-                # For IP assays (ChIP, CAT), concatenate sample_id and ip
-                if assay and assay.lower() in ["chip", "cat"]:
-                    samples = df["sample_id"] + df["ip"]
-                else:
-                    samples = df["sample_id"]
-
-                df["consensus_group"] = samples.str.extract(group_by, expand=False)
-                if df["consensus_group"].isnull().all():
-                    raise ValueError(
-                        f"No matches found with the provided regex '{group_by}'"
-                    )
-
-                df["consensus_group"] = df["consensus_group"].fillna("unknown")
-                logger.info(
-                    f"Grouped samples by regex '{group_by}' into 'consensus_group'."
-                )
-            except Exception as e:
-                logger.error(f"Failed to group by '{group_by}': {e}")
-                raise typer.Exit(code=3)
+        df = _populate_grouping_column(df, assay, group_by, "consensus_group")
+    if condition_by:
+        df = _populate_grouping_column(df, assay, condition_by, "condition")
 
     output.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output, index=False)
