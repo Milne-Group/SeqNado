@@ -66,6 +66,75 @@ Below are recommended naming strategies for each assay type:
 
 Using these naming conventions ensures that the pipeline can correctly parse and process your data.
 
+### Metadata Columns Reference
+
+The design CSV can contain the following columns. Most are filled in automatically by `seqnado design`; you only need to edit them by hand for advanced cases (custom control pairing, batch-specific scaling, manual DESeq2 contrasts, etc.).
+
+| Column | Required? | Applies to | Purpose |
+| --- | --- | --- | --- |
+| `sample_id` | Yes | All | Unique sample identifier |
+| `assay` | Auto-filled | All | Assay type (`ATAC`, `ChIP`, `RNA`, …) |
+| `r1` / `r2` | Yes / optional | All | Paths to the (paired) raw FASTQ files |
+| `ip` | Optional | ChIP, CUT&Tag | Antibody/target name |
+| `control` | Optional | ChIP, CUT&Tag | Label of the paired control sample |
+| `r1_control` / `r2_control` | Optional | ChIP, CUT&Tag | FASTQ paths for the control sample |
+| `scaling_group` | Optional (defaults to `default`) | All | Groups samples for normalisation-factor calculation |
+| `consensus_group` | Optional | All | Groups samples for consensus peak calling / counting |
+| `condition` | Optional | ATAC, ChIP, CUT&Tag, RNA | Groups samples for bigwig aggregation/subtraction comparisons |
+| `group` / `deseq2` | Optional | RNA | Experimental group name and binary DESeq2 reference/treatment encoding |
+
+**`sample_id`** — Unique per sample (or per sample+`ip` combination for IP-seq assays). It's embedded directly into output file and directory names, so it may only contain letters, numbers, underscores, and hyphens (`^[a-zA-Z0-9_-]+$`) — no spaces or other special characters. This is checked by the pipeline before running, so fix naming here rather than downstream.
+
+**`assay`** — Normally set automatically to whatever assay you passed to `seqnado design <assay>`. You'd only touch this by hand when hand-assembling a multiomics design CSV that spans several assay types in one file.
+
+**`r1` / `r2`** — Paths to the symlinked FASTQ files. Leave `r2` blank for single-end data.
+
+**`ip`** — Only relevant for ChIP-seq/CUT&Tag: the antibody or target name (e.g. `H3K27ac`, `Menin`). Leave blank for ATAC/RNA/other assays that don't have an IP step. Setting it lets the same `sample_id` appear multiple times in the design (once per antibody), since uniqueness is enforced on `sample_id` + `ip` together rather than `sample_id` alone.
+
+**`control` / `r1_control` / `r2_control`** — The paired input/IgG/mock control for a ChIP or CUT&Tag sample: `control` is the label used to build the control's output filename, `r1_control`/`r2_control` are the actual control FASTQ paths. Leave all three blank when there's no matched control available — some peak callers (e.g. LanceOtron) can run IP-only, but background subtraction quality is generally better with a matched control, so only skip it when you genuinely don't have one. If you hand-edit the CSV, keep `control` and `r1_control`/`r2_control` in sync — setting the FASTQ paths without also setting the `control` label isn't currently caught by validation and will produce a broken/`None` control filename downstream.
+
+**`scaling_group`** — Defaults to `default` for every sample, meaning all samples are normalised together. Only change this when you have distinct batches whose scaling factors must be computed separately — for example, samples spiked in with different reference genomes, or samples from different sequencing runs that shouldn't be normalised against each other. Note this only affects how normalisation *factors* are calculated, not which samples get merged.
+
+**`consensus_group`** — Blank by default, meaning each sample gets its own independent peak calls/counts, and no consensus set is generated. Set it when you want a shared consensus peak call / count set generated across the group, on top of each sample's individual outputs. This is what you want for comparing samples/conditions against a common set of regions (e.g. differential binding/accessibility analysis) — quantifying each sample against its own private peak set makes cross-sample counts hard to compare, whereas a consensus set gives every sample in the group the same regions to be counted against. Group samples that should share one consensus region set (e.g. all samples for a given IP/mark, or all samples you intend to compare downstream). For Micro-Capture-C (`mcc`), this defaults to `default` automatically since MCC analysis is typically run per merged group; override it only if you specifically need per-replicate consensus calls kept separate.
+
+Rather than hand-editing this column, use `seqnado design`'s `--consensus-by` option to populate it automatically from an existing column or a regex. For example, `--consensus-by ip` groups ChIP-seq/CUT&Tag samples by antibody so each antibody gets its own consensus peak set:
+
+```bash
+seqnado design chip fastqs/* --consensus-by ip
+```
+
+You can also pass a regex (matched against `sample_id` — or `sample_id`+`ip` for ChIP/CUT&Tag) to derive the grouping from sample names, e.g. `--consensus-by "^([^-]+)"` to group by everything before the first hyphen.
+
+**`condition`** — Blank by default and only acted on when `perform_comparisons: true` is set in the project config, and only once at least 2 unique values exist. It drives bigwig-level comparisons (aggregated mean tracks per condition, plus pairwise subtraction tracks) without merging or otherwise touching BAMs, peak calls, or counts — safe to add even if you're unsure you'll use it. Don't reach for this as a substitute for RNA-seq differential expression grouping — that's what `group`/`deseq2` are for, not `condition`.
+
+Use `--condition-by` to populate it automatically the same way, e.g. extracting `control`/`treated` from sample names:
+
+```bash
+seqnado design atac fastqs/* --condition-by "-(control|treated)-"
+```
+
+**`group` / `deseq2`** — RNA-seq only, used to drive DESeq2's design formula (relevant when spike-in normalisation is configured). `group` holds the human-readable group name (e.g. `control`, `treated`); `deseq2` is a strictly binary encoding (`0` = reference/control group, `1` = treatment group) fed directly into the DESeq2 model — it is not a general-purpose numeric code, so don't try to represent three or more groups as `0`/`1`/`2`. For experiments with more than two groups, leave `deseq2` blank (the design tool will do this automatically and warn you) and set up contrasts manually — see [Multi-Group Comparisons](#rna-seq-grouping-for-deseq2) below.
+
+#### Metadata Column Rules
+
+The design CSV columns that get embedded directly into output file and directory names — `sample_id`, `ip`, `control`, `condition`, `group`, `consensus_group`, `scaling_group` — must match `^[a-zA-Z0-9_-]+$`: letters, numbers, underscores, and hyphens only. Spaces and other special characters are rejected at validation time (before the pipeline runs) because they would otherwise produce broken or ambiguous paths.
+
+```
+# Bad
+condition: "WT treated"
+group: "KO#1"
+
+# Good
+condition: "WT-treated"
+group: "KO_1"
+```
+
+A few additional cross-field rules are enforced on the design CSV:
+
+- If `r1_control`/`r2_control` (control FASTQ paths) are set for a row, `control` (the control label) must also be set — it's used to build the control sample's output filename.
+- If `deseq2` is set, `group` must also be set — see [RNA-seq grouping for DESeq2](#rna-seq-grouping-for-deseq2).
+- `deseq2` must be `0` or `1` — it is not a general-purpose numeric code.
+
 ### Example Usage
 
 #### Generate a Design CSV for ATAC-seq
@@ -106,7 +175,7 @@ The control will either be left blank if no appropriate files are in the directo
 | ChIP  | SAMPLE1   | Menin   | input   | SAMPLE1_Menin_R1.fastq.gz    | SAMPLE1_Menin_R2.fastq.gz    | SAMPLE1_input_R1.fastq.gz | SAMPLE1_input_R2.fastq.gz | default       |
 | ChIP  | SAMPLE_2  | H3K27ac |         | SAMPLE_2_H3K27ac_R1.fastq.gz | SAMPLE_2_H3K27ac_R2.fastq.gz |                           |                           | default       |
 
-
+Note `control` and `r1_control`/`r2_control` are always set together: `SAMPLE_2` has no control files, so `control` is also blank. If you edit the CSV by hand, leaving `control` blank while `r1_control` is set (or vice versa) is rejected at validation time.
 
 #### Complex Case with Multiple Controls and Ambiguity in Pairing
 
@@ -232,11 +301,10 @@ The automatic binary encoding (`deseq2` column with 0/1) only works for 2-group 
 2. Leave the `deseq2` column empty
 3. Display a warning message
 
-For multi-group comparisons, you must manually edit the design CSV file to specify contrasts. Common approaches:
+For multi-group comparisons, you must manually edit the design CSV file to specify contrasts. `deseq2` only accepts `0` or `1` — it is not a general-purpose numeric code, so it cannot represent more than two groups by itself. Instead:
 
-- **Reference-level coding**: Assign `0` to your reference group (e.g., control), and `1` to all other groups. This requires running separate contrasts pairwise.
-- **Treatment contrasts**: Map each group to a numeric code (e.g., `0` = DMSO, `1` = dTAG-00hr, `2` = dTAG-24hr) — but note that standard DESeq2 design formulas expect binary columns, so this requires advanced configuration in the `config.yaml`.
-- **Design matrix**: Use the `~0 + group` formula in your DESeq2 configuration to compare all groups simultaneously.
+- **Reference-level coding**: Assign `0` to every row in your reference group (e.g., control), and `1` to every other row. `group` still holds the full group name for each row — `deseq2` only marks which rows are the reference. Run separate pairwise contrasts for each non-reference group against the reference.
+- Every row where `deseq2` is set requires a non-blank `group` value in the same row, and at least one row must have `deseq2 = 0` so the pipeline can determine the reference group.
 
 Consult the [Tools Reference](tools.md#deseq2) and the [Troubleshooting guide](troubleshooting.md) if you need help configuring multi-group contrasts.
 
