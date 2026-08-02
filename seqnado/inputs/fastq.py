@@ -35,10 +35,18 @@ def _strip_whitespace(df: pd.DataFrame) -> pd.DataFrame:
     Design CSVs are hand-edited or pasted from spreadsheets, so stray
     whitespace (e.g. "rna ", " s1") is common and would otherwise break
     exact-match checks like the assay category or sample_id uniqueness.
+
+    A cell containing only whitespace (e.g. someone hit space instead of
+    leaving it truly empty) strips down to "" - which is a non-null string,
+    not a missing value. Left as-is, an optional path column like r2 would
+    then build a FastqFile from Path("").absolute(), silently resolving to
+    the current working directory instead of being treated as "no r2". Map
+    those to NaN so nullable columns see them as actually empty.
     """
     df = df.copy()
     for col in df.select_dtypes(include="object").columns:
         df[col] = df[col].apply(lambda v: v.strip() if isinstance(v, str) else v)
+        df[col] = df[col].apply(lambda v: np.nan if v == "" else v)
     return df
 
 
@@ -75,6 +83,28 @@ def _validate_design_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         # "dtype(...)" checks just restate the coercion failure already reported
         # by "coerce_dtype(...)" below (as a bare dtype name, not the bad value) - drop them.
         failure_cases = failure_cases[~failure_cases["check"].str.startswith("dtype(", na=False)]
+
+        # A missing required column triggers a clear "column_in_dataframe" failure
+        # plus noisy KeyError side-effects from every check that touches it
+        # (e.g. dataframe-wide uniqueness checks). Report only the root cause.
+        missing_columns = sorted(
+            set(failure_cases.loc[failure_cases["check"] == "column_in_dataframe", "failure_case"].dropna().astype(str))
+        )
+        if missing_columns:
+            raise UserFriendlyError(
+                f"Design CSV is missing required column(s): {missing_columns}"
+            ) from exc
+
+        # check_sample_name_is_unique returns one whole-dataframe verdict
+        # ("False"), not per-row failures, so recompute the actual duplicates
+        # here to tell the user which sample_id(s) collide.
+        if (failure_cases["check"] == "check_sample_name_is_unique").any():
+            dup_key = df["sample_id"].fillna("") + (df["ip"].fillna("") if "ip" in df.columns else "")
+            duplicates = sorted(set(dup_key[dup_key.duplicated(keep=False)]))
+            raise UserFriendlyError(
+                f"Design CSV has duplicate sample identifiers: {duplicates}"
+            ) from exc
+
         lines = ["Design CSV failed validation:"]
         for (column, check), group in failure_cases.groupby(["column", "check"], dropna=False):
             bad_values = sorted(set(group["failure_case"].dropna().astype(str)))
@@ -83,6 +113,27 @@ def _validate_design_dataframe(df: pd.DataFrame) -> pd.DataFrame:
                 allowed = [a.value for a in Assay]
                 lines.append(f"    allowed assay values (case-sensitive): {allowed}")
         raise UserFriendlyError("\n".join(lines)) from exc
+
+
+def _check_fastq_paths_exist(df: pd.DataFrame, columns: Iterable[str]) -> None:
+    """Batch-check that every fastq path in the design references a real file.
+
+    Hand-edited design CSVs commonly have a typo'd path in one row. Without
+    this check, samples are built one at a time and the first bad path stops
+    the whole run - fix it, rerun, hit the next typo, repeat. Report every
+    missing path across every sample in one pass instead.
+    """
+    missing: list[str] = []
+    for col in columns:
+        if col not in df.columns:
+            continue
+        for sample_id, path in zip(df["sample_id"], df[col]):
+            if pd.notna(path) and not is_valid_path(path):
+                missing.append(f"  - sample '{sample_id}', column '{col}': {path}")
+    if missing:
+        raise UserFriendlyError(
+            "Design CSV references fastq file(s) that don't exist:\n" + "\n".join(missing)
+        )
 
 
 # =============================================================================
@@ -639,10 +690,11 @@ class FastqCollection(BaseFastqCollection):
             **fastqset_kwargs: Additional kwargs for FastqSet
         """
         df = _validate_design_dataframe(df)
+        _check_fastq_paths_exist(df, ("r1", "r2"))
         fastq_sets: list[FastqSet] = []
         metadata: list[Metadata] = []
         metadata_fields = set(Metadata.model_fields.keys())
-        
+
         # Use provided assay_for_validation or fall back to assay
         validation_assay = assay_for_validation or assay
 
@@ -1097,6 +1149,7 @@ class FastqCollectionForIP(BaseFastqCollection):
             **exp_kwargs: Additional kwargs for ExperimentIP
         """
         df = _validate_design_dataframe(df)
+        _check_fastq_paths_exist(df, ("r1", "r2", "r1_control", "r2_control"))
         experiments: list[ExperimentIP] = []
         metadata: list[Metadata] = []
         metadata_fields = set(Metadata.model_fields.keys())

@@ -1,12 +1,14 @@
 """Core enums, constants, and utility functions for SeqNado design module."""
 
-from pathlib import Path 
+from pathlib import Path
+import csv
 import re
 from enum import Enum
 from typing import Optional, Union, Callable, Self, TYPE_CHECKING, Any
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field, computed_field, field_validator, model_validator, ValidationInfo
 from seqnado import Assay, Organism
+from seqnado.config.configs import UserFriendlyError
 import pandas as pd
 
 # =============================================================================
@@ -27,6 +29,51 @@ INPUT_CONTROL_SUBSTRINGS = ["input", "mock", "igg", "control"]
 # grouping wildcards or IP/control labels), so whitespace and other special
 # characters are disallowed to avoid producing invalid or ambiguous paths.
 METADATA_FIELD_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def read_design_csv_strict(path: str | Path) -> pd.DataFrame:
+    """Read a design CSV, refusing to silently reinterpret malformed rows.
+
+    pandas.read_csv treats a row with one extra field as a sign the first
+    column is an unlabeled index, and silently shifts every other column
+    over to compensate - so a single hand-edit mistake (stray comma, missing
+    header entry) corrupts every column downstream without ever raising an
+    error. Reject any row whose field count doesn't match the header instead.
+    """
+    with open(path, newline="") as fh:
+        reader = csv.reader(fh)
+        try:
+            header = [h.strip() for h in next(reader)]
+        except StopIteration:
+            raise UserFriendlyError(f"{path}: CSV is empty") from None
+        n_expected = len(header)
+        data_rows = [row for row in reader if row]
+        bad_rows = [
+            (line_no, len(row))
+            for line_no, row in enumerate(data_rows, start=2)
+            if len(row) != n_expected
+        ]
+
+    duplicate_columns = sorted({h for h in header if header.count(h) > 1})
+    if duplicate_columns:
+        raise UserFriendlyError(
+            f"{path}: duplicate column name(s) in header: {duplicate_columns}. "
+            "Each column must appear once."
+        )
+    if bad_rows:
+        shown = ", ".join(f"line {line_no} has {n} fields" for line_no, n in bad_rows[:10])
+        more = f" (+{len(bad_rows) - 10} more)" if len(bad_rows) > 10 else ""
+        raise UserFriendlyError(
+            f"{path}: malformed CSV - header has {n_expected} columns "
+            f"({', '.join(header)}) but {shown}{more}. "
+            "Check for stray/missing commas or a column missing from the header."
+        )
+    if not data_rows:
+        raise UserFriendlyError(f"{path}: has a header but no sample rows")
+
+    df = pd.read_csv(path, index_col=False)
+    df.columns = df.columns.str.strip()
+    return df
 
 
 # =============================================================================
@@ -191,7 +238,7 @@ class BaseCollection(BaseModel):
     @classmethod
     def from_csv(cls, path: str | Path, *args, **kwargs) -> Self:
         """Build a collection from a CSV file by delegating to from_dataframe."""
-        df = pd.read_csv(path)
+        df = read_design_csv_strict(path)
         # Extract validate_deseq2 and assay_for_validation if present in kwargs for passing to from_dataframe
         validate_deseq2 = kwargs.pop('validate_deseq2', False)
         assay_for_validation = kwargs.pop('assay_for_validation', None)
