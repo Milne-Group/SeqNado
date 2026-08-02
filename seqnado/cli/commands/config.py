@@ -40,7 +40,23 @@ def config(
     interactive: bool = typer.Option(
         True,
         "--interactive/--no-interactive",
-        help="Interactively prompt for config values. Non-interactive mode only works for single assay configs (except MCC and multiomics).",
+        help="Interactively prompt for config values. Non-interactive mode only works for single assay configs (except MCC and multiomics). "
+        "With --fill-missing, --no-interactive writes a hand-editable scaffold instead of prompting.",
+    ),
+    fill_missing: Optional[Path] = typer.Option(
+        None,
+        "--fill-missing",
+        help="Load an existing config YAML and fill in optional sections that were "
+        "left null (hub, bigwigs, plotting, spikein, peak_calling, snp_calling, "
+        "methylation) — e.g. because a hub wasn't selected the first time round. "
+        "Ignores ASSAY (derived from the file). Overwrites in place unless "
+        "-o/--output or --new-file is given.",
+    ),
+    new_file: bool = typer.Option(
+        False,
+        "--new-file",
+        help="With --fill-missing, write the result to '<name>.filled.yaml' "
+        "instead of overwriting the input. Ignored if -o/--output is given.",
     ),
 ) -> None:
     """
@@ -66,12 +82,52 @@ def config(
         build_default_workflow_config,
         build_multiomics_config,
         build_workflow_config,
+        fill_missing_config,
         render_config,
         render_multiomics_configs,
     )
     from seqnado.inputs import Assay
 
     seqnado_version = _pkg_version("seqnado")
+
+    if fill_missing is not None:
+        if not fill_missing.exists():
+            logger.error(f"Config file not found: {fill_missing}")
+            raise typer.Exit(code=1)
+
+        if output is not None:
+            target = output
+        elif new_file:
+            target = fill_missing.parent / f"{fill_missing.stem}.filled{fill_missing.suffix}"
+        else:
+            target = None  # overwrite fill_missing in place
+
+        tpl_trav = _pkg_traversable("seqnado.data").joinpath("config_template.jinja")
+        try:
+            with resources.as_file(tpl_trav) as tpl_path:
+                if not Path(tpl_path).exists():
+                    logger.error(
+                        "Packaged config template missing—installation may be corrupted."
+                    )
+                    raise typer.Exit(code=1)
+                try:
+                    fill_missing_config(
+                        path=fill_missing,
+                        template=Path(tpl_path),
+                        seqnado_version=seqnado_version,
+                        output=target,
+                        interactive=interactive,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to fill in config: {e}")
+                    raise typer.Exit(code=1)
+        except typer.Exit:
+            raise
+        except Exception as e:
+            logger.error("Failed to locate or access packaged template: %s", e)
+            raise typer.Exit(code=1)
+
+        return
 
     # If no assay provided, use multiomics mode
     if assay is None or assay.lower() == "multiomics":
