@@ -3,9 +3,9 @@
 import pytest
 from pydantic import ValidationError
 
+from seqnado.config import GenomicCoordinate
 from seqnado.core import (
     Assay,
-    GenomicCoordinate,
     FileType,
     PileupMethod,
     DataScalingTechnique,
