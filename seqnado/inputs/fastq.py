@@ -11,6 +11,7 @@ from typing import Any, Callable, Iterable
 import numpy as np
 import pandas as pd
 from loguru import logger
+import pandera.errors
 from pandera.typing import DataFrame
 from pydantic import BaseModel, Field, computed_field, field_validator
 
@@ -25,6 +26,63 @@ from .core import (
     is_valid_path,
 )
 from .validation import DesignDataFrame
+from ..config.configs import UserFriendlyError
+
+
+def _strip_whitespace(df: pd.DataFrame) -> pd.DataFrame:
+    """Strip leading/trailing whitespace from every string column before coercion.
+
+    Design CSVs are hand-edited or pasted from spreadsheets, so stray
+    whitespace (e.g. "rna ", " s1") is common and would otherwise break
+    exact-match checks like the assay category or sample_id uniqueness.
+    """
+    df = df.copy()
+    for col in df.select_dtypes(include="object").columns:
+        df[col] = df[col].apply(lambda v: v.strip() if isinstance(v, str) else v)
+    return df
+
+
+def _normalize_assay_column(df: pd.DataFrame) -> pd.DataFrame:
+    """Case-insensitively map values in the 'assay' column to the canonical Assay.value.
+
+    Design CSVs are hand-edited, so casing drifts (e.g. "rna"/"Rna" vs the
+    canonical "RNA"). Unrecognized values are left untouched so schema
+    validation still rejects them with a clear error.
+    """
+    if "assay" not in df.columns:
+        return df
+    canonical_by_lower = {a.value.lower(): a.value for a in Assay}
+    df = df.copy()
+    df["assay"] = df["assay"].apply(
+        lambda v: canonical_by_lower.get(str(v).lower(), v) if pd.notna(v) else v
+    )
+    return df
+
+
+def _validate_design_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """Validate a design DataFrame, converting pandera failures into a UserFriendlyError.
+
+    Raw pandera SchemaErrors dumps every failing row/column as JSON, which is
+    unreadable in the CLI. Summarize it instead: which column(s) failed, the
+    offending value(s), and (for the assay column) the allowed values.
+    """
+    df = _strip_whitespace(df)
+    df = _normalize_assay_column(df)
+    try:
+        return DesignDataFrame.validate(df, lazy=True)
+    except (pandera.errors.SchemaError, pandera.errors.SchemaErrors) as exc:
+        failure_cases = exc.failure_cases
+        # "dtype(...)" checks just restate the coercion failure already reported
+        # by "coerce_dtype(...)" below (as a bare dtype name, not the bad value) - drop them.
+        failure_cases = failure_cases[~failure_cases["check"].str.startswith("dtype(", na=False)]
+        lines = ["Design CSV failed validation:"]
+        for (column, check), group in failure_cases.groupby(["column", "check"], dropna=False):
+            bad_values = sorted(set(group["failure_case"].dropna().astype(str)))
+            lines.append(f"  - column '{column}' failed check '{check}': invalid value(s) {bad_values}")
+            if column == "assay":
+                allowed = [a.value for a in Assay]
+                lines.append(f"    allowed assay values (case-sensitive): {allowed}")
+        raise UserFriendlyError("\n".join(lines)) from exc
 
 
 # =============================================================================
@@ -580,7 +638,7 @@ class FastqCollection(BaseFastqCollection):
             assay_for_validation: Assay type to check in validation context
             **fastqset_kwargs: Additional kwargs for FastqSet
         """
-        df = DesignDataFrame.validate(df)
+        df = _validate_design_dataframe(df)
         fastq_sets: list[FastqSet] = []
         metadata: list[Metadata] = []
         metadata_fields = set(Metadata.model_fields.keys())
@@ -1038,7 +1096,7 @@ class FastqCollectionForIP(BaseFastqCollection):
             assay_for_validation: Assay type to check in validation context
             **exp_kwargs: Additional kwargs for ExperimentIP
         """
-        df = DesignDataFrame.validate(df)
+        df = _validate_design_dataframe(df)
         experiments: list[ExperimentIP] = []
         metadata: list[Metadata] = []
         metadata_fields = set(Metadata.model_fields.keys())

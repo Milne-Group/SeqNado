@@ -207,13 +207,17 @@ Config models live in `seqnado/config/`. Follow these patterns:
 
 ## Core Enums (`seqnado/core.py`)
 
-| Enum | Values |
+Values below are the literal `.value` strings — these are what must appear in design CSVs (e.g. the `assay` column, validated by the case-sensitive `DesignDataFrame` pandera schema in `seqnado/inputs/validation.py`) and config YAML. They are **not** always lowercase.
+
+| Enum | Values (`.value`, case-sensitive) |
 |------|--------|
-| `Assay` | atac, chip, cat, rna, snp, meth, crispr, mcc |
-| `PeakCallingMethod` | MACS2, MACS3, SEACR, HOMER, LanceOtron |
-| `SpikeInMethod` | Orlando, WITH_INPUT, DESeq2, edgeR |
-| `DataScalingTechnique` | Unscaled, CSAW, CPM, RPKM, SPIKEIN |
-| `PileupMethod` | deeptools, HOMER, BAMNADO, METHYLDACKEL |
+| `Assay` | RNA, ATAC, SNP, ChIP, CUT&TAG, METH, MCC, CRISPR, MULTIOMICS |
+| `PeakCallingMethod` | macs2, macs3, homer, lanceotron, seacr, lanceotron-mcc |
+| `SpikeInMethod` | orlando, with_input, deseq2, edger |
+| `DataScalingTechnique` | unscaled, csaw, cpm, rpkm, spikein, merged |
+| `PileupMethod` | deeptools, homer, bamnado, methyldackel |
+
+`Assay` also has a `.clean_name` property giving lowercase CLI-facing codes (`rna, atac, snp, chip, cat, meth, mcc, crispr, multiomics` — used for `seqnado config <assay>` etc.) — do not confuse this with `.value` when debugging design-CSV validation errors.
 
 
 ## Development and conventions
