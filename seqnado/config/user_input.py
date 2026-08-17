@@ -175,7 +175,7 @@ def load_genome_configs(assay: Assay) -> Dict[str, GenomeConfig]:
             genome_configs[genome_name] = GenomeConfig(**config_data)
         except Exception as e:
             # Skip invalid genome configs (e.g., from user's personal config with placeholder paths)
-            logger.debug(f"Skipping invalid genome config '{genome_name}': {e}")
+            logger.warning(f"Skipping invalid genome config '{genome_name}': {e}")
             continue
 
     return genome_configs
