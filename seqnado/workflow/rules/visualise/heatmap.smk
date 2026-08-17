@@ -1,4 +1,4 @@
-from seqnado import Assay, PileupMethod, DataScalingTechnique, SpikeInMethod
+from seqnado import Assay, PileupMethod, DataScalingTechnique, ScalingMethod, SpikeInMethod
 from seqnado.workflow.helpers.common import define_memory_requested, define_time_requested
 
 _spikein_cfg = CONFIG.assay_config.spikein
@@ -6,11 +6,17 @@ _spikein_methods = _spikein_cfg.method if _spikein_cfg else []
 _has_spikein_orlando = SpikeInMethod.ORLANDO in _spikein_methods
 _has_spikein_withinput = SpikeInMethod.WITH_INPUT in _spikein_methods
 
+# Heatmaps for the CSAW technique are generated for the default bamnado scaling
+# method only (csaw_background) — additional configured scaling_methods
+# (tmm/median_of_ratios/cpm) still produce bigwigs, just not dedicated heatmaps.
+_DEFAULT_SCALING_METHOD = ScalingMethod.CSAW_BACKGROUND.value
+
 # Heatmap and metaplot generation from bigWig files.
 # One set of rules per (pileup method) × (scale) × (merged) combination.
 # Compatible combinations:
 #   deeptools    : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
-#   bamnado      : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
+#   bamnado      : individual → unscaled/spikein_orlando/spikein_withinput      ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
+#   (csaw is genomics-only — excluded entirely for RNA-seq)
 #   homer        : individual → unscaled              ; merged → unscaled
 #   methyldackel : individual → unscaled (METH assay only, reads from bigwigs/taps or bigwigs/wgbs)
 
@@ -155,11 +161,12 @@ use rule heatmap_deeptools_unscaled_matrix as heatmap_deeptools_csaw_matrix with
         bigwigs=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
             scale=DataScalingTechnique.CSAW,
+            scaling_method=_DEFAULT_SCALING_METHOD,
             ip_only=True,
         ),
     output:
         matrix=temp(OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.CSAW)),
+            DataScalingTechnique.CSAW, scaling_method=_DEFAULT_SCALING_METHOD)),
     log: OUTPUT_DIR + "/logs/heatmap/deeptools/csaw/matrix.log",
     benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/csaw/matrix.tsv",
     message: "Computing deeptools CSAW-scaled heatmap matrix from bigWig files"
@@ -167,10 +174,10 @@ use rule heatmap_deeptools_unscaled_matrix as heatmap_deeptools_csaw_matrix with
 use rule heatmap_deeptools_unscaled_plot as heatmap_deeptools_csaw_plot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.CSAW),
+            DataScalingTechnique.CSAW, scaling_method=_DEFAULT_SCALING_METHOD),
     output:
         heatmap=OUTPUT.select_heatmap_plot(
-            DataScalingTechnique.CSAW),
+            DataScalingTechnique.CSAW, scaling_method=_DEFAULT_SCALING_METHOD),
     log: OUTPUT_DIR + "/logs/heatmap/deeptools/csaw/heatmap.log",
     benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/csaw/heatmap.tsv",
     message: "Generating deeptools CSAW-scaled heatmap from matrix"
@@ -178,10 +185,10 @@ use rule heatmap_deeptools_unscaled_plot as heatmap_deeptools_csaw_plot with:
 use rule heatmap_deeptools_unscaled_metaplot as heatmap_deeptools_csaw_metaplot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.CSAW),
+            DataScalingTechnique.CSAW, scaling_method=_DEFAULT_SCALING_METHOD),
     output:
         metaplot=OUTPUT.select_heatmap_metaplot(
-            DataScalingTechnique.CSAW),
+            DataScalingTechnique.CSAW, scaling_method=_DEFAULT_SCALING_METHOD),
     log: OUTPUT_DIR + "/logs/heatmap/deeptools/csaw/metaplot.log",
     benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/csaw/metaplot.tsv",
     message: "Generating deeptools CSAW-scaled metaplot from matrix"
@@ -326,12 +333,13 @@ use rule heatmap_deeptools_unscaled_matrix as heatmap_deeptools_merged_csaw_matr
         bigwigs=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
             scale=DataScalingTechnique.CSAW,
+            scaling_method=_DEFAULT_SCALING_METHOD,
             is_merged=True,
         ),
     output:
         matrix=temp(OUTPUT.select_heatmap_matrix(
             DataScalingTechnique.CSAW,
-            is_merged=True)),
+            is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD)),
     log: OUTPUT_DIR + "/logs/heatmap/merged/deeptools/csaw/matrix.log",
     benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/csaw/matrix.tsv",
     message: "Computing deeptools merged CSAW-scaled heatmap matrix from bigWig files"
@@ -340,11 +348,11 @@ use rule heatmap_deeptools_unscaled_plot as heatmap_deeptools_merged_csaw_plot w
     input:
         matrix=OUTPUT.select_heatmap_matrix(
             DataScalingTechnique.CSAW,
-            is_merged=True),
+            is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
     output:
         heatmap=OUTPUT.select_heatmap_plot(
             DataScalingTechnique.CSAW,
-            is_merged=True),
+            is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
     log: OUTPUT_DIR + "/logs/heatmap/merged/deeptools/csaw/heatmap.log",
     benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/csaw/heatmap.tsv",
     message: "Generating deeptools merged CSAW-scaled heatmap from matrix"
@@ -353,11 +361,11 @@ use rule heatmap_deeptools_unscaled_metaplot as heatmap_deeptools_merged_csaw_me
     input:
         matrix=OUTPUT.select_heatmap_matrix(
             DataScalingTechnique.CSAW,
-            is_merged=True),
+            is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
     output:
         metaplot=OUTPUT.select_heatmap_metaplot(
             DataScalingTechnique.CSAW,
-            is_merged=True),
+            is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
     log: OUTPUT_DIR + "/logs/heatmap/merged/deeptools/csaw/metaplot.log",
     benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/csaw/metaplot.tsv",
     message: "Generating deeptools merged CSAW-scaled metaplot from matrix"
@@ -560,13 +568,14 @@ use rule heatmap_deeptools_unscaled_matrix as heatmap_bamnado_merged_csaw_matrix
         bigwigs=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.BAMNADO,
             scale=DataScalingTechnique.CSAW,
+            scaling_method=_DEFAULT_SCALING_METHOD,
             is_merged=True,
         ),
     output:
         matrix=temp(OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.CSAW, 
+            DataScalingTechnique.CSAW,
             method=PileupMethod.BAMNADO,
-            is_merged=True)),
+            is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD)),
     log: OUTPUT_DIR + "/logs/heatmap/merged/bamnado/csaw/matrix.log",
     benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/csaw/matrix.tsv",
     message: "Computing bamnado merged CSAW-scaled heatmap matrix from bigWig files"
@@ -574,14 +583,14 @@ use rule heatmap_deeptools_unscaled_matrix as heatmap_bamnado_merged_csaw_matrix
 use rule heatmap_deeptools_unscaled_plot as heatmap_bamnado_merged_csaw_plot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.CSAW, 
+            DataScalingTechnique.CSAW,
             method=PileupMethod.BAMNADO,
-            is_merged=True),
+            is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
     output:
         heatmap=OUTPUT.select_heatmap_plot(
-            DataScalingTechnique.CSAW, 
+            DataScalingTechnique.CSAW,
             method=PileupMethod.BAMNADO,
-            is_merged=True),
+            is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
     log: OUTPUT_DIR + "/logs/heatmap/merged/bamnado/csaw/heatmap.log",
     benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/csaw/heatmap.tsv",
     message: "Generating bamnado merged CSAW-scaled heatmap from matrix"
@@ -589,14 +598,14 @@ use rule heatmap_deeptools_unscaled_plot as heatmap_bamnado_merged_csaw_plot wit
 use rule heatmap_deeptools_unscaled_metaplot as heatmap_bamnado_merged_csaw_metaplot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.CSAW, 
+            DataScalingTechnique.CSAW,
             method=PileupMethod.BAMNADO,
-            is_merged=True),
+            is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
     output:
         metaplot=OUTPUT.select_heatmap_metaplot(
-            DataScalingTechnique.CSAW, 
+            DataScalingTechnique.CSAW,
             method=PileupMethod.BAMNADO,
-            is_merged=True),
+            is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
     log: OUTPUT_DIR + "/logs/heatmap/merged/bamnado/csaw/metaplot.log",
     benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/csaw/metaplot.tsv",
     message: "Generating bamnado merged CSAW-scaled metaplot from matrix"

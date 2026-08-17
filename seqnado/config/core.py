@@ -11,7 +11,7 @@ from pydantic import (
     model_validator,
 )
 
-from seqnado import Assay, PeakCallingMethod, SpikeInMethod
+from seqnado import Assay, DataScalingTechnique, PeakCallingMethod, SpikeInMethod
 
 from .configs import (
     BigwigConfig,
@@ -27,6 +27,7 @@ from .configs import (
     SNPCallingConfig,
     SpikeInConfig,
     UCSCHubConfig,
+    UserFriendlyError,
     none_str_to_none,
 )
 from .mixins import (
@@ -101,6 +102,26 @@ class RNAAssayConfig(BaseAssayConfig):
             )
             # Filter out the incompatible method
             v.method = [m for m in v.method if m != SpikeInMethod.WITH_INPUT]
+        return v
+
+    @field_validator("bigwigs")
+    @classmethod
+    def validate_scale_methods(cls, v):
+        """Filter out the CSAW scaling technique for RNA-seq.
+
+        CSAW/bamnado library-scaling assumes roughly-equal signal across bins and
+        is inappropriate for RNA-seq's compositional read-count bias (a handful of
+        highly-expressed genes dominate). RNA-seq should use spike-in (orlando/
+        deseq2/edger) normalisation instead.
+        """
+        if v is not None and v.scale_methods and DataScalingTechnique.CSAW.value in v.scale_methods:
+            from seqnado.utils import warn_once
+            warn_once(
+                "The 'csaw' scaling technique is not appropriate for RNA-seq (compositional "
+                "read-count bias) and will be skipped. Use spike-in normalisation "
+                "('orlando', 'deseq2', 'edger') instead."
+            )
+            v.scale_methods = [m for m in v.scale_methods if m != DataScalingTechnique.CSAW.value]
         return v
 
 
@@ -186,6 +207,18 @@ class SeqnadoConfig(BaseModel):
     assay_config: AssaySpecificConfig | None = None
     third_party_tools: ThirdPartyToolsConfig | None = Field(None, description="Configuration for third-party tools.")
 
+    @staticmethod
+    def _extract_binsize(values) -> "int | None":
+        """Pull assay_config.bigwigs.binsize out of raw (dict or model) `values`."""
+        assay_config = values.get("assay_config") if isinstance(values, dict) else getattr(values, "assay_config", None)
+        if assay_config is None:
+            return None
+        bigwigs = assay_config.get("bigwigs") if isinstance(assay_config, dict) else getattr(assay_config, "bigwigs", None)
+        if bigwigs is None:
+            return None
+        binsize = bigwigs.get("binsize") if isinstance(bigwigs, dict) else getattr(bigwigs, "binsize", None)
+        return int(binsize) if binsize is not None else None
+
     # If no third_party_tools config is provided, use defaults
     @model_validator(mode="before")
     def set_default_third_party_tools(cls, values):
@@ -194,7 +227,8 @@ class SeqnadoConfig(BaseModel):
             # Normalize assay to Assay enum if it's a string
             if isinstance(assay, str):
                 assay = Assay(assay)
-            values["third_party_tools"] = ThirdPartyToolsConfig.for_assay(assay)
+            binsize = cls._extract_binsize(values)
+            values["third_party_tools"] = ThirdPartyToolsConfig.for_assay(assay, binsize=binsize)
 
         return values
 
@@ -236,10 +270,32 @@ class SeqnadoConfig(BaseModel):
         methods = getattr(peak_calling, "method", None) or []
 
         if self.third_party_tools is None:
-            self.third_party_tools = ThirdPartyToolsConfig.for_assay(self.assay)
+            bigwigs = getattr(self.assay_config, "bigwigs", None)
+            binsize = getattr(bigwigs, "binsize", None)
+            self.third_party_tools = ThirdPartyToolsConfig.for_assay(self.assay, binsize=binsize)
 
         if PeakCallingMethod.SEACR in methods and self.third_party_tools.seacr is None:
             self.third_party_tools.seacr = Seacr()
+
+        return self
+
+    @model_validator(mode="after")
+    def require_bamnado_for_csaw_scaling(self) -> "SeqnadoConfig":
+        """Bamnado computes all CSAW-technique scale factors (csaw_background/tmm/
+        median_of_ratios/cpm) via `bam-normalize` — there is no hand-rolled fallback.
+        """
+        bigwigs = getattr(self.assay_config, "bigwigs", None)
+        scale_methods = getattr(bigwigs, "scale_methods", None) or []
+
+        if DataScalingTechnique.CSAW.value in scale_methods:
+            bamnado = getattr(self.third_party_tools, "bamnado", None)
+            if bamnado is None:
+                raise UserFriendlyError(
+                    "bigwigs.scale_methods includes 'csaw', which requires bamnado to "
+                    "compute scale factors. Configure third_party_tools.bamnado (e.g. "
+                    "via `seqnado tools install bamnado`) or remove 'csaw' from "
+                    "scale_methods."
+                )
 
         return self
 

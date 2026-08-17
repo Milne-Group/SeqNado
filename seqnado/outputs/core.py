@@ -5,7 +5,7 @@ from typing import Any, List
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from seqnado import Assay, DataScalingTechnique, PeakCallingMethod, PileupMethod, SpikeInMethod
+from seqnado import Assay, DataScalingTechnique, PeakCallingMethod, PileupMethod, ScalingMethod, SpikeInMethod
 from seqnado import QuantificationMethod
 from seqnado.config import SeqnadoConfig
 from seqnado.inputs import (
@@ -124,6 +124,7 @@ class SeqnadoOutputFiles(BaseModel):
         method: PileupMethod = PileupMethod.DEEPTOOLS,
         scale: DataScalingTechnique = DataScalingTechnique.UNSCALED,
         spikein_method: str | None = None,
+        scaling_method: str | None = None,
         assay: Assay | None = None,
         is_merged: bool = False,
         ip_only: bool = False,
@@ -133,7 +134,8 @@ class SeqnadoOutputFiles(BaseModel):
         Args:
             method (PileupMethod): The pileup method to filter by.
             scale (DataScalingTechnique): The scale method to filter by.
-            spikein_method (str, optional): The spike-in method to filter by orlando or with_input. Defaults to None. 
+            spikein_method (str, optional): The spike-in method to filter by orlando or with_input. Defaults to None.
+            scaling_method (str, optional): The bamnado scaling method to filter by (e.g. csaw_background, tmm). Defaults to None.
             assay (Assay, optional): The assay type to filter by. Defaults to None.
             is_merged (bool): If True, select merged (consensus) bigWigs only.
             ip_only (bool): If True, exclude control/input samples (requires ip_sample_names to be set).
@@ -146,6 +148,8 @@ class SeqnadoOutputFiles(BaseModel):
             includes.append("merged")
         if spikein_method is not None:
             includes.append(spikein_method)
+        if scaling_method is not None:
+            includes.append(scaling_method)
         if assay is not None:
             includes.append(assay.value.lower())
 
@@ -237,17 +241,21 @@ class SeqnadoOutputFiles(BaseModel):
         method: PileupMethod = PileupMethod.DEEPTOOLS,
         is_merged: bool = False,
         spikein_method: str | None = None,
+        scaling_method: str | None = None,
     ) -> str:
         """Return the heatmap output directory.
 
         Always returns a valid path string even if not yet registered, so that
         Snakemake rule definitions remain valid at parse time.
         When scale is SPIKEIN and spikein_method is provided, the path includes
-        the spikein method as a subdirectory (e.g. spikein/orlando/).
+        the spikein method as a subdirectory (e.g. spikein/orlando/). Likewise for
+        CSAW and scaling_method (e.g. csaw/csaw_background/).
         """
         prefix = "merged/" if is_merged else ""
         if scale == DataScalingTechnique.SPIKEIN and spikein_method is not None:
             scale_path = f"spikein/{spikein_method}"
+        elif scale == DataScalingTechnique.CSAW and scaling_method is not None:
+            scale_path = f"csaw/{scaling_method}"
         else:
             scale_path = scale.value
         return f"{self.output_dir}/heatmap/{prefix}{method.value}/{scale_path}"
@@ -258,9 +266,10 @@ class SeqnadoOutputFiles(BaseModel):
         method: PileupMethod = PileupMethod.DEEPTOOLS,
         is_merged: bool = False,
         spikein_method: str | None = None,
+        scaling_method: str | None = None,
     ) -> str:
         """Return the matrix path (temp file, not in self.files)."""
-        return f"{self._heatmap_dir(scale, method, is_merged, spikein_method)}/matrix.mat.gz"
+        return f"{self._heatmap_dir(scale, method, is_merged, spikein_method, scaling_method)}/matrix.mat.gz"
 
     def select_heatmap_plot(
         self,
@@ -268,8 +277,9 @@ class SeqnadoOutputFiles(BaseModel):
         method: PileupMethod = PileupMethod.DEEPTOOLS,
         is_merged: bool = False,
         spikein_method: str | None = None,
+        scaling_method: str | None = None,
     ) -> str:
-        return f"{self._heatmap_dir(scale, method, is_merged, spikein_method)}/heatmap.pdf"
+        return f"{self._heatmap_dir(scale, method, is_merged, spikein_method, scaling_method)}/heatmap.pdf"
 
     def select_heatmap_metaplot(
         self,
@@ -277,8 +287,9 @@ class SeqnadoOutputFiles(BaseModel):
         method: PileupMethod = PileupMethod.DEEPTOOLS,
         is_merged: bool = False,
         spikein_method: str | None = None,
+        scaling_method: str | None = None,
     ) -> str:
-        return f"{self._heatmap_dir(scale, method, is_merged, spikein_method)}/metaplot.pdf"
+        return f"{self._heatmap_dir(scale, method, is_merged, spikein_method, scaling_method)}/metaplot.pdf"
 
     def select_track_plots(
         self,
@@ -286,15 +297,19 @@ class SeqnadoOutputFiles(BaseModel):
         method: PileupMethod = PileupMethod.DEEPTOOLS,
         is_merged: bool = False,
         spikein_method: str | None = None,
+        scaling_method: str | None = None,
     ) -> list[str]:
         """Select genome browser plot files for a specific method/scale/merged combination.
 
         When scale is SPIKEIN and spikein_method is provided, only plots for
-        that specific spike-in method are returned.
+        that specific spike-in method are returned. Likewise for CSAW and
+        scaling_method.
         """
         prefix = "merged/" if is_merged else ""
         if scale == DataScalingTechnique.SPIKEIN and spikein_method is not None:
             target = f"track_plots/{prefix}{method.value}/spikein/{spikein_method}/"
+        elif scale == DataScalingTechnique.CSAW and scaling_method is not None:
+            target = f"track_plots/{prefix}{method.value}/csaw/{scaling_method}/"
         else:
             target = f"track_plots/{prefix}{method.value}/{scale.value}/"
         return [f for f in self.files if target in f]
@@ -470,6 +485,21 @@ class SeqnadoOutputBuilder:
         else:
             self.scale_methods = [DataScalingTechnique.UNSCALED]
 
+        # Determine bamnado scaling method(s) used for the CSAW technique.
+        # Default to csaw_background, which reproduces the old CSAW behaviour.
+        scaling_methods_config = getattr(
+            getattr(self.config.assay_config, "bigwigs", object()),
+            "scaling_methods",
+            None,
+        )
+        if scaling_methods_config:
+            self.scaling_methods = [
+                ScalingMethod(m) if isinstance(m, str) else m
+                for m in scaling_methods_config
+            ]
+        else:
+            self.scaling_methods = [ScalingMethod.CSAW_BACKGROUND]
+
         # Initialize an empty list to hold file collections
         self.file_collections: list[FileCollection] = []
 
@@ -526,6 +556,7 @@ class SeqnadoOutputBuilder:
                 names=names,
                 pileup_methods=self.config.assay_config.bigwigs.pileup_method,
                 scale_methods=normalized_scales,
+                scaling_methods=self.scaling_methods,
                 output_dir=self.output_dir,
             )
             self.file_collections.append(bigwig_files)
@@ -597,6 +628,7 @@ class SeqnadoOutputBuilder:
                 names=[group.name],
                 pileup_methods=self.config.assay_config.bigwigs.pileup_method,
                 scale_methods=normalized_scales,
+                scaling_methods=self.scaling_methods,
                 output_dir=self.output_dir,
                 is_merged=True,
             )
@@ -885,6 +917,7 @@ class SeqnadoOutputBuilder:
                     assay=self.assay,
                     scale_methods=scales,
                     spikein_methods=supported_spikein_methods,
+                    scaling_methods=self.scaling_methods,
                     output_dir=self.output_dir,
                     is_merged=is_merged,
                     method=method,

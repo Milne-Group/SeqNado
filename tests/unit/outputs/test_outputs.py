@@ -12,6 +12,7 @@ from seqnado import (
     PeakCallingMethod,
     PileupMethod,
     QuantificationMethod,
+    ScalingMethod,
     SNPCallingMethod,
     SpikeInMethod,
 )
@@ -308,13 +309,40 @@ class TestBigWigFiles:
             assay=Assay.CHIP,
             names=["sample1"],
             pileup_methods=[PileupMethod.DEEPTOOLS],
-            scale_methods=[DataScalingTechnique.UNSCALED, DataScalingTechnique.CPM],
+            scale_methods=[DataScalingTechnique.UNSCALED, DataScalingTechnique.CSAW],
         )
 
         files = bw.files
         assert len(files) == 2  # One per scale method
         assert any("unscaled" in f for f in files)
-        assert any("cpm" in f for f in files)
+        assert any("csaw" in f for f in files)
+
+    def test_bigwig_files_csaw_scaling_methods(self):
+        """Test BigWigFiles with multiple bamnado scaling sub-methods for CSAW technique."""
+        bw = BigWigFiles(
+            assay=Assay.CHIP,
+            names=["sample1"],
+            pileup_methods=[PileupMethod.DEEPTOOLS],
+            scale_methods=[DataScalingTechnique.CSAW],
+            scaling_methods=[ScalingMethod.CSAW_BACKGROUND, ScalingMethod.TMM],
+        )
+
+        files = bw.files
+        assert len(files) == 2  # One per bamnado scaling method
+        assert any("csaw_background" in f for f in files)
+        assert any("/tmm/" in f for f in files)
+
+    def test_bigwig_files_rna_excludes_csaw(self):
+        """CSAW/bamnado library-scaling is genomics-only and must be skipped for RNA."""
+        bw = BigWigFiles(
+            assay=Assay.RNA,
+            names=["sample1"],
+            pileup_methods=[PileupMethod.DEEPTOOLS],
+            scale_methods=[DataScalingTechnique.CSAW],
+            scaling_methods=[ScalingMethod.CSAW_BACKGROUND],
+        )
+
+        assert bw.files == []
 
     def test_bigwig_incompatible_methods_filtered(self):
         """Test that incompatible method/scale combinations are filtered."""

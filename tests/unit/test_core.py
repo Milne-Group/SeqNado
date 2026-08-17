@@ -9,6 +9,7 @@ from seqnado.core import (
     FileType,
     PileupMethod,
     DataScalingTechnique,
+    ScalingMethod,
     PeakCallingMethod,
     PCRDuplicateHandling,
     PCRDuplicateTool,
@@ -150,10 +151,19 @@ class TestDataScalingTechniqueEnum:
         """Test DataScalingTechnique enum has expected values."""
         assert DataScalingTechnique.UNSCALED.value == "unscaled"
         assert DataScalingTechnique.CSAW.value == "csaw"
-        assert DataScalingTechnique.CPM.value == "cpm"
-        assert DataScalingTechnique.RPKM.value == "rpkm"
         assert DataScalingTechnique.SPIKEIN.value == "spikein"
         assert DataScalingTechnique.MERGED.value == "merged"
+
+
+class TestScalingMethodEnum:
+    """Tests for ScalingMethod enum (bamnado bam-normalize methods)."""
+
+    def test_scaling_method_values(self):
+        """Test ScalingMethod enum has expected values, matching bamnado's --method flag."""
+        assert ScalingMethod.CSAW_BACKGROUND.value == "csaw_background"
+        assert ScalingMethod.TMM.value == "tmm"
+        assert ScalingMethod.MEDIAN_OF_RATIOS.value == "median_of_ratios"
+        assert ScalingMethod.CPM.value == "cpm"
 
 
 class TestPeakCallingMethodEnum:

@@ -13,6 +13,7 @@ from seqnado import (
     PeakCallingMethod,
     PileupMethod,
     QuantificationMethod,
+    ScalingMethod,
     SpikeInMethod,
 )
 from seqnado.config.configs import QCConfig
@@ -152,6 +153,7 @@ class BigWigFiles(BaseModel):
     pileup_methods: list[PileupMethod]
     scale_methods: list[DataScalingTechnique] = [DataScalingTechnique.UNSCALED]
     spikein_methods: list[SpikeInMethod] = Field(default_factory=list)
+    scaling_methods: list[ScalingMethod] = Field(default_factory=list)
     output_dir: str = "seqnado_output"
     is_merged: bool = False
 
@@ -174,7 +176,8 @@ class BigWigFiles(BaseModel):
         Spike-in method restrictions per docs/normalisation.md summary table:
         - ORLANDO, WITH_INPUT: ChIP-seq, CUT&TAG, CUT&RUN only
         - DESEQ2, EDGER: RNA-seq only
-        - CSAW: Supported for all assays (not preferred for RNA due to compositional bias)
+        - CSAW: genomics-only (bamnado bam-normalize library scaling) — not appropriate
+          for RNA-seq's compositional read-count bias, so excluded for RNA entirely.
 
         These are further enforced at config validation time (e.g., RNAAssayConfig validator).
         """
@@ -193,7 +196,11 @@ class BigWigFiles(BaseModel):
                 PileupMethod.BAMNADO,
                 PileupMethod.DEEPTOOLS,
             ],
-            Assay.RNA: [SpikeInMethod.WITH_INPUT, SpikeInMethod.ORLANDO],
+            Assay.RNA: [
+                SpikeInMethod.WITH_INPUT,
+                SpikeInMethod.ORLANDO,
+                DataScalingTechnique.CSAW,
+            ],
         }
 
     def _is_compatible(
@@ -207,21 +214,35 @@ class BigWigFiles(BaseModel):
                 f"and will be skipped. Use deeptools or bamnado instead."
             )
             return False
+        if scale in self.incompatible_methods.get(assay, []):
+            context = "merged " if self.is_merged else ""
+            warn_once(
+                f"{assay.value} does not support {scale.value} scaling for {context}bigWigs "
+                f"and it will be skipped."
+            )
+            return False
         if method in self.incompatible_methods.get(assay, []):
             return False
         return True
 
     def _get_scale_path(
-        self, scale: DataScalingTechnique, spikein_method: SpikeInMethod | None = None
+        self,
+        scale: DataScalingTechnique,
+        spikein_method: SpikeInMethod | None = None,
+        scaling_method: ScalingMethod | None = None,
     ) -> str:
         """Build the scale path component based on merged status and scale type."""
         if self.is_merged:
             if scale == DataScalingTechnique.SPIKEIN and spikein_method:
                 return f"merged/spikein/{spikein_method.value}"
+            if scale == DataScalingTechnique.CSAW and scaling_method:
+                return f"merged/csaw/{scaling_method.value}"
             return f"merged/{scale.value}"
         else:
             if scale == DataScalingTechnique.SPIKEIN and spikein_method:
                 return f"{scale.value}/{spikein_method.value}"
+            if scale == DataScalingTechnique.CSAW and scaling_method:
+                return f"{scale.value}/{scaling_method.value}"
             return scale.value
 
     def _build_bigwig_paths(self, method: PileupMethod, scale_path: str) -> list[str]:
@@ -257,7 +278,12 @@ class BigWigFiles(BaseModel):
                 # For spike-in scaling, iterate over all spikein methods
                 if scale == DataScalingTechnique.SPIKEIN and self.spikein_methods:
                     for spikein_method in self.spikein_methods:
-                        scale_path = self._get_scale_path(scale, spikein_method)
+                        scale_path = self._get_scale_path(scale, spikein_method=spikein_method)
+                        paths.extend(self._build_bigwig_paths(method, scale_path))
+                # For CSAW-technique scaling, iterate over all bamnado scaling methods
+                elif scale == DataScalingTechnique.CSAW and self.scaling_methods:
+                    for scaling_method in self.scaling_methods:
+                        scale_path = self._get_scale_path(scale, scaling_method=scaling_method)
                         paths.extend(self._build_bigwig_paths(method, scale_path))
                 else:
                     scale_path = self._get_scale_path(scale)
@@ -356,6 +382,7 @@ class HeatmapFiles(BaseModel):
         default_factory=lambda: [DataScalingTechnique.UNSCALED]
     )
     spikein_methods: list[SpikeInMethod] = Field(default_factory=list)
+    scaling_methods: list[ScalingMethod] = Field(default_factory=list)
     output_dir: str = "seqnado_output"
     is_merged: bool = False
     method: PileupMethod = PileupMethod.DEEPTOOLS
@@ -378,6 +405,15 @@ class HeatmapFiles(BaseModel):
                         files.append(
                             f"{self.output_dir}/heatmap/{prefix}{self.method.value}/{scale_path}/{name}.pdf"
                         )
+            elif scale == DataScalingTechnique.CSAW and self.scaling_methods and self.assay != Assay.RNA:
+                for scm in self.scaling_methods:
+                    scale_path = f"csaw/{scm.value}"
+                    for name in ("heatmap", "metaplot"):
+                        files.append(
+                            f"{self.output_dir}/heatmap/{prefix}{self.method.value}/{scale_path}/{name}.pdf"
+                        )
+            elif scale == DataScalingTechnique.CSAW and self.assay == Assay.RNA:
+                continue
             else:
                 for name in ("heatmap", "metaplot"):
                     files.append(

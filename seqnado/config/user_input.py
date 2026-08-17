@@ -24,6 +24,7 @@ from seqnado import (
     PeakCallingMethod,
     PileupMethod,
     QuantificationMethod,
+    ScalingMethod,
     SNPCallingMethod,
     SpikeInMethod,
 )
@@ -275,10 +276,11 @@ def get_bigwig_config(assay: Assay) -> Optional[BigwigConfig]:
 
     binsize = get_user_input("Binsize for bigwigs:", default="10", required=False)
 
-    scale_method_choices = [
-        DataScalingTechnique.UNSCALED.value,
-        DataScalingTechnique.CSAW.value,
-    ]
+    # CSAW/bamnado library-scaling is genomics-only — not appropriate for RNA-seq's
+    # compositional read-count bias, so it's not offered for RNA.
+    scale_method_choices = [DataScalingTechnique.UNSCALED.value]
+    if assay != Assay.RNA:
+        scale_method_choices.append(DataScalingTechnique.CSAW.value)
     scale_methods = get_user_input(
         "Bigwig scaling method(s) (comma-separated for multiple):",
         choices=scale_method_choices,
@@ -287,6 +289,18 @@ def get_bigwig_config(assay: Assay) -> Optional[BigwigConfig]:
     )
     if isinstance(scale_methods, str):
         scale_methods = [scale_methods]
+
+    scaling_methods = None
+    if DataScalingTechnique.CSAW.value in scale_methods:
+        scaling_method_choices = [m.value for m in ScalingMethod]
+        scaling_methods = get_user_input(
+            "Bamnado scaling method(s) for CSAW technique (comma-separated for multiple):",
+            choices=scaling_method_choices,
+            default=ScalingMethod.CSAW_BACKGROUND.value,
+            multi_select=True,
+        )
+        if isinstance(scaling_methods, str):
+            scaling_methods = [scaling_methods]
 
     perform_comparisons = get_user_input(
         "Perform condition-based bigwig comparisons (aggregated mean + subtraction)?",
@@ -298,6 +312,7 @@ def get_bigwig_config(assay: Assay) -> Optional[BigwigConfig]:
         pileup_method=[PileupMethod(m) for m in pileup_methods],
         binsize=binsize,
         scale_methods=scale_methods,
+        scaling_methods=scaling_methods,
         perform_comparisons=perform_comparisons,
     )
 

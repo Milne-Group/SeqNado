@@ -111,10 +111,20 @@ class DataScalingTechnique(Enum):
 
     UNSCALED = "unscaled"
     CSAW = "csaw"
-    CPM = "cpm"
-    RPKM = "rpkm"
     SPIKEIN = "spikein"
     MERGED = "merged"
+
+
+class ScalingMethod(Enum):
+    """Bamnado ``bam-normalize`` methods used to compute CSAW-technique scale factors.
+
+    Values map 1:1 onto bamnado's ``--method`` flag (hyphen at the CLI boundary).
+    """
+
+    CSAW_BACKGROUND = "csaw_background"
+    TMM = "tmm"
+    MEDIAN_OF_RATIOS = "median_of_ratios"
+    CPM = "cpm"
 
 
 class PeakCallingMethod(Enum):

@@ -64,7 +64,7 @@ def get_scaling_factor_for_merged_group(wildcards, sample_groupings, output_dir)
     Note: arithmetic mean of s_i is incorrect and inflates the merged signal.
 
     Args:
-        wildcards: Snakemake wildcards object containing 'group'.
+        wildcards: Snakemake wildcards object containing 'group' and 'scaling_method'.
         sample_groupings: SampleGroupings object with consensus grouping.
         output_dir: The output directory path.
 
@@ -72,7 +72,7 @@ def get_scaling_factor_for_merged_group(wildcards, sample_groupings, output_dir)
         float: The scaling factor for the merged group BAM.
     """
     samples = sample_groupings.get_grouping("consensus").get_group(wildcards.group).samples
-    tsv_path = f"{output_dir}/resources/{wildcards.group}_scaling_factors.tsv"
+    tsv_path = f"{output_dir}/resources/{wildcards.scaling_method}/{wildcards.group}_scaling_factors.tsv"
     df = pd.read_csv(tsv_path, sep="\t")
 
     factors = [

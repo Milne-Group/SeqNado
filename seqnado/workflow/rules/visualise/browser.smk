@@ -1,5 +1,10 @@
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
-from seqnado import Assay, DataScalingTechnique, PileupMethod, SpikeInMethod
+from seqnado import Assay, DataScalingTechnique, PileupMethod, ScalingMethod, SpikeInMethod
+
+# Browser tracks for the CSAW technique are generated for the default bamnado
+# scaling method only (csaw_background) — additional configured scaling_methods
+# (tmm/median_of_ratios/cpm) still produce bigwigs, just not dedicated browser tracks.
+_DEFAULT_SCALING_METHOD = ScalingMethod.CSAW_BACKGROUND.value
 
 _spikein_cfg = CONFIG.assay_config.spikein
 _spikein_methods = _spikein_cfg.method if _spikein_cfg else []
@@ -12,7 +17,8 @@ _has_spikein_withinput = SpikeInMethod.WITH_INPUT in _spikein_methods
 # (i.e. when the user has configured plotnado for that combination).
 # Compatible combinations:
 #   deeptools    : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
-#   bamnado      : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
+#   bamnado      : individual → unscaled/spikein_orlando/spikein_withinput      ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
+#   (csaw is genomics-only — excluded entirely for RNA-seq)
 #   homer        : individual → unscaled              ; merged → unscaled
 #   methyldackel : individual → unscaled (METH assay only, reads from bigwigs/taps or bigwigs/wgbs)
 
@@ -100,6 +106,7 @@ use rule plotnado_deeptools as plotnado_deeptools_csaw with:
         data=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
             scale=DataScalingTechnique.CSAW,
+            scaling_method=_DEFAULT_SCALING_METHOD,
             ip_only=True,
         ),
         peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
@@ -107,8 +114,8 @@ use rule plotnado_deeptools as plotnado_deeptools_csaw with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_track_plots(DataScalingTechnique.CSAW),
-        template=OUTPUT_DIR + "/track_plots/deeptools/csaw/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.CSAW, scaling_method=_DEFAULT_SCALING_METHOD),
+        template=OUTPUT_DIR + f"/track_plots/deeptools/csaw/{_DEFAULT_SCALING_METHOD}/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_deeptools_csaw.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_deeptools_csaw.tsv",
     message: "Generating deeptools CSAW-scaled genome browser visualisations with Plotnado"
@@ -182,6 +189,7 @@ use rule plotnado_deeptools as plotnado_deeptools_merged_csaw with:
         data=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
             scale=DataScalingTechnique.CSAW,
+            scaling_method=_DEFAULT_SCALING_METHOD,
             is_merged=True,
         ),
         peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
@@ -189,8 +197,8 @@ use rule plotnado_deeptools as plotnado_deeptools_merged_csaw with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_track_plots(DataScalingTechnique.CSAW, is_merged=True),
-        template=OUTPUT_DIR + "/track_plots/merged/deeptools/csaw/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.CSAW, is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
+        template=OUTPUT_DIR + f"/track_plots/merged/deeptools/csaw/{_DEFAULT_SCALING_METHOD}/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_deeptools_csaw.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_deeptools_csaw.tsv",
     message: "Generating deeptools merged CSAW-scaled genome browser visualisations with Plotnado"
@@ -284,6 +292,7 @@ use rule plotnado_deeptools as plotnado_bamnado_merged_csaw with:
         data=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.BAMNADO,
             scale=DataScalingTechnique.CSAW,
+            scaling_method=_DEFAULT_SCALING_METHOD,
             is_merged=True,
         ),
         peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
@@ -291,8 +300,8 @@ use rule plotnado_deeptools as plotnado_bamnado_merged_csaw with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_track_plots(DataScalingTechnique.CSAW, method=PileupMethod.BAMNADO, is_merged=True),
-        template=OUTPUT_DIR + "/track_plots/merged/bamnado/csaw/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.CSAW, method=PileupMethod.BAMNADO, is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
+        template=OUTPUT_DIR + f"/track_plots/merged/bamnado/csaw/{_DEFAULT_SCALING_METHOD}/template.toml",
     log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_bamnado_csaw.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_bamnado_csaw.tsv",
     message: "Generating bamnado merged CSAW-scaled genome browser visualisations with Plotnado"

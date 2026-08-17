@@ -238,6 +238,55 @@ class TestSeqnadoConfigValidation:
         assert config.third_party_tools.seacr.normalization == "non"
         assert config.third_party_tools.seacr.stringency == "stringent"
 
+    def test_csaw_scaling_defaults_to_bamnado_configured(self, tmp_metadata, tmp_bowtie_index):
+        """CSAW-technique scaling requires bamnado; it's a default tool for CHIP so this succeeds."""
+        from seqnado.config.configs import BigwigConfig
+
+        config = SeqnadoConfig(
+            assay=Assay.CHIP,
+            project=ProjectConfig(name="test"),
+            genome=GenomeConfig(name="hg38", index=BowtieIndex(prefix=str(tmp_bowtie_index))),
+            metadata=tmp_metadata,
+            assay_config=ChIPAssayConfig(
+                bigwigs=BigwigConfig(scale_methods=["unscaled", "csaw"])
+            ),
+        )
+
+        assert config.third_party_tools.bamnado is not None
+
+    def test_csaw_scaling_without_bamnado_raises(self, tmp_metadata, tmp_bowtie_index):
+        """CSAW-technique scaling with bamnado explicitly disabled must raise a UserFriendlyError."""
+        from seqnado.config.configs import BigwigConfig, UserFriendlyError
+        from seqnado.config.third_party_tools import ThirdPartyToolsConfig
+
+        with pytest.raises(UserFriendlyError, match="bamnado"):
+            SeqnadoConfig(
+                assay=Assay.CHIP,
+                project=ProjectConfig(name="test"),
+                genome=GenomeConfig(name="hg38", index=BowtieIndex(prefix=str(tmp_bowtie_index))),
+                metadata=tmp_metadata,
+                assay_config=ChIPAssayConfig(
+                    bigwigs=BigwigConfig(scale_methods=["unscaled", "csaw"])
+                ),
+                third_party_tools=ThirdPartyToolsConfig.for_assay(Assay.CHIP, bamnado=None),
+            )
+
+    def test_rna_csaw_scaling_filtered_out(self, tmp_metadata, tmp_star_index):
+        """CSAW-technique scaling is genomics-only and must be filtered out for RNA-seq."""
+        from seqnado.config.configs import BigwigConfig
+
+        config = SeqnadoConfig(
+            assay=Assay.RNA,
+            project=ProjectConfig(name="test"),
+            genome=GenomeConfig(name="hg38", index=STARIndex(prefix=tmp_star_index)),
+            metadata=tmp_metadata,
+            assay_config=RNAAssayConfig(
+                bigwigs=BigwigConfig(scale_methods=["unscaled", "csaw"])
+            ),
+        )
+
+        assert config.assay_config.bigwigs.scale_methods == ["unscaled"]
+
 
 class TestAssayConfigMatching:
     """Tests for assay_config validation to match assay type."""

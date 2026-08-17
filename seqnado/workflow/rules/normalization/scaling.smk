@@ -1,57 +1,37 @@
+from seqnado import ScalingMethod
+from seqnado.workflow.helpers.bam import get_bam_files_for_scaling_group
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
 
 
-rule feature_counts_genome:
+rule bamnado_scaling_factors:
     input:
-        bam=expand(OUTPUT_DIR + "/aligned/{sample}.bam", sample=SAMPLE_NAMES),
-        bai=expand(OUTPUT_DIR + "/aligned/{sample}.bam.bai", sample=SAMPLE_NAMES),
-        annotation=OUTPUT_DIR + "/resources/genomic_bins.saf",
+        bam=lambda wc: get_bam_files_for_scaling_group(wc, SAMPLE_GROUPINGS, OUTPUT_DIR),
+        bai=lambda wc: [b + ".bai" for b in get_bam_files_for_scaling_group(wc, SAMPLE_GROUPINGS, OUTPUT_DIR)],
     output:
-        counts=OUTPUT_DIR + "/resources/binned_counts/read_counts.tsv",
+        scaling_factors=OUTPUT_DIR + "/resources/{scaling_method}/{group}_scaling_factors.tsv",
     params:
-        options=lambda wc: str(CONFIG.third_party_tools.subread.feature_counts.command_line_arguments),
-        paired="-p --countReadPairs" if INPUT_FILES.is_paired_end(SAMPLE_NAMES[0]) else "",
-    threads:
-        CONFIG.third_party_tools.subread.feature_counts.threads
-    resources:
-        mem=lambda wildcards, attempt: define_memory_requested(initial_value=3, attempts=attempt, scale=SCALE_RESOURCES),
-        runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
-    container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log:
-        OUTPUT_DIR + "/logs/resources/binned_counts/featurecounts.log"
-    benchmark:
-        OUTPUT_DIR + "/.benchmark/resources/binned_counts/featurecounts.tsv"
-    message:
-        "Calculating feature counts for all samples on genomic bins"
-    shell: """
-    featureCounts \
-    -F SAF \
-    -a {input.annotation} \
-    -T {threads} \
-    --donotsort \
-    {params.paired} \
-    {params.options} \
-    -o {output.counts} \
-    {input.bam} \
-    > {log} 2>&1
-    """
-
-
-rule calculate_csaw_scaling_factors:
-    input:
-        counts=OUTPUT_DIR + "/resources/binned_counts/read_counts.tsv",
-        design=OUTPUT_DIR + "/metadata.csv",
-    output:
-        scaling_factors=OUTPUT_DIR + "/resources/{group}_scaling_factors.tsv",
+        bams=lambda wc, input: " ".join(f"-b {b}" for b in input.bam),
+        method=lambda wc: wc.scaling_method.replace("_", "-"),
+        options=str(CONFIG.third_party_tools.bamnado.bam_normalize.command_line_arguments),
+    threads: CONFIG.third_party_tools.bamnado.bam_normalize.threads
+    wildcard_constraints:
+        scaling_method="|".join(m.value for m in ScalingMethod),
+        group="|".join(
+            {
+                *SAMPLE_GROUPINGS.get_grouping("scaling").group_names,
+                *SAMPLE_GROUPINGS.get_grouping("consensus").group_names,
+            }
+        ),
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
+    container: "docker://ghcr.io/alsmith151/bamnado:latest"
     log:
-        OUTPUT_DIR + "/logs/normalization/csaw/{group}_scaling_factors.log"
+        OUTPUT_DIR + "/logs/normalization/{scaling_method}/{group}_scaling_factors.log"
     benchmark:
-        OUTPUT_DIR + "/.benchmark/normalization/csaw/{group}_scaling_factors.tsv"
+        OUTPUT_DIR + "/.benchmark/normalization/{scaling_method}/{group}_scaling_factors.tsv"
     message:
-        "Calculating CSAW scaling factors for group {wildcards.group}"
-    script:
-        "../../scripts/calculate_csaw_scaling_factors.py"
+        "Calculating {wildcards.scaling_method} scaling factors for group {wildcards.group}"
+    shell: """
+    bamnado bam-normalize {params.bams} --method {params.method} --format tsv {params.options} -o {output.scaling_factors} > {log} 2>&1
+    """
