@@ -470,11 +470,11 @@ class PlotFiles(BaseModel):
     coordinates: Path
     file_format: Literal["svg", "png", "pdf"] = "svg"
     output_dir: str = "seqnado_output"
-    scale: str = "unscaled"
+    scale: DataScalingTechnique = DataScalingTechnique.UNSCALED
     is_merged: bool = False
-    method: str = "deeptools"
-    spikein_method: str | None = None
-    scaling_method: str | None = None
+    method: PileupMethod = PileupMethod.DEEPTOOLS
+    spikein_method: SpikeInMethod | None = None
+    scaling_method: ScalingMethod | None = None
 
     @property
     def plot_names(self):
@@ -491,14 +491,14 @@ class PlotFiles(BaseModel):
             coords_df.columns = bed_columns[: len(coords_df.columns)]
 
             prefix = "merged/" if self.is_merged else ""
-            if self.scale == "spikein" and self.spikein_method:
-                scale_dir = f"spikein/{self.spikein_method}"
-            elif self.scale == "csaw" and self.scaling_method:
-                scale_dir = f"csaw/{self.scaling_method}"
+            if self.scale == DataScalingTechnique.SPIKEIN and self.spikein_method:
+                scale_dir = f"spikein/{self.spikein_method.value}"
+            elif self.scale == DataScalingTechnique.CSAW and self.scaling_method:
+                scale_dir = f"csaw/{self.scaling_method.value}"
             else:
-                scale_dir = self.scale
+                scale_dir = self.scale.value
             outdir = Path(
-                f"{self.output_dir}/track_plots/{prefix}{self.method}/{scale_dir}/"
+                f"{self.output_dir}/track_plots/{prefix}{self.method.value}/{scale_dir}/"
             )
             for region in coords_df.itertuples():
                 fig_name = (
@@ -585,7 +585,7 @@ class MethylationFiles(BaseModel):
         For TAPS, return the inverted file ({sample}_{genome}_CpG_inverted.bedGraph).
         For other methods, return the direct file ({sample}_{genome}_CpG.bedGraph).
         """
-        if self.method.value == "taps":
+        if self.method == MethylationMethod.TAPS:
             file_pattern = f"{self.output_dir}/methylation/methyldackel/{{sample}}_{{genome}}_CpG_inverted.bedGraph"
         else:
             file_pattern = f"{self.output_dir}/methylation/methyldackel/{{sample}}_{{genome}}_CpG.bedGraph"

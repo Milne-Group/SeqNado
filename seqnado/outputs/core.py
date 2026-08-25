@@ -966,9 +966,9 @@ class SeqnadoOutputBuilder:
                 coordinates=self.config.assay_config.plotting.coordinates,
                 file_format=self.config.assay_config.plotting.file_format,
                 output_dir=self.output_dir,
-                scale=DataScalingTechnique.UNSCALED.value,
+                scale=DataScalingTechnique.UNSCALED,
                 is_merged=False,
-                method=PileupMethod.METHYLDACKEL.value,
+                method=PileupMethod.METHYLDACKEL,
             )
             self.file_collections.append(plot_files)
             return
@@ -1014,10 +1014,10 @@ class SeqnadoOutputBuilder:
                                 coordinates=self.config.assay_config.plotting.coordinates,
                                 file_format=self.config.assay_config.plotting.file_format,
                                 output_dir=self.output_dir,
-                                scale=scale.value,
+                                scale=scale,
                                 is_merged=is_merged,
-                                method=method.value,
-                                spikein_method=sm.value,
+                                method=method,
+                                spikein_method=sm,
                             )
                             self.file_collections.append(plot_files)
                     elif scale == DataScalingTechnique.CSAW and self.scaling_methods:
@@ -1027,10 +1027,10 @@ class SeqnadoOutputBuilder:
                                 coordinates=self.config.assay_config.plotting.coordinates,
                                 file_format=self.config.assay_config.plotting.file_format,
                                 output_dir=self.output_dir,
-                                scale=scale.value,
+                                scale=scale,
                                 is_merged=is_merged,
-                                method=method.value,
-                                scaling_method=scm.value,
+                                method=method,
+                                scaling_method=scm,
                             )
                             self.file_collections.append(plot_files)
                     else:
@@ -1038,9 +1038,9 @@ class SeqnadoOutputBuilder:
                             coordinates=self.config.assay_config.plotting.coordinates,
                             file_format=self.config.assay_config.plotting.file_format,
                             output_dir=self.output_dir,
-                            scale=scale.value,
+                            scale=scale,
                             is_merged=is_merged,
-                            method=method.value,
+                            method=method,
                         )
                         self.file_collections.append(plot_files)
 
