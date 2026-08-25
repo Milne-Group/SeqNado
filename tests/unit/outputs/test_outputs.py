@@ -16,7 +16,7 @@ from seqnado import (
     SNPCallingMethod,
     SpikeInMethod,
 )
-from seqnado.config.configs import BigwigConfig, GenomeConfig, STARIndex, QCConfig
+from seqnado.config.configs import BigwigConfig, GenomeConfig, STARIndex, QCConfig, UserFriendlyError
 from seqnado.config.core import ATACAssayConfig, ChIPAssayConfig, SeqnadoConfig
 from seqnado.inputs.bam import BamCollection, BamFile
 from seqnado.inputs.bigwigs import BigWigCollection, BigWigFile
@@ -2029,3 +2029,81 @@ class TestConditionBigwigFiles:
 
         # Should NOT contain unstranded files
         assert not any("aggregated/ctrl.bigWig" in f for f in files_list)
+
+
+class TestScalingGroupSizeValidation:
+    """Pre-run validation that scaling groups have enough samples for the configured scaling method."""
+
+    def _cfg(self, tmp_path: Path, scaling_methods=None) -> SeqnadoConfig:
+        star = tmp_path / "star"
+        star.mkdir()
+        genome = GenomeConfig(name="hg38", index=STARIndex(prefix=star))
+        assay_cfg = ChIPAssayConfig(
+            bigwigs=BigwigConfig(
+                pileup_method=[PileupMethod.DEEPTOOLS],
+                scale_methods=["csaw"],
+                scaling_methods=scaling_methods,
+            )
+        )
+        return SeqnadoConfig(
+            assay=Assay.CHIP,
+            project=dict(name="p"),
+            genome=genome,
+            metadata=tmp_path / "m.csv",
+            assay_config=assay_cfg,
+        )
+
+    def test_single_sample_scaling_group_raises_for_csaw_background(self, tmp_path):
+        """A lone-IP-sample ChIP project should fail fast, not mid-pipeline in bamnado."""
+        cfg = self._cfg(tmp_path)
+        samples = _small_collection(tmp_path)
+
+        groups = SampleGroupings(
+            groupings={
+                "scaling": SampleGroups(
+                    groups=[SampleGroup(name="default", samples=["s1"])]
+                )
+            }
+        )
+
+        with pytest.raises(UserFriendlyError, match="csaw_background.*at least 2"):
+            SeqnadoOutputBuilder(Assay.CHIP, samples, cfg, sample_groupings=groups)
+
+    def test_single_sample_scaling_group_ok_for_cpm(self, tmp_path):
+        """CPM is per-sample, so a single-sample group is fine."""
+        cfg = self._cfg(tmp_path, scaling_methods=["cpm"])
+        samples = _small_collection(tmp_path)
+
+        groups = SampleGroupings(
+            groupings={
+                "scaling": SampleGroups(
+                    groups=[SampleGroup(name="default", samples=["s1"])]
+                )
+            }
+        )
+
+        # Should not raise
+        SeqnadoOutputBuilder(Assay.CHIP, samples, cfg, sample_groupings=groups)
+
+    def test_multi_sample_scaling_group_ok_for_csaw_background(self, tmp_path):
+        cfg = self._cfg(tmp_path)
+        samples = _small_collection(tmp_path)
+
+        groups = SampleGroupings(
+            groupings={
+                "scaling": SampleGroups(
+                    groups=[SampleGroup(name="default", samples=["s1", "s2"])]
+                )
+            }
+        )
+
+        # Should not raise
+        SeqnadoOutputBuilder(Assay.CHIP, samples, cfg, sample_groupings=groups)
+
+    def test_no_groupings_skips_validation(self, tmp_path):
+        """Without sample groupings there's nothing to validate against; don't crash."""
+        cfg = self._cfg(tmp_path)
+        samples = _small_collection(tmp_path)
+
+        # Should not raise
+        SeqnadoOutputBuilder(Assay.CHIP, samples, cfg, sample_groupings=None)

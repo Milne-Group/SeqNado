@@ -14,7 +14,7 @@ authors = [
 ]
 description = "Pipelines for genomics analysis"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = {file = "LICENSE"}
 dynamic = ["version"]
 dependencies = [

@@ -115,6 +115,19 @@ pytest -m snakemake         # Tests that invoke Snakemake via subprocess
 
 Markers: `unit`, `integration`, `pipeline`, `snakemake`, `slow`, `requires_data`, `requires_apptainer`.
 
+### Running pipeline tests on macOS (no Apptainer)
+
+`requires_apptainer`-marked tests (e.g. `test_pipeline`) auto-skip when neither Apptainer/Singularity nor the Docker fallback below is available — see `tests/conftest.py`. Apptainer/Singularity don't run natively on macOS, but a Docker-backed fallback exists for exactly this case:
+
+```bash
+uv run pytest tests/pipeline/test_pipelines.py::test_pipeline \
+  --run-pipeline --preset ld --assays chip --cores 2 -vv -s
+```
+
+Requires Docker Desktop (or another local Docker daemon) running. On first use, the `docker_image` fixture builds `seqnado-devcontainer:test` from `.devcontainer/Dockerfile` (Ubuntu + real Apptainer, forced to `linux/amd64` — slow under emulation on Apple Silicon, cached afterwards). Each `seqnado` CLI call in the test is then run via `docker run --privileged --platform linux/amd64 ...`, so Apptainer still executes the pipeline containers — Docker is just the delivery mechanism for a Linux host that has Apptainer, not a replacement container runtime. This fallback only activates when `--preset ld` is passed and Apptainer isn't found locally; it is test-only and does not apply to real `seqnado pipeline --preset ld` runs (that profile is currently apptainer-only, see below).
+
+Note: the `ld` profile (`seqnado/workflow/envs/profiles/profile_local_docker/`) used by actual `seqnado pipeline` runs is currently byte-identical to `ls` (Apptainer-only) despite docs describing it as Docker-based — Snakemake in this environment has no native Docker executor. Don't rely on `--preset ld` for a real (non-test) Docker-based run.
+
 ## Installation
 
 ```bash

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from seqnado import Assay, DataScalingTechnique, PeakCallingMethod, PileupMethod, ScalingMethod, SpikeInMethod
 from seqnado import QuantificationMethod
-from seqnado.config import SeqnadoConfig
+from seqnado.config import SeqnadoConfig, UserFriendlyError
 from seqnado.inputs import (
     BamCollection,
     BigWigCollection,
@@ -436,6 +436,18 @@ class SeqNadoReportFiles:
         return filtered_files
 
 
+# Minimum number of samples that a scaling group must contain for a given
+# bamnado `bam-normalize` method to compute normalisation factors. CSAW_BACKGROUND,
+# TMM and MEDIAN_OF_RATIOS all derive scale factors by comparing libraries against
+# one another, so they need at least 2 samples per group; CPM is per-sample and has
+# no such requirement.
+MIN_SAMPLES_FOR_SCALING_METHOD: dict[ScalingMethod, int] = {
+    ScalingMethod.CSAW_BACKGROUND: 2,
+    ScalingMethod.TMM: 2,
+    ScalingMethod.MEDIAN_OF_RATIOS: 2,
+}
+
+
 class SeqnadoOutputBuilder:
     def __init__(
         self,
@@ -500,8 +512,48 @@ class SeqnadoOutputBuilder:
         else:
             self.scaling_methods = [ScalingMethod.CSAW_BACKGROUND]
 
+        if DataScalingTechnique.CSAW in self.scale_methods:
+            self._validate_scaling_group_sizes()
+
         # Initialize an empty list to hold file collections
         self.file_collections: list[FileCollection] = []
+
+    def _validate_scaling_group_sizes(self) -> None:
+        """Fail fast if a scaling group is too small for its configured scaling method(s).
+
+        Bamnado's csaw_background/tmm/median_of_ratios methods compare bam files
+        against each other within a group, so they error out at run time when a
+        group has fewer than 2 samples (e.g. a single-antibody ChIP project with no
+        replicates, since normalized bigwigs only cover IP samples, not controls).
+        Catching this before the DAG runs avoids burning through the whole pipeline
+        only to fail on the last normalisation step.
+        """
+        if not self.sample_groupings:
+            return
+
+        for method in self.scaling_methods:
+            required = MIN_SAMPLES_FOR_SCALING_METHOD.get(method)
+            if required is None:
+                continue
+
+            for grouping_name in ("scaling", "consensus"):
+                if grouping_name not in self.sample_groupings:
+                    continue
+                for group in self.sample_groupings.get_grouping(grouping_name).groups:
+                    if 0 < len(group.samples) < required:
+                        raise UserFriendlyError(
+                            f"Scaling group '{group.name}' has only {len(group.samples)} "
+                            f"sample(s) ({', '.join(group.samples)}), but scaling method "
+                            f"'{method.value}' requires at least {required} samples per "
+                            f"group to compute normalisation factors.\n\n"
+                            f"🔧 How to fix:\n"
+                            f"   1. Add more replicates/antibodies to this scaling group "
+                            f"(set a shared 'scaling_group' value in your design CSV), or\n"
+                            f"   2. Switch to a single-sample-compatible method, e.g. "
+                            f"bigwigs.scaling_methods: [cpm], or\n"
+                            f"   3. Disable CSAW scaling (remove 'csaw' from "
+                            f"bigwigs.scale_methods) and use spike-in normalisation instead."
+                        )
 
     def add_qc_files(self) -> None:
         """Add quality control files to the output collection."""
