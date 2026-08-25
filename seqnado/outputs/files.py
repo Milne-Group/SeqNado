@@ -474,6 +474,7 @@ class PlotFiles(BaseModel):
     is_merged: bool = False
     method: str = "deeptools"
     spikein_method: str | None = None
+    scaling_method: str | None = None
 
     @property
     def plot_names(self):
@@ -492,6 +493,8 @@ class PlotFiles(BaseModel):
             prefix = "merged/" if self.is_merged else ""
             if self.scale == "spikein" and self.spikein_method:
                 scale_dir = f"spikein/{self.spikein_method}"
+            elif self.scale == "csaw" and self.scaling_method:
+                scale_dir = f"csaw/{self.scaling_method}"
             else:
                 scale_dir = self.scale
             outdir = Path(

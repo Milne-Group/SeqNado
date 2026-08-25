@@ -1020,6 +1020,19 @@ class SeqnadoOutputBuilder:
                                 spikein_method=sm.value,
                             )
                             self.file_collections.append(plot_files)
+                    elif scale == DataScalingTechnique.CSAW and self.scaling_methods:
+                        # Create one PlotFiles per bamnado scaling method for separate output dirs
+                        for scm in self.scaling_methods:
+                            plot_files = PlotFiles(
+                                coordinates=self.config.assay_config.plotting.coordinates,
+                                file_format=self.config.assay_config.plotting.file_format,
+                                output_dir=self.output_dir,
+                                scale=scale.value,
+                                is_merged=is_merged,
+                                method=method.value,
+                                scaling_method=scm.value,
+                            )
+                            self.file_collections.append(plot_files)
                     else:
                         plot_files = PlotFiles(
                             coordinates=self.config.assay_config.plotting.coordinates,
