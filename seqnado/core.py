@@ -109,22 +109,23 @@ class PileupMethod(Enum):
 class DataScalingTechnique(Enum):
     """Methods for scaling genomic data."""
 
-    UNSCALED = "unscaled"
-    CSAW = "csaw"
+    PER_SAMPLE = "scaled-per-sample"
+    PER_GROUP = "scaled-per-group"
     SPIKEIN = "spikein"
     MERGED = "merged"
 
 
-class ScalingMethod(Enum):
-    """Bamnado ``bam-normalize`` methods used to compute CSAW-technique scale factors.
+class GroupScalingMethod(Enum):
+    """Bamnado ``bam-normalize`` methods used to compute PER_GROUP-technique scale factors.
 
-    Values map 1:1 onto bamnado's ``--method`` flag (hyphen at the CLI boundary).
+    Values map 1:1 onto bamnado's ``--method`` flag.
     """
 
-    CSAW_BACKGROUND = "csaw_background"
-    TMM = "tmm"
-    MEDIAN_OF_RATIOS = "median_of_ratios"
     CPM = "cpm"
+    TMM = "tmm"
+    CSAW_BACKGROUND = "csaw-background"
+    MEDIAN_OF_RATIOS = "median-of-ratios"
+
 
 
 class PeakCallingMethod(Enum):
