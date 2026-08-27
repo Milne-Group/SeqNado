@@ -9,38 +9,28 @@ From: mambaorg/micromamba:latest
 %post
   set -e
 
-  # Update and install minimal tools (only what's needed for Rust compilation)
+  # Update and install minimal tools
+  # Note: bamnado and mccnado are NOT installed here - each has its own
+  # dedicated, independently-versioned container (ghcr.io/alsmith151/bamnado,
+  # ghcr.io/alsmith151/mccnado) that every rule using them already points
+  # at via its own `container:` directive. Installing a second copy in this
+  # general pipeline container would just drift out of sync with those.
   apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    curl ca-certificates gcc libc6-dev pkg-config libssl-dev wget \
-    && rm -rf /var/lib/apt/lists/* 
-  
-  
+    curl ca-certificates wget \
+    && rm -rf /var/lib/apt/lists/*
+
+
   # Install latest Quarto
   QUARTO_VERSION=$(curl -s https://api.github.com/repos/quarto-dev/quarto-cli/releases/latest | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4 | sed 's/^v//')
   wget https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.deb --no-check-certificate
   dpkg -i quarto-${QUARTO_VERSION}-linux-amd64.deb
   rm quarto-${QUARTO_VERSION}-linux-amd64.deb
-  
+
   # Micromamba environment setup (ensure Python <3.12)
   micromamba install -y -n base -f /opt/environment_pipeline.yml
 
-  # Install Rust
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-  export PATH="/root/.cargo/bin:$PATH"
-  cargo install bamnado
-  
-  # Move bamnado binary to conda bin and cleanup Rust
-  mv /root/.cargo/bin/bamnado /opt/conda/bin/
-  rm -rf /root/.cargo /root/.rustup
-
-  # Ensure MCCNado is installed. If not install it using pip
-  if ! command -v mccnado &> /dev/null; then
-    /opt/conda/bin/python -m pip install mccnado
-  fi
-
-
   # Remove build tools
-  apt-get purge -y wget gcc libc6-dev pkg-config libssl-dev && apt-get autoremove -y && apt-get clean
+  apt-get purge -y wget && apt-get autoremove -y && apt-get clean
 
   # Remove unnecessary data and dev files
   find /opt/conda/ -type f -name '*.a' -delete
@@ -64,19 +54,18 @@ From: mambaorg/micromamba:latest
 %test
   echo "Testing minimal container..."
   echo "$(python --version)"
-  echo "$(bamnado --help > /dev/null 2>&1 && echo "BamNado test passed" || exit 1)"
   echo "All tests passed!"
 
 %labels
   Author asmith
   Version 0.4.0
-  Description Minimal SeqNado container with BamNado and Python tools
-  BamNado.Version dynamic
+  Description Minimal SeqNado container with core pipeline tools
   BuildDate $(date '+%Y-%m-%d')
 
 %help
   This is a lightweight SeqNado container with:
   - Python 3.x (glibc-based)
-  - Latest BamNado (downloaded at build)
   - Core bioinformatics tools (from `environment_pipeline.yml`)
   - MACS2, MultiQC, etc.
+  - BamNado and MCCNado are NOT included - they run from their own
+    dedicated containers (ghcr.io/alsmith151/bamnado, ghcr.io/alsmith151/mccnado)
