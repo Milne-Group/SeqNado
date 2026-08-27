@@ -33,7 +33,7 @@ rule tag_directory_merged:
     input:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
     output:
-        homer_tag_directory=directory(OUTPUT_DIR + "/tag_dirs/merged/unscaled/{group}"),
+        homer_tag_directory=directory(OUTPUT_DIR + "/tag_dirs/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/{group}"),
     params:
         options=str(
             CONFIG.third_party_tools.homer.make_tag_directory.command_line_arguments

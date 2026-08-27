@@ -17,6 +17,7 @@ from helpers import (
     get_fastq_pattern,
     init_seqnado_project,
     make_test_paths,
+    subsample_fastq_pair,
 )
 
 
@@ -133,6 +134,29 @@ def design(test_context: TestContext, assay: str, seqnado_run_dir: Path) -> Path
     fastq_dest_dir.mkdir(parents=True, exist_ok=True)
     for fq in fastqs_to_copy:
         shutil.copy2(fq, fastq_dest_dir / fq.name)
+
+    # The chip-rx fixture ships a single MLL antibody sample, so its
+    # "default" scaling group only ever has 1 member. Scaling methods that
+    # compare libraries against each other (csaw-background/tmm/median-of-ratios)
+    # need >=2, so fabricate a second, genuinely-different-depth "replicate" by
+    # subsampling the real MLL reads under a second antibody name (MLL2). This
+    # reuses the shared input control automatically (see
+    # FastqCollectionForIP.from_fastq_files) and needs no new reference data.
+    # Only chip-rx exercises this (not plain chip) — one assay is enough to
+    # check the scaling-method wiring, and plain "chip" also backs the
+    # multiomics test, which doesn't fabricate MLL2 and would break if the
+    # config demanded a 2-member scaling group.
+    if assay == "chip-rx":
+        mll_r1 = fastq_dest_dir / "chip-rx_MLL_1.fastq.gz"
+        mll_r2 = fastq_dest_dir / "chip-rx_MLL_2.fastq.gz"
+        if mll_r1.exists() and mll_r2.exists():
+            subsample_fastq_pair(
+                mll_r1,
+                mll_r2,
+                fastq_dest_dir / "chip-rx_MLL2_1.fastq.gz",
+                fastq_dest_dir / "chip-rx_MLL2_2.fastq.gz",
+                fraction=0.4,
+            )
 
     # Generate design file - use assay_type (amended name without -rx)
     design_file = create_design_file(

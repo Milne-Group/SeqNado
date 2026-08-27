@@ -15,22 +15,22 @@ if CONFIG.third_party_tools.deeptools is not None:
         input:
             bam=OUTPUT_DIR + "/aligned/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
-            scaling_factors=lambda wc: OUTPUT_DIR + f"/resources/{get_group_for_sample(wc, INPUT_FILES)}_scaling_factors.tsv",
+            scaling_factors=lambda wc: OUTPUT_DIR + f"/resources/{wc.scaling_method}/{get_group_for_sample(wc, INPUT_FILES)}_scaling_factors.tsv",
         output:
-            bigwig=OUTPUT_DIR + "/bigwigs/deeptools/csaw/{sample}.bigWig",
+            bigwig=OUTPUT_DIR + "/bigwigs/deeptools/" + DataScalingTechnique.PER_GROUP.value + "/{scaling_method}/{sample}.bigWig",
         params:
             scale=lambda wc: get_scaling_factor(
                 wc,
-                OUTPUT_DIR + f"/resources/{get_group_for_sample(wc, INPUT_FILES)}_scaling_factors.tsv",
+                OUTPUT_DIR + f"/resources/{wc.scaling_method}/{get_group_for_sample(wc, INPUT_FILES)}_scaling_factors.tsv",
             ),
             options=lambda wc: format_deeptools_options(wc, str(CONFIG.third_party_tools.deeptools.bam_coverage.command_line_arguments), INPUT_FILES, SAMPLE_GROUPINGS, raw_counts=True),
         threads: CONFIG.third_party_tools.deeptools.bam_coverage.threads
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-        log: OUTPUT_DIR + "/logs/pileups/deeptools/scaled/{sample}.log",
-        benchmark: OUTPUT_DIR + "/.benchmark/pileups/deeptools/scaled/{sample}.tsv",
-        message: "Making scaled bigWig with deeptools for sample {wildcards.sample}"
+        log: OUTPUT_DIR + "/logs/pileups/deeptools/scaled/{scaling_method}/{sample}.log",
+        benchmark: OUTPUT_DIR + "/.benchmark/pileups/deeptools/scaled/{scaling_method}/{sample}.tsv",
+        message: "Making {wildcards.scaling_method}-scaled bigWig with deeptools for sample {wildcards.sample}"
         shell:
             """
             bamCoverage -b {input.bam} -o {output.bigwig} --scaleFactor {params.scale} -p {threads} {params.options} > {log} 2>&1
@@ -56,13 +56,13 @@ if CONFIG.third_party_tools.bamnado is not None:
         input:
             bam=OUTPUT_DIR + "/aligned/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
-            scaling_factors=lambda wc: OUTPUT_DIR + f"/resources/{get_group_for_sample(wc, INPUT_FILES)}_scaling_factors.tsv",
+            scaling_factors=lambda wc: OUTPUT_DIR + f"/resources/{wc.scaling_method}/{get_group_for_sample(wc, INPUT_FILES)}_scaling_factors.tsv",
         output:
-            bigwig=OUTPUT_DIR + "/bigwigs/bamnado/csaw/{sample}.bigWig",
+            bigwig=OUTPUT_DIR + "/bigwigs/bamnado/" + DataScalingTechnique.PER_GROUP.value + "/{scaling_method}/{sample}.bigWig",
         params:
             scale=lambda wc: get_scaling_factor(
                 wc,
-                OUTPUT_DIR + f"/resources/{get_group_for_sample(wc, INPUT_FILES)}_scaling_factors.tsv",
+                OUTPUT_DIR + f"/resources/{wc.scaling_method}/{get_group_for_sample(wc, INPUT_FILES)}_scaling_factors.tsv",
             ),
             options=str(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments),
         threads: CONFIG.third_party_tools.bamnado.bam_coverage.threads
@@ -70,9 +70,9 @@ if CONFIG.third_party_tools.bamnado is not None:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         container: "docker://ghcr.io/alsmith151/bamnado:latest"
-        log: OUTPUT_DIR + "/logs/pileups/bamnado/scaled/{sample}.log",
-        benchmark: OUTPUT_DIR + "/.benchmark/pileups/bamnado/scaled/{sample}.tsv",
-        message: "Making CSAW-scaled bigWig with bamnado for sample {wildcards.sample}"
+        log: OUTPUT_DIR + "/logs/pileups/bamnado/scaled/{scaling_method}/{sample}.log",
+        benchmark: OUTPUT_DIR + "/.benchmark/pileups/bamnado/scaled/{scaling_method}/{sample}.tsv",
+        message: "Making {wildcards.scaling_method}-scaled bigWig with bamnado for sample {wildcards.sample}"
         shell:
             """
             export RAYON_NUM_THREADS={threads}

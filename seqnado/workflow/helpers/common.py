@@ -65,12 +65,12 @@ def get_scale_method(config: Dict) -> List[str]:
     Returns the scale method based on the config.
     """
 
-    method = [DataScalingTechnique.UNSCALED]
+    method = [DataScalingTechnique.PER_SAMPLE]
 
     if config.get("spikein"):
         method.append(DataScalingTechnique.SPIKEIN)
     elif config.get("scale"):
-        method.append(DataScalingTechnique.CSAW)
+        method.append(DataScalingTechnique.PER_GROUP)
     return [m.value for m in method]
 
 

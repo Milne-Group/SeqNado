@@ -17,18 +17,18 @@ BIGWIG_DIR = Path("seqnado_output/bigwigs")
 
 @pytest.mark.parametrize("rel, expected", [
     (
-        "deeptools/unscaled/sample1.bigWig",
-        {"sample": "sample1", "method": "deeptools", "scale": "unscaled",
+        "deeptools/scaled-per-sample/sample1.bigWig",
+        {"sample": "sample1", "method": "deeptools", "scale": "scaled-per-sample",
          "spikein_method": None, "merged": False, "strand": None},
     ),
     (
-        "deeptools/csaw/sample1.bigWig",
-        {"sample": "sample1", "method": "deeptools", "scale": "csaw",
+        "deeptools/scaled-per-group/sample1.bigWig",
+        {"sample": "sample1", "method": "deeptools", "scale": "scaled-per-group",
          "spikein_method": None, "merged": False, "strand": None},
     ),
     (
-        "deeptools/merged/unscaled/group1.bigWig",
-        {"sample": "group1", "method": "deeptools", "scale": "unscaled",
+        "deeptools/merged/scaled-per-sample/group1.bigWig",
+        {"sample": "group1", "method": "deeptools", "scale": "scaled-per-sample",
          "spikein_method": None, "merged": True, "strand": None},
     ),
     (
@@ -42,13 +42,13 @@ BIGWIG_DIR = Path("seqnado_output/bigwigs")
          "spikein_method": "orlando", "merged": True, "strand": None},
     ),
     (
-        "deeptools/unscaled/sample1_plus.bigWig",
-        {"sample": "sample1", "method": "deeptools", "scale": "unscaled",
+        "deeptools/scaled-per-sample/sample1_plus.bigWig",
+        {"sample": "sample1", "method": "deeptools", "scale": "scaled-per-sample",
          "spikein_method": None, "merged": False, "strand": "plus"},
     ),
     (
-        "deeptools/unscaled/sample1_minus.bigWig",
-        {"sample": "sample1", "method": "deeptools", "scale": "unscaled",
+        "deeptools/scaled-per-sample/sample1_minus.bigWig",
+        {"sample": "sample1", "method": "deeptools", "scale": "scaled-per-sample",
          "spikein_method": None, "merged": False, "strand": "minus"},
     ),
     (
@@ -58,7 +58,7 @@ BIGWIG_DIR = Path("seqnado_output/bigwigs")
     ),
     (
         "taps/sample1_hg38.bigWig",
-        {"sample": "sample1_hg38", "method": "taps", "scale": "unscaled",
+        {"sample": "sample1_hg38", "method": "taps", "scale": "scaled-per-sample",
          "spikein_method": None, "merged": False, "strand": None},
     ),
 ])
@@ -104,13 +104,13 @@ def fake_project(tmp_path):
 
     # BigWigs
     bw_base = out / "bigwigs" / "deeptools"
-    (bw_base / "unscaled").mkdir(parents=True)
-    (bw_base / "unscaled" / "sampleA_H3K27ac.bigWig").touch()
-    (bw_base / "unscaled" / "sampleB_H3K27ac.bigWig").touch()
-    (bw_base / "csaw").mkdir(parents=True)
-    (bw_base / "csaw" / "sampleA_H3K27ac.bigWig").touch()
-    (bw_base / "merged" / "unscaled").mkdir(parents=True)
-    (bw_base / "merged" / "unscaled" / "H3K27ac_merged.bigWig").touch()
+    (bw_base / "scaled-per-sample").mkdir(parents=True)
+    (bw_base / "scaled-per-sample" / "sampleA_H3K27ac.bigWig").touch()
+    (bw_base / "scaled-per-sample" / "sampleB_H3K27ac.bigWig").touch()
+    (bw_base / "scaled-per-group").mkdir(parents=True)
+    (bw_base / "scaled-per-group" / "sampleA_H3K27ac.bigWig").touch()
+    (bw_base / "merged" / "scaled-per-sample").mkdir(parents=True)
+    (bw_base / "merged" / "scaled-per-sample" / "H3K27ac_merged.bigWig").touch()
 
     # Peaks
     pk_base = out / "peaks" / "macs2"
@@ -162,14 +162,14 @@ def test_antibodies(fake_project):
 @pytest.mark.unit
 def test_bigwigs_all(fake_project):
     bws = fake_project.bigwigs()
-    assert len(bws) == 4  # 2 unscaled + 1 csaw + 1 merged
+    assert len(bws) == 4  # 2 per-sample + 1 per-group + 1 merged
 
 
 @pytest.mark.unit
 def test_bigwigs_filter_scale(fake_project):
-    bws = fake_project.bigwigs(scale="unscaled", merged=False)
+    bws = fake_project.bigwigs(scale="scaled-per-sample", merged=False)
     assert len(bws) == 2
-    assert all("unscaled" in str(p) for p in bws)
+    assert all("scaled-per-sample" in str(p) for p in bws)
 
 
 @pytest.mark.unit
@@ -181,7 +181,7 @@ def test_bigwigs_filter_merged(fake_project):
 
 @pytest.mark.unit
 def test_bigwigs_filter_condition(fake_project):
-    bws = fake_project.bigwigs(condition="treated", scale="unscaled", merged=False)
+    bws = fake_project.bigwigs(condition="treated", scale="scaled-per-sample", merged=False)
     assert all("sampleA" in str(p) for p in bws)
     assert not any("sampleB" in str(p) for p in bws)
 
@@ -233,7 +233,7 @@ def test_filter_view(fake_project):
     assert "sampleA_H3K27ac" in view.samples
     assert "sampleB_H3K27ac" not in view.samples
 
-    bws = view.bigwigs(scale="unscaled", merged=False)
+    bws = view.bigwigs(scale="scaled-per-sample", merged=False)
     assert all("sampleA" in str(p) for p in bws)
 
 
@@ -263,9 +263,9 @@ def test_repr(fake_project):
 @pytest.mark.unit
 def test_bigwigs_enum_method(fake_project):
     from seqnado.core import PileupMethod, DataScalingTechnique
-    bws_str  = fake_project.bigwigs(method="deeptools", scale="unscaled", merged=False)
+    bws_str  = fake_project.bigwigs(method="deeptools", scale="scaled-per-sample", merged=False)
     bws_enum = fake_project.bigwigs(method=PileupMethod.DEEPTOOLS,
-                                    scale=DataScalingTechnique.UNSCALED, merged=False)
+                                    scale=DataScalingTechnique.PER_SAMPLE, merged=False)
     assert bws_str == bws_enum
 
 
@@ -288,8 +288,8 @@ def test_pileup_methods(fake_project):
 
 @pytest.mark.unit
 def test_scales(fake_project):
-    assert "unscaled" in fake_project.scales
-    assert "csaw" in fake_project.scales
+    assert "scaled-per-sample" in fake_project.scales
+    assert "scaled-per-group" in fake_project.scales
 
 
 @pytest.mark.unit
@@ -462,7 +462,7 @@ def test_select_files_subdir_pattern(fake_project):
 
 @pytest.mark.unit
 def test_enrich(fake_project):
-    bws = fake_project.bigwigs(scale="unscaled", merged=False)
+    bws = fake_project.bigwigs(scale="scaled-per-sample", merged=False)
     df = fake_project.enrich(bws)
     assert "path" in df.columns
     assert "sample" in df.columns
@@ -474,7 +474,7 @@ def test_enrich(fake_project):
 
 @pytest.mark.unit
 def test_enrich_strand_stripped(fake_project):
-    bw_dir = fake_project.output_dir / "bigwigs" / "deeptools" / "unscaled"
+    bw_dir = fake_project.output_dir / "bigwigs" / "deeptools" / "scaled-per-sample"
     strand_bw = bw_dir / "sampleA_H3K27ac_plus.bigWig"
     strand_bw.touch()
     fake_project.reload()
@@ -552,7 +552,7 @@ def test_filtered_project_pileup_methods(fake_project):
 @pytest.mark.unit
 def test_filtered_project_scales(fake_project):
     view = fake_project.filter(condition="treated")
-    assert "unscaled" in view.scales
+    assert "scaled-per-sample" in view.scales
 
 
 @pytest.mark.unit
@@ -656,7 +656,7 @@ def test_multi_project_invalid(tmp_path):
 @pytest.mark.unit
 def test_multi_project_bigwigs(fake_multi_root):
     # Add bigwigs to one assay
-    bw_dir = fake_multi_root / "chip" / "bigwigs" / "deeptools" / "unscaled"
+    bw_dir = fake_multi_root / "chip" / "bigwigs" / "deeptools" / "scaled-per-sample"
     bw_dir.mkdir(parents=True)
     (bw_dir / "sampleA.bigWig").touch()
     mp = SeqNadoMultiProject(fake_multi_root)

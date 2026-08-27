@@ -57,8 +57,11 @@ class GenomicCoordinate(BaseModel):
         return cls(chromosome=chromosome, start=start, end=end)
 
 
+NONE_LIKE_STRINGS = {"none", "na", "n/a", ""}
+
+
 def none_str_to_none(v):
-    if isinstance(v, str) and v.strip().lower() == "none":
+    if isinstance(v, str) and v.strip().lower() in NONE_LIKE_STRINGS:
         return None
     return v
 
@@ -97,7 +100,7 @@ class BowtieIndex(BaseModel):
     """Container for Bowtie2 index files."""
 
     type: Literal["Bowtie2"] = "Bowtie2"
-    prefix: str | None = None
+    prefix: Annotated[str | None, BeforeValidator(none_str_to_none)] = None
 
     @field_validator("prefix")
     def validate_prefix(cls, v: str) -> str:
@@ -127,7 +130,7 @@ class STARIndex(BaseModel):
     """Container for STAR index files."""
 
     type: Literal["STAR"] = "STAR"
-    prefix: Path | None = None
+    prefix: Annotated[Path | None, BeforeValidator(none_str_to_none)] = None
 
     @field_validator("prefix")
     def validate_prefix(cls, v: Path) -> Path:
@@ -326,7 +329,10 @@ class BigwigConfig(BaseModel):
 
     pileup_method: list[PileupMethod] | None = None
     binsize: int | None = None
-    scale_methods: list[str] | None = None  # e.g., ["unscaled", "spikein"]
+    scale_methods: list[str] | None = None  # e.g., ["scaled-per-sample", "spikein"]
+    # Bamnado `bam-normalize` method(s) used when "scaled-per-group" is in scale_methods,
+    # e.g. ["csaw-background"] (default), ["tmm"], ["median-of-ratios"], ["cpm"].
+    group_scaling_methods: list[str] | None = None
     perform_comparisons: bool = False
 
 

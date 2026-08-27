@@ -3,7 +3,7 @@
 
 rule call_peaks_lanceotron_no_input_consensus:
     input:
-        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/unscaled/{group}.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/{group}.bigWig",
     output:
         peaks=OUTPUT_DIR + "/peaks/lanceotron/merged/{group}.bed",
         ltron_peaks=temp(OUTPUT_DIR + "/peaks/lanceotron/merged/{group}_L-tron.bed"),
@@ -57,7 +57,7 @@ use rule call_peaks_macs3_no_input as call_peaks_macs3_no_input_consensus with:
 
 use rule call_peaks_homer_no_input as call_peaks_homer_no_input_consensus with:
     input:
-        treatment = OUTPUT_DIR + "/tag_dirs/merged/unscaled/{group}",
+        treatment = OUTPUT_DIR + "/tag_dirs/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/{group}",
     output:
         peaks = OUTPUT_DIR + "/peaks/homer/merged/{group}.bed",
     log: OUTPUT_DIR + "/logs/homer/merged/{group}.log",
@@ -69,7 +69,7 @@ use rule call_peaks_homer_no_input as call_peaks_homer_no_input_consensus with:
 
 rule call_peaks_seacr_consensus:
     input:
-        treatment=OUTPUT_DIR + "/bigwigs/deeptools/merged/unscaled/{group}.bigWig",
+        treatment=OUTPUT_DIR + "/bigwigs/deeptools/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/{group}.bigWig",
     output:
         peaks=OUTPUT_DIR + "/peaks/seacr/merged/{group}.bed",
         temp_peaks=temp(OUTPUT_DIR + "/peaks/seacr/merged/{group}.stringent.bed"),

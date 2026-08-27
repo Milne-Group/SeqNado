@@ -7,7 +7,7 @@ rule bigwigs_deeptools_rna_merged_plus:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/unscaled/{group}_plus.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/{group}_plus.bigWig",
     params:
         options=str(CONFIG.third_party_tools.deeptools.bam_coverage.command_line_arguments),
     threads: CONFIG.third_party_tools.deeptools.bam_coverage.threads
@@ -31,7 +31,7 @@ rule bigwigs_deeptools_rna_merged_minus:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/unscaled/{group}_minus.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/{group}_minus.bigWig",
     params:
         options=str(CONFIG.third_party_tools.deeptools.bam_coverage.command_line_arguments),
     threads: CONFIG.third_party_tools.deeptools.bam_coverage.threads
@@ -55,7 +55,7 @@ rule bigwigs_bamnado_rna_merged_plus:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/unscaled/{group}_plus.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/{group}_plus.bigWig",
     params:
         options=str(
             CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments
@@ -83,7 +83,7 @@ rule bigwigs_bamnado_rna_merged_minus:
         bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
         bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/unscaled/{group}_minus.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/{group}_minus.bigWig",
     params:
         options=str(
             CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments
@@ -108,15 +108,15 @@ rule bigwigs_bamnado_rna_merged_minus:
 
 rule bigwigs_homer_rna_merged:
     input:
-        homer_tag_directory=OUTPUT_DIR + "/tag_dirs/merged/unscaled/{group}",
+        homer_tag_directory=OUTPUT_DIR + "/tag_dirs/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/{group}",
     output:
-        bw_plus=OUTPUT_DIR + "/bigwigs/homer/merged/unscaled/{group}_plus.bigWig",
-        bw_minus=OUTPUT_DIR + "/bigwigs/homer/merged/unscaled/{group}_minus.bigWig",
+        bw_plus=OUTPUT_DIR + "/bigwigs/homer/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/{group}_plus.bigWig",
+        bw_minus=OUTPUT_DIR + "/bigwigs/homer/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/{group}_minus.bigWig",
     params:
         genome_name=CONFIG.genome.name,
         genome_chrom_sizes=CONFIG.genome.chromosome_sizes,
         options=str(CONFIG.third_party_tools.homer.make_bigwig.command_line_arguments),
-        outdir=OUTPUT_DIR + "/bigwigs/homer/merged/unscaled/",
+        outdir=OUTPUT_DIR + "/bigwigs/homer/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/",
         temp_bw_plus=lambda wc, output: output.bw_plus.replace(
             "_plus.bigWig", "pos.ucsc.bigWig"
         ),

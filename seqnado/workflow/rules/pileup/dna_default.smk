@@ -8,7 +8,7 @@ if CONFIG.third_party_tools.homer is not None:
         input:
             homer_tag_directory=OUTPUT_DIR + "/tag_dirs/{sample}",
         output:
-            homer_bigwig=OUTPUT_DIR + "/bigwigs/homer/unscaled/{sample}.bigWig",
+            homer_bigwig=OUTPUT_DIR + "/bigwigs/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}.bigWig",
         params:
             genome_name=CONFIG.genome.name,
             genome_chrom_sizes=CONFIG.genome.chromosome_sizes,
@@ -44,7 +44,7 @@ if CONFIG.third_party_tools.deeptools is not None:
             bam=OUTPUT_DIR + "/aligned/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
         output:
-            bigwig=OUTPUT_DIR + "/bigwigs/deeptools/unscaled/{sample}.bigWig",
+            bigwig=OUTPUT_DIR + "/bigwigs/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}.bigWig",
         params:
             options=lambda wildcards: format_deeptools_options(
                 wildcards,
@@ -63,7 +63,7 @@ if CONFIG.third_party_tools.deeptools is not None:
         container:
             "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
         log:
-            OUTPUT_DIR + "/logs/pileups/deeptools/unscaled/{sample}.log",
+            OUTPUT_DIR + "/logs/pileups/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}.log",
         benchmark:
             OUTPUT_DIR + "/.benchmark/deeptools/makebigwigs_{sample}.tsv"
         message:
@@ -79,7 +79,7 @@ if CONFIG.third_party_tools.bamnado is not None:
             bam=OUTPUT_DIR + "/aligned/{sample}.bam",
             bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
         output:
-            bigwig=OUTPUT_DIR + "/bigwigs/bamnado/unscaled/{sample}.bigWig",
+            bigwig=OUTPUT_DIR + "/bigwigs/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}.bigWig",
         params:
             options=str(
                 CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments
@@ -95,7 +95,7 @@ if CONFIG.third_party_tools.bamnado is not None:
         container:
             "docker://ghcr.io/alsmith151/bamnado:latest"
         log:
-            OUTPUT_DIR + "/logs/pileups/bamnado/unscaled/{sample}.log",
+            OUTPUT_DIR + "/logs/pileups/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}.log",
         benchmark:
             OUTPUT_DIR + "/.benchmark/bamnado/makebigwigs_{sample}.tsv"
         message:

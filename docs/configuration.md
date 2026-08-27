@@ -45,7 +45,9 @@ These questions appear for ATAC, ChIP, CAT, RNA, MCC, and Methylation:
 Make Bigwigs? (default: yes)
   ├─ Bigwig method(s) — comma-separated (default: deeptools; options: deeptools, bamnado)
   ├─ Binsize for bigwigs (default: 10)
-  ├─ Bigwig scaling method(s) — comma-separated (default: unscaled; options: unscaled, csaw)
+  ├─ Bigwig scaling method(s) — comma-separated (default: scaled-per-sample; options: scaled-per-sample, scaled-per-group)
+  │    └─ Per-group scaling method(s) — if scaled-per-group (default: csaw-background;
+  │       options: csaw-background, tmm, median-of-ratios, cpm)
   └─ Perform condition-based bigwig comparisons? (default: no)
 
 Perform plotting? (default: no)
@@ -87,7 +89,7 @@ Call peaks? (default: yes)
       └─ Motif analysis method(s) — if yes (default: homer)
 
 Do you have spike-in? (default: no)
-  ├─ Normalisation method(s) — comma-separated (default: orlando; options: orlando, with-input, deseq2, edger, csaw)
+  ├─ Normalisation method(s) — comma-separated (default: orlando; options: orlando, with-input, deseq2, edger)
   ├─ Reference genome (default: hg38)
   ├─ Spike-in genome (default: dm6)
   └─ Spike-in control gene names — if using deseq2 or edger (default: AmpR,Cas9_3p,Cas9_5p)
@@ -119,7 +121,7 @@ Make QuantNado dataset? (default: no)
 
 ```
 Do you have spike-in? (default: no)
-  ├─ Normalisation method(s) — comma-separated (default: deseq2; options: orlando, with-input, deseq2, edger, csaw)
+  ├─ Normalisation method(s) — comma-separated (default: deseq2; options: orlando, with-input, deseq2, edger)
   ├─ Reference genome (default: hg38)
   ├─ Spike-in genome (default: spikein_rna)
   └─ Spike-in control gene names — if using deseq2 or edger (default: AmpR,Cas9_3p,Cas9_5p)
@@ -296,21 +298,25 @@ Below is a comprehensive list of tools integrated into SeqNado, organized by fun
 #### Bigwig Generation & Visualization
 
 - **deeptools bamCoverage** — Generates BigWig files from BAM alignments
-  - **Using deeptools' native `--normalizeUsing` ** — To use deeptools' built-in normalization methods (`RPKM`, `CPM`, `BPM`, `RPGC`), select `unscaled` for your bigwig scaling method, then manually edit `third_party_tools.deeptools.bam_coverage.command_line_arguments` to add `--normalizeUsing` (e.g., `"--binSize 10 --normalizeUsing RPKM"`). This disables SeqNado's scaling entirely. Example use case: comparing standard RPKM-normalized bigwigs across studies
-  - **Bigwig scaling method** — You choose during config (options: `unscaled`, `csaw`):
-    - **`unscaled`**: Raw read coverage without normalization; useful for visual inspection and as input for downstream analysis tools
-    - **`csaw`** (ChIP-Seq Analysis with Windows): Applies scaling factors between samples to equalize library depth while preserving broad features; recommended when comparing ChIP-seq samples or using spike-in controls; see [Normalisation Methods](normalisation.md)
+  - **Using deeptools' native `--normalizeUsing` ** — To use deeptools' built-in normalization methods (`RPKM`, `CPM`, `BPM`, `RPGC`), select `scaled-per-sample` for your bigwig scaling method, then manually edit `third_party_tools.deeptools.bam_coverage.command_line_arguments` to add `--normalizeUsing` (e.g., `"--binSize 10 --normalizeUsing RPKM"`). This disables SeqNado's scaling entirely. Example use case: comparing standard RPKM-normalized bigwigs across studies
+  - **Bigwig scaling technique** — You choose during config (options: `scaled-per-sample`, `scaled-per-group`):
+    - **`scaled-per-sample`**: Each sample is scaled independently — no cross-sample scale factor. Raw read coverage; useful for visual inspection and as input for downstream analysis tools
+    - **`scaled-per-group`**: Samples within a scaling group are scaled relative to each other so their signal is directly comparable; equalizes library depth while preserving broad features. Recommended when comparing ChIP-seq samples without a spike-in; see [Normalisation Methods](normalisation.md)
+      - Parametrised by `bigwigs.group_scaling_methods` — `csaw-background` (default), `tmm`, `median-of-ratios`, or `cpm`. Each selected method produces its own set of bigwigs. Requires `bamnado` (`seqnado tools install bamnado`)
+
+    !!! note "Renamed"
+        `unscaled` → `scaled-per-sample` and `csaw` → `scaled-per-group`; `bigwigs.scaling_methods` → `bigwigs.group_scaling_methods`.
   - **Spike-in normalisation for bigwigs** — If you selected spike-in normalisation (Orlando, with-input, DESeq2, or edgeR) during config, scale factors are automatically calculated and applied to bigwig generation, producing spike-in–normalized bigwigs for downstream analysis; see [Normalisation Methods](normalisation.md)
   
 !!! info
-    **How SeqNado prevents conflicts between `--normalizeUsing` and `--scaleFactor`**: The default deeptools config includes `--normalizeUsing RPKM`. However, when you select spike-in or csaw normalization, SeqNado **automatically removes** `--normalizeUsing` and applies **only** `--scaleFactor`. This prevents deeptools from silently ignoring your scale factors (since `--normalizeUsing` overrides `--scaleFactor` in deeptools). Result: your spike-in/csaw scale factors apply correctly without unwanted RPKM normalization
+    **How SeqNado prevents conflicts between `--normalizeUsing` and `--scaleFactor`**: The default deeptools config includes `--normalizeUsing RPKM`. However, when you select spike-in or per-group normalization, SeqNado **automatically removes** `--normalizeUsing` and applies **only** `--scaleFactor`. This prevents deeptools from silently ignoring your scale factors (since `--normalizeUsing` overrides `--scaleFactor` in deeptools). Result: your spike-in/per-group scale factors apply correctly without unwanted RPKM normalization
   
   
 - **bamnado** — Alternative tool for BigWig generation and BAM manipulation
   - **Condition-based comparisons** — When enabled via `perform_comparisons: true`, bamnado automatically generates:
     - **Aggregated condition bigwigs**: Mean signal tracks for each condition group (averaging all replicates within that condition)
     - **Subtraction bigwigs**: All pairwise condition contrasts (condition1 - condition2)
-    - Both outputs available for unscaled and spike-in normalized bigwigs
+    - Both outputs available for `scaled-per-sample` and spike-in normalized bigwigs
     - Requires: `condition` column in design file with ≥2 unique values; `bamnado` as pileup method
     - For **MCC assays**, condition comparisons are handled separately (see [Configuration guide](configuration.md) for MCC-specific options)
     - Useful for quick visual comparison of condition effects without downstream analysis tools
@@ -352,8 +358,9 @@ Below is a comprehensive list of tools integrated into SeqNado, organized by fun
   - Requires input samples correctly paired in design file
   - Alternative to spike-in normalisation when spike-ins unavailable
 
-- **CSAW** — Cyclic shift aware normalisation; produces merged bigwigs
-  - Recommended for spike-in data with unbalanced read distributions
+- **Per-group scaling** (`scaled-per-group`) — Library-size scaling within a scaling group, computed by `bamnado bam-normalize`; produces individual and merged bigwigs
+  - Recommended when no spike-in is available and global levels are expected to be similar across conditions
+  - Genomics assays only (ChIP, CUT&Tag, ATAC) — not offered for RNA-seq
   - See [Normalisation Methods](normalisation.md) for detailed comparison
 
 ### Configuration Logic & Tool Interactions

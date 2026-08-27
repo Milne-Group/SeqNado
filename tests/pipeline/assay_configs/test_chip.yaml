@@ -16,8 +16,13 @@ assay_config:
       - bamnado
       - homer
     binsize: 100
+    # Only scaled-per-sample here. The chip fixture ships a single MLL sample,
+    # so its "default" scaling group has 1 member, and the per-group methods
+    # that compare libraries (csaw-background, the default) need >=2. The
+    # scaling-method matrix is exercised by test_chip-rx.yaml instead, which
+    # fabricates a second replicate (see conftest.py::design). This config also
+    # backs the multiomics test, which does not fabricate that replicate.
     scale_methods:
-      - unscaled
-      - csaw
+      - scaled-per-sample
     perform_comparisons: True
   create_dataset: True 

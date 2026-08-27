@@ -13,6 +13,7 @@ from .utils import (
     extract_tar,
     get_fastq_pattern,
     make_test_paths,
+    subsample_fastq_pair,
 )
 
 __all__ = [
@@ -31,4 +32,5 @@ __all__ = [
     "download_with_retry",
     "extract_tar",
     "get_fastq_pattern",
+    "subsample_fastq_pair",
 ]

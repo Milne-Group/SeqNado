@@ -6,7 +6,7 @@ if CONFIG.third_party_tools.bamnado is not None:
             bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
             bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
         output:
-            bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/unscaled/{group}.bigWig",
+            bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/{group}.bigWig",
         params:
             options=str(
                 CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments
@@ -35,7 +35,7 @@ if CONFIG.third_party_tools.deeptools is not None:
             bam=OUTPUT_DIR + "/aligned/merged/{group}.bam",
             bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
         output:
-            bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/unscaled/{group}.bigWig",
+            bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/{group}.bigWig",
         params:
            options=lambda wildcards: format_deeptools_options(
                wildcards,
@@ -63,14 +63,14 @@ if CONFIG.third_party_tools.deeptools is not None:
 if CONFIG.third_party_tools.homer is not None:
     rule bigwigs_homer_merged:
         input:
-            homer_tag_directory=OUTPUT_DIR + "/tag_dirs/merged/unscaled/{group}",
+            homer_tag_directory=OUTPUT_DIR + "/tag_dirs/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/{group}",
         output:
-            homer_bigwig=OUTPUT_DIR + "/bigwigs/homer/merged/unscaled/{group}.bigWig",
+            homer_bigwig=OUTPUT_DIR + "/bigwigs/homer/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/{group}.bigWig",
         params:
             genome_name=CONFIG.genome.name,
             genome_chrom_sizes=CONFIG.genome.chromosome_sizes,
             options=str(CONFIG.third_party_tools.homer.make_bigwig.command_line_arguments),
-            outdir=OUTPUT_DIR + "/bigwigs/homer/merged/unscaled/",
+            outdir=OUTPUT_DIR + "/bigwigs/homer/merged/" + DataScalingTechnique.PER_SAMPLE.value + "/",
             temp_bw=lambda wc, output: output.homer_bigwig.replace(
                 ".bigWig", ".ucsc.bigWig"
             ),
