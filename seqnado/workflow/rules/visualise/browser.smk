@@ -1,5 +1,11 @@
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
-from seqnado import Assay, DataScalingTechnique, PileupMethod, SpikeInMethod
+from seqnado import Assay, DataScalingTechnique, PileupMethod, GroupScalingMethod, SpikeInMethod
+
+# Browser tracks for the per-group technique are generated for one bamnado scaling
+# method only — additional configured group_scaling_methods still produce bigwigs,
+# just not dedicated browser tracks. OUTPUT picks which one, so the rules and the
+# expected-file list cannot drift apart.
+_DEFAULT_SCALING_METHOD = OUTPUT.plot_scaling_method.value
 
 _spikein_cfg = CONFIG.assay_config.spikein
 _spikein_methods = _spikein_cfg.method if _spikein_cfg else []
@@ -11,10 +17,11 @@ _has_spikein_withinput = SpikeInMethod.WITH_INPUT in _spikein_methods
 # Rules are only defined when the corresponding PlotFiles are registered in OUTPUT
 # (i.e. when the user has configured plotnado for that combination).
 # Compatible combinations:
-#   deeptools    : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
-#   bamnado      : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
-#   homer        : individual → unscaled              ; merged → unscaled
-#   methyldackel : individual → unscaled (METH assay only, reads from bigwigs/taps or bigwigs/wgbs)
+#   deeptools    : individual → per_sample/per_group/spikein_orlando/spikein_withinput ; merged → per_sample/per_group/spikein_orlando/spikein_withinput
+#   bamnado      : individual → per_sample/spikein_orlando/spikein_withinput      ; merged → per_sample/per_group/spikein_orlando/spikein_withinput
+#   (per_group is genomics-only — excluded entirely for RNA-seq)
+#   homer        : individual → per_sample              ; merged → per_sample
+#   methyldackel : individual → per_sample (METH assay only, reads from bigwigs/taps or bigwigs/wgbs)
 
 rule index_individual_peaks:
     input:
@@ -61,12 +68,12 @@ rule index_genes_bed:
         """
 
 
-# ─── deeptools · individual · unscaled (base rule) ───────────────────────────
+# ─── deeptools · individual · per_sample (base rule) ───────────────────────────
 rule plotnado_deeptools:
     input:
         data=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
-            scale=DataScalingTechnique.UNSCALED,
+            scale=DataScalingTechnique.PER_SAMPLE,
             ip_only=True,
         ),
         peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
@@ -74,8 +81,8 @@ rule plotnado_deeptools:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED),
-        template=OUTPUT_DIR + "/track_plots/deeptools/unscaled/template.toml",
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.PER_SAMPLE),
+        template=OUTPUT_DIR + "/track_plots/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/template.toml",
     params:
         assay=CONFIG.assay.value,
         peak_files=expand("{peak}.gz", peak=OUTPUT.peak_files),
@@ -87,19 +94,20 @@ rule plotnado_deeptools:
         mem="1.5GB",
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
     container: "library://asmith151/plotnado/plotnado:latest"
-    log: OUTPUT_DIR + "/logs/visualise/plotnado_deeptools_unscaled.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_deeptools_unscaled.tsv",
-    message: "Generating deeptools unscaled genome browser visualisations with Plotnado"
+    log: OUTPUT_DIR + "/logs/visualise/plotnado_deeptools_per_sample.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_deeptools_per_sample.tsv",
+    message: "Generating deeptools per_sample genome browser visualisations with Plotnado"
     script:
         "../../scripts/run_plotnado.py"
 
 
-# ─── deeptools · individual · csaw ───────────────────────────────────────────
-use rule plotnado_deeptools as plotnado_deeptools_csaw with:
+# ─── deeptools · individual · per_group ───────────────────────────────────────────
+use rule plotnado_deeptools as plotnado_deeptools_per_group with:
     input:
         data=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
-            scale=DataScalingTechnique.CSAW,
+            scale=DataScalingTechnique.PER_GROUP,
+            scaling_method=_DEFAULT_SCALING_METHOD,
             ip_only=True,
         ),
         peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
@@ -107,11 +115,11 @@ use rule plotnado_deeptools as plotnado_deeptools_csaw with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_track_plots(DataScalingTechnique.CSAW),
-        template=OUTPUT_DIR + "/track_plots/deeptools/csaw/template.toml",
-    log: OUTPUT_DIR + "/logs/visualise/plotnado_deeptools_csaw.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_deeptools_csaw.tsv",
-    message: "Generating deeptools CSAW-scaled genome browser visualisations with Plotnado"
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.PER_GROUP, scaling_method=_DEFAULT_SCALING_METHOD),
+        template=OUTPUT_DIR + f"/track_plots/deeptools/" + DataScalingTechnique.PER_GROUP.value + f"/{_DEFAULT_SCALING_METHOD}/template.toml",
+    log: OUTPUT_DIR + "/logs/visualise/plotnado_deeptools_per_group.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_deeptools_per_group.tsv",
+    message: "Generating deeptools per-group-scaled genome browser visualisations with Plotnado"
 
 
 # ─── deeptools · individual · spikein · orlando ───────────────────────────────
@@ -156,12 +164,12 @@ use rule plotnado_deeptools as plotnado_deeptools_spikein_withinput with:
     message: "Generating deeptools with_input spike-in genome browser visualisations with Plotnado"
 
 
-# ─── deeptools · merged · unscaled ───────────────────────────────────────────
+# ─── deeptools · merged · per_sample ───────────────────────────────────────────
 use rule plotnado_deeptools as plotnado_deeptools_merged with:
     input:
         data=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
-            scale=DataScalingTechnique.UNSCALED,
+            scale=DataScalingTechnique.PER_SAMPLE,
             is_merged=True,
         ),
         peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
@@ -169,19 +177,20 @@ use rule plotnado_deeptools as plotnado_deeptools_merged with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED, is_merged=True),
-        template=OUTPUT_DIR + "/track_plots/merged/deeptools/unscaled/template.toml",
-    log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_deeptools_unscaled.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_deeptools_unscaled.tsv",
-    message: "Generating deeptools merged unscaled genome browser visualisations with Plotnado"
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.PER_SAMPLE, is_merged=True),
+        template=OUTPUT_DIR + "/track_plots/merged/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/template.toml",
+    log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_deeptools_per_sample.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_deeptools_per_sample.tsv",
+    message: "Generating deeptools merged per_sample genome browser visualisations with Plotnado"
 
 
-# ─── deeptools · merged · csaw ───────────────────────────────────────────────
-use rule plotnado_deeptools as plotnado_deeptools_merged_csaw with:
+# ─── deeptools · merged · per_group ───────────────────────────────────────────────
+use rule plotnado_deeptools as plotnado_deeptools_merged_per_group with:
     input:
         data=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
-            scale=DataScalingTechnique.CSAW,
+            scale=DataScalingTechnique.PER_GROUP,
+            scaling_method=_DEFAULT_SCALING_METHOD,
             is_merged=True,
         ),
         peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
@@ -189,11 +198,11 @@ use rule plotnado_deeptools as plotnado_deeptools_merged_csaw with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_track_plots(DataScalingTechnique.CSAW, is_merged=True),
-        template=OUTPUT_DIR + "/track_plots/merged/deeptools/csaw/template.toml",
-    log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_deeptools_csaw.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_deeptools_csaw.tsv",
-    message: "Generating deeptools merged CSAW-scaled genome browser visualisations with Plotnado"
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.PER_GROUP, is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
+        template=OUTPUT_DIR + f"/track_plots/merged/deeptools/" + DataScalingTechnique.PER_GROUP.value + f"/{_DEFAULT_SCALING_METHOD}/template.toml",
+    log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_deeptools_per_group.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_deeptools_per_group.tsv",
+    message: "Generating deeptools merged per-group-scaled genome browser visualisations with Plotnado"
 
 
 # ─── deeptools · merged · spikein · orlando ──────────────────────────────────
@@ -238,12 +247,12 @@ use rule plotnado_deeptools as plotnado_deeptools_merged_spikein_withinput with:
     message: "Generating deeptools merged with_input spike-in genome browser visualisations with Plotnado"
 
 
-# ─── bamnado · individual · unscaled ─────────────────────────────────────────
+# ─── bamnado · individual · per_sample ─────────────────────────────────────────
 use rule plotnado_deeptools as plotnado_bamnado with:
     input:
         data=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.BAMNADO,
-            scale=DataScalingTechnique.UNSCALED,
+            scale=DataScalingTechnique.PER_SAMPLE,
             ip_only=True,
         ),
         peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
@@ -251,19 +260,19 @@ use rule plotnado_deeptools as plotnado_bamnado with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.BAMNADO),
-        template=OUTPUT_DIR + "/track_plots/bamnado/unscaled/template.toml",
-    log: OUTPUT_DIR + "/logs/visualise/plotnado_bamnado_unscaled.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_bamnado_unscaled.tsv",
-    message: "Generating bamnado unscaled genome browser visualisations with Plotnado"
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.PER_SAMPLE, method=PileupMethod.BAMNADO),
+        template=OUTPUT_DIR + "/track_plots/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/template.toml",
+    log: OUTPUT_DIR + "/logs/visualise/plotnado_bamnado_per_sample.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_bamnado_per_sample.tsv",
+    message: "Generating bamnado per_sample genome browser visualisations with Plotnado"
 
 
-# ─── bamnado · merged · unscaled ─────────────────────────────────────────────
+# ─── bamnado · merged · per_sample ─────────────────────────────────────────────
 use rule plotnado_deeptools as plotnado_bamnado_merged with:
     input:
         data=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.BAMNADO,
-            scale=DataScalingTechnique.UNSCALED,
+            scale=DataScalingTechnique.PER_SAMPLE,
             is_merged=True,
         ),
         peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
@@ -271,19 +280,20 @@ use rule plotnado_deeptools as plotnado_bamnado_merged with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.BAMNADO, is_merged=True),
-        template=OUTPUT_DIR + "/track_plots/merged/bamnado/unscaled/template.toml",
-    log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_bamnado_unscaled.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_bamnado_unscaled.tsv",
-    message: "Generating bamnado merged unscaled genome browser visualisations with Plotnado"
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.PER_SAMPLE, method=PileupMethod.BAMNADO, is_merged=True),
+        template=OUTPUT_DIR + "/track_plots/merged/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/template.toml",
+    log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_bamnado_per_sample.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_bamnado_per_sample.tsv",
+    message: "Generating bamnado merged per_sample genome browser visualisations with Plotnado"
 
 
-# ─── bamnado · merged · csaw ─────────────────────────────────────────────────
-use rule plotnado_deeptools as plotnado_bamnado_merged_csaw with:
+# ─── bamnado · merged · per_group ─────────────────────────────────────────────────
+use rule plotnado_deeptools as plotnado_bamnado_merged_per_group with:
     input:
         data=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.BAMNADO,
-            scale=DataScalingTechnique.CSAW,
+            scale=DataScalingTechnique.PER_GROUP,
+            scaling_method=_DEFAULT_SCALING_METHOD,
             is_merged=True,
         ),
         peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
@@ -291,11 +301,11 @@ use rule plotnado_deeptools as plotnado_bamnado_merged_csaw with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_track_plots(DataScalingTechnique.CSAW, method=PileupMethod.BAMNADO, is_merged=True),
-        template=OUTPUT_DIR + "/track_plots/merged/bamnado/csaw/template.toml",
-    log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_bamnado_csaw.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_bamnado_csaw.tsv",
-    message: "Generating bamnado merged CSAW-scaled genome browser visualisations with Plotnado"
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.PER_GROUP, method=PileupMethod.BAMNADO, is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
+        template=OUTPUT_DIR + f"/track_plots/merged/bamnado/" + DataScalingTechnique.PER_GROUP.value + f"/{_DEFAULT_SCALING_METHOD}/template.toml",
+    log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_bamnado_per_group.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_bamnado_per_group.tsv",
+    message: "Generating bamnado merged per-group-scaled genome browser visualisations with Plotnado"
 
 
 # ─── bamnado · merged · spikein · orlando ────────────────────────────────────
@@ -340,12 +350,12 @@ use rule plotnado_deeptools as plotnado_bamnado_merged_spikein_withinput with:
     message: "Generating bamnado merged with_input spike-in genome browser visualisations with Plotnado"
 
 
-# ─── homer · individual · unscaled ───────────────────────────────────────────
+# ─── homer · individual · per_sample ───────────────────────────────────────────
 use rule plotnado_deeptools as plotnado_homer with:
     input:
         data=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.HOMER,
-            scale=DataScalingTechnique.UNSCALED,
+            scale=DataScalingTechnique.PER_SAMPLE,
             ip_only=True,
         ),
         peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
@@ -353,19 +363,19 @@ use rule plotnado_deeptools as plotnado_homer with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.HOMER),
-        template=OUTPUT_DIR + "/track_plots/homer/unscaled/template.toml",
-    log: OUTPUT_DIR + "/logs/visualise/plotnado_homer_unscaled.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_homer_unscaled.tsv",
-    message: "Generating homer unscaled genome browser visualisations with Plotnado"
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.PER_SAMPLE, method=PileupMethod.HOMER),
+        template=OUTPUT_DIR + "/track_plots/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/template.toml",
+    log: OUTPUT_DIR + "/logs/visualise/plotnado_homer_per_sample.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_homer_per_sample.tsv",
+    message: "Generating homer per_sample genome browser visualisations with Plotnado"
 
 
-# ─── homer · merged · unscaled ───────────────────────────────────────────────
+# ─── homer · merged · per_sample ───────────────────────────────────────────────
 use rule plotnado_deeptools as plotnado_homer_merged with:
     input:
         data=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.HOMER,
-            scale=DataScalingTechnique.UNSCALED,
+            scale=DataScalingTechnique.PER_SAMPLE,
             is_merged=True,
         ),
         peaks_indexed=expand("{peak}.gz", peak=OUTPUT.peak_files),
@@ -373,14 +383,14 @@ use rule plotnado_deeptools as plotnado_homer_merged with:
         genes_indexed=rules.index_genes_bed.output.bed_gz,
         genes_indexed_tbi=rules.index_genes_bed.output.tbi,
     output:
-        plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.HOMER, is_merged=True),
-        template=OUTPUT_DIR + "/track_plots/merged/homer/unscaled/template.toml",
-    log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_homer_unscaled.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_homer_unscaled.tsv",
-    message: "Generating homer merged unscaled genome browser visualisations with Plotnado"
+        plots=OUTPUT.select_track_plots(DataScalingTechnique.PER_SAMPLE, method=PileupMethod.HOMER, is_merged=True),
+        template=OUTPUT_DIR + "/track_plots/merged/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/template.toml",
+    log: OUTPUT_DIR + "/logs/visualise/plotnado_merged_homer_per_sample.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_merged_homer_per_sample.tsv",
+    message: "Generating homer merged per_sample genome browser visualisations with Plotnado"
 
 
-# ─── methyldackel · individual · unscaled (METH assay only) ──────────────────
+# ─── methyldackel · individual · per_sample (METH assay only) ──────────────────
 if ASSAY == Assay.METH:
     _meth_method = CONFIG.assay_config.methylation.method.value  # "taps" or "wgbs"
 
@@ -390,8 +400,8 @@ if ASSAY == Assay.METH:
             genes_indexed=rules.index_genes_bed.output.bed_gz,
             genes_indexed_tbi=rules.index_genes_bed.output.tbi,
         output:
-            plots=OUTPUT.select_track_plots(DataScalingTechnique.UNSCALED, method=PileupMethod.METHYLDACKEL),
-            template=OUTPUT_DIR + "/track_plots/methyldackel/unscaled/template.toml",
+            plots=OUTPUT.select_track_plots(DataScalingTechnique.PER_SAMPLE, method=PileupMethod.METHYLDACKEL),
+            template=OUTPUT_DIR + "/track_plots/methyldackel/" + DataScalingTechnique.PER_SAMPLE.value + "/template.toml",
         params:
             assay=CONFIG.assay.value,
             peak_files=[],
@@ -403,8 +413,8 @@ if ASSAY == Assay.METH:
             mem="1.5GB",
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
         container: "library://asmith151/plotnado/plotnado:latest"
-        log: OUTPUT_DIR + "/logs/visualise/plotnado_methyldackel_unscaled.log"
-        benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_methyldackel_unscaled.tsv"
-        message: "Generating methyldackel unscaled genome browser visualisations with Plotnado"
+        log: OUTPUT_DIR + "/logs/visualise/plotnado_methyldackel_per_sample.log"
+        benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_methyldackel_per_sample.tsv"
+        message: "Generating methyldackel per_sample genome browser visualisations with Plotnado"
         script:
             "../../scripts/run_plotnado.py"

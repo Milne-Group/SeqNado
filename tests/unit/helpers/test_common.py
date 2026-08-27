@@ -66,25 +66,25 @@ class TestGetScaleMethod:
     """Tests for get_scale_method function."""
 
     def test_scale_method_default(self):
-        """Test default scale method (unscaled only)."""
+        """Test default scale method (scaled-per-sample only)."""
         config = {}
         result = get_scale_method(config)
-        assert result == ["unscaled"]  # Returned as lowercase string from .value
+        assert result == ["scaled-per-sample"]  # Returned as lowercase string from .value
 
     def test_scale_method_with_spikein(self):
         """Test scale method with spikein."""
         config = {"spikein": True}
         result = get_scale_method(config)
-        assert "unscaled" in result
+        assert "scaled-per-sample" in result
         assert "spikein" in result
         assert len(result) == 2
 
     def test_scale_method_with_scale(self):
-        """Test scale method with csaw scaling."""
+        """Test scale method with scaled-per-group scaling."""
         config = {"scale": True}
         result = get_scale_method(config)
-        assert "unscaled" in result
-        assert "csaw" in result
+        assert "scaled-per-sample" in result
+        assert "scaled-per-group" in result
         assert len(result) == 2
 
     def test_scale_method_spikein_takes_precedence(self):
@@ -92,4 +92,4 @@ class TestGetScaleMethod:
         config = {"spikein": True, "scale": True}
         result = get_scale_method(config)
         assert "spikein" in result
-        assert "csaw" not in result
+        assert "scaled-per-group" not in result

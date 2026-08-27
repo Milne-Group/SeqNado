@@ -31,25 +31,6 @@ rule genomic_bins:
     """
 
 
-rule bed_to_saf:
-    input:
-        bed=OUTPUT_DIR + "/resources/genomic_bins.bed",
-    output:
-        saf=OUTPUT_DIR + "/resources/genomic_bins.saf",
-    container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    resources:
-        runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-        mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    log:
-        OUTPUT_DIR + "/logs/genomic_bins_saf.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/genomic_bins_saf.tsv",
-    message: "Converting genomic bins BED to SAF format",
-    shell: """
-    awk 'BEGIN{{OFS="\t"}} {{print $1":"$2"-"$3, $1, $2, $3, "."}}' {input.bed} > {output.saf} 2> {log}
-    """
-
-
 rule validate_peaks:
     input:
         peaks=OUTPUT.peak_files,

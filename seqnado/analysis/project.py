@@ -14,11 +14,11 @@ Usage:
     proj.design           # pd.DataFrame  (read/write — see below)
 
     # File paths (list[Path], filtered to existing files)
-    proj.bigwigs(condition="treated", method="deeptools", scale="unscaled")
+    proj.bigwigs(condition="treated", method="deeptools", scale="scaled-per-sample")
     proj.bigwigs(antibody="H3K27ac", merged=True)
     proj.peaks(method="macs2", merged=False)
     proj.bams(antibody="H3K27ac")
-    proj.track_plots(method="deeptools", scale="unscaled")
+    proj.track_plots(method="deeptools", scale="scaled-per-sample")
     proj.contacts()
     proj.logs(rule="bowtie2", sample="sample1")
 
@@ -29,7 +29,7 @@ Usage:
     proj.load_frip()                   # FRiP scores per sample / peak method
     proj.load_library_complexity()     # Picard duplicate metrics
     proj.load_benchmarks()             # Snakemake rule runtimes
-    proj.load_normalisation_factors()  # spike-in / CSAW factors
+    proj.load_normalisation_factors()  # spike-in / per-group factors
 
     # Convenience
     proj.protocol()                    # Path to protocol.txt
@@ -137,11 +137,11 @@ def _parse_bigwig_path(p: Path, bigwig_dir: Path) -> dict | None:
         spikein_method = dir_parts[idx + 1] if idx + 1 < len(dir_parts) else None
     elif merged:
         merged_idx = dir_parts.index("merged")
-        scale = dir_parts[merged_idx + 1] if merged_idx + 1 < len(dir_parts) else "unscaled"
+        scale = dir_parts[merged_idx + 1] if merged_idx + 1 < len(dir_parts) else DataScalingTechnique.PER_SAMPLE.value
     elif len(dir_parts) >= 2:
         scale = dir_parts[1]
     else:
-        scale = "unscaled"
+        scale = DataScalingTechnique.PER_SAMPLE.value
 
     stem = p.stem
     strand: str | None = None
@@ -489,7 +489,7 @@ class SeqNadoProject:
 
     @cached_property
     def scales(self) -> list[str]:
-        """Scaling methods present across all bigWigs (e.g. ``["unscaled", "csaw"]``)."""
+        """Scaling methods present across all bigWigs (e.g. ``["scaled-per-sample", "scaled-per-group"]``)."""
         if self._bw_index.empty:
             return []
         return sorted(self._bw_index["scale"].dropna().unique().tolist())
@@ -661,7 +661,7 @@ class SeqNadoProject:
         method:      :class:`~seqnado.core.PileupMethod` enum or string,
                      e.g. ``PileupMethod.DEEPTOOLS`` or ``"deeptools"``.
         scale:       :class:`~seqnado.core.DataScalingTechnique` enum or string,
-                     e.g. ``DataScalingTechnique.UNSCALED`` or ``"unscaled"``.
+                     e.g. ``DataScalingTechnique.PER_SAMPLE`` or ``"scaled-per-sample"``.
         spikein_method: :class:`~seqnado.core.SpikeInMethod` enum or string,
                      e.g. ``SpikeInMethod.ORLANDO`` or ``"orlando"``.
         merged:      ``True`` = consensus merged tracks only.
@@ -1759,7 +1759,7 @@ class SeqNadoMultiProject:
         mp.chip                # SeqNadoProject for chip sub-directory
         mp["atac"]             # SeqNadoProject for atac sub-directory
 
-        mp.chip.bigwigs(scale="csaw")
+        mp.chip.bigwigs(scale="scaled-per-group")
         mp.rna.load_counts()
 
         # Iterate all assays
@@ -1906,7 +1906,7 @@ class SeqNadoMultiProject:
 
             mp.bigwigs(condition="DMSO")
             mp.bigwigs(condition="DMSO", assays=["chip", "cat"])
-            mp.bigwigs(scale="unscaled", merged=False)
+            mp.bigwigs(scale="scaled-per-sample", merged=False)
         """
         kw = dict(
             sample=sample, condition=condition, antibody=antibody, group=group,

@@ -5,9 +5,9 @@ from typing import Any, List
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from seqnado import Assay, DataScalingTechnique, PeakCallingMethod, PileupMethod, SpikeInMethod
+from seqnado import Assay, DataScalingTechnique, PeakCallingMethod, PileupMethod, GroupScalingMethod, SpikeInMethod
 from seqnado import QuantificationMethod
-from seqnado.config import SeqnadoConfig
+from seqnado.config import SeqnadoConfig, UserFriendlyError
 from seqnado.inputs import (
     BamCollection,
     BigWigCollection,
@@ -75,6 +75,9 @@ class SeqnadoOutputFiles(BaseModel):
     config: Any = None
     design_dataframe: Any = None  # pd.DataFrame - use Any to avoid circular imports
     output_dir: str = "seqnado_output"
+    # The single group scaling method that heatmaps and track plots are produced
+    # for; the workflow rules read this so they stay in sync with the file list.
+    plot_scaling_method: GroupScalingMethod = GroupScalingMethod.CSAW_BACKGROUND
 
     class Config:
         arbitrary_types_allowed = True
@@ -122,8 +125,9 @@ class SeqnadoOutputFiles(BaseModel):
     def select_bigwig_subtype(
         self,
         method: PileupMethod = PileupMethod.DEEPTOOLS,
-        scale: DataScalingTechnique = DataScalingTechnique.UNSCALED,
+        scale: DataScalingTechnique = DataScalingTechnique.PER_SAMPLE,
         spikein_method: str | None = None,
+        scaling_method: str | None = None,
         assay: Assay | None = None,
         is_merged: bool = False,
         ip_only: bool = False,
@@ -133,7 +137,8 @@ class SeqnadoOutputFiles(BaseModel):
         Args:
             method (PileupMethod): The pileup method to filter by.
             scale (DataScalingTechnique): The scale method to filter by.
-            spikein_method (str, optional): The spike-in method to filter by orlando or with_input. Defaults to None. 
+            spikein_method (str, optional): The spike-in method to filter by orlando or with_input. Defaults to None.
+            scaling_method (str, optional): The bamnado scaling method to filter by (e.g. csaw-background, tmm). Defaults to None.
             assay (Assay, optional): The assay type to filter by. Defaults to None.
             is_merged (bool): If True, select merged (consensus) bigWigs only.
             ip_only (bool): If True, exclude control/input samples (requires ip_sample_names to be set).
@@ -146,6 +151,8 @@ class SeqnadoOutputFiles(BaseModel):
             includes.append("merged")
         if spikein_method is not None:
             includes.append(spikein_method)
+        if scaling_method is not None:
+            includes.append(scaling_method)
         if assay is not None:
             includes.append(assay.value.lower())
 
@@ -237,17 +244,21 @@ class SeqnadoOutputFiles(BaseModel):
         method: PileupMethod = PileupMethod.DEEPTOOLS,
         is_merged: bool = False,
         spikein_method: str | None = None,
+        scaling_method: str | None = None,
     ) -> str:
         """Return the heatmap output directory.
 
         Always returns a valid path string even if not yet registered, so that
         Snakemake rule definitions remain valid at parse time.
         When scale is SPIKEIN and spikein_method is provided, the path includes
-        the spikein method as a subdirectory (e.g. spikein/orlando/).
+        the spikein method as a subdirectory (e.g. spikein/orlando/). Likewise for
+        PER_GROUP and scaling_method (e.g. scaled-per-group/csaw-background/).
         """
         prefix = "merged/" if is_merged else ""
         if scale == DataScalingTechnique.SPIKEIN and spikein_method is not None:
             scale_path = f"spikein/{spikein_method}"
+        elif scale == DataScalingTechnique.PER_GROUP and scaling_method is not None:
+            scale_path = f"{scale.value}/{scaling_method}"
         else:
             scale_path = scale.value
         return f"{self.output_dir}/heatmap/{prefix}{method.value}/{scale_path}"
@@ -258,9 +269,10 @@ class SeqnadoOutputFiles(BaseModel):
         method: PileupMethod = PileupMethod.DEEPTOOLS,
         is_merged: bool = False,
         spikein_method: str | None = None,
+        scaling_method: str | None = None,
     ) -> str:
         """Return the matrix path (temp file, not in self.files)."""
-        return f"{self._heatmap_dir(scale, method, is_merged, spikein_method)}/matrix.mat.gz"
+        return f"{self._heatmap_dir(scale, method, is_merged, spikein_method, scaling_method)}/matrix.mat.gz"
 
     def select_heatmap_plot(
         self,
@@ -268,8 +280,9 @@ class SeqnadoOutputFiles(BaseModel):
         method: PileupMethod = PileupMethod.DEEPTOOLS,
         is_merged: bool = False,
         spikein_method: str | None = None,
+        scaling_method: str | None = None,
     ) -> str:
-        return f"{self._heatmap_dir(scale, method, is_merged, spikein_method)}/heatmap.pdf"
+        return f"{self._heatmap_dir(scale, method, is_merged, spikein_method, scaling_method)}/heatmap.pdf"
 
     def select_heatmap_metaplot(
         self,
@@ -277,8 +290,9 @@ class SeqnadoOutputFiles(BaseModel):
         method: PileupMethod = PileupMethod.DEEPTOOLS,
         is_merged: bool = False,
         spikein_method: str | None = None,
+        scaling_method: str | None = None,
     ) -> str:
-        return f"{self._heatmap_dir(scale, method, is_merged, spikein_method)}/metaplot.pdf"
+        return f"{self._heatmap_dir(scale, method, is_merged, spikein_method, scaling_method)}/metaplot.pdf"
 
     def select_track_plots(
         self,
@@ -286,15 +300,19 @@ class SeqnadoOutputFiles(BaseModel):
         method: PileupMethod = PileupMethod.DEEPTOOLS,
         is_merged: bool = False,
         spikein_method: str | None = None,
+        scaling_method: str | None = None,
     ) -> list[str]:
         """Select genome browser plot files for a specific method/scale/merged combination.
 
         When scale is SPIKEIN and spikein_method is provided, only plots for
-        that specific spike-in method are returned.
+        that specific spike-in method are returned. Likewise for PER_GROUP and
+        scaling_method.
         """
         prefix = "merged/" if is_merged else ""
         if scale == DataScalingTechnique.SPIKEIN and spikein_method is not None:
             target = f"track_plots/{prefix}{method.value}/spikein/{spikein_method}/"
+        elif scale == DataScalingTechnique.PER_GROUP and scaling_method is not None:
+            target = f"track_plots/{prefix}{method.value}/{scale.value}/{scaling_method}/"
         else:
             target = f"track_plots/{prefix}{method.value}/{scale.value}/"
         return [f for f in self.files if target in f]
@@ -421,6 +439,18 @@ class SeqNadoReportFiles:
         return filtered_files
 
 
+# Minimum number of samples that a scaling group must contain for a given
+# bamnado `bam-normalize` method to compute normalisation factors. CSAW_BACKGROUND,
+# TMM and MEDIAN_OF_RATIOS all derive scale factors by comparing libraries against
+# one another, so they need at least 2 samples per group; CPM is per-sample and has
+# no such requirement.
+MIN_SAMPLES_FOR_SCALING_METHOD: dict[GroupScalingMethod, int] = {
+    GroupScalingMethod.CSAW_BACKGROUND: 2,
+    GroupScalingMethod.TMM: 2,
+    GroupScalingMethod.MEDIAN_OF_RATIOS: 2,
+}
+
+
 class SeqnadoOutputBuilder:
     def __init__(
         self,
@@ -468,10 +498,73 @@ class SeqnadoOutputBuilder:
                 for m in scale_methods_config
             ]
         else:
-            self.scale_methods = [DataScalingTechnique.UNSCALED]
+            self.scale_methods = [DataScalingTechnique.PER_SAMPLE]
+
+        # Determine bamnado scaling method(s) used for the PER_GROUP technique.
+        # Default to csaw-background.
+        scaling_methods_config = getattr(
+            getattr(self.config.assay_config, "bigwigs", object()),
+            "group_scaling_methods",
+            None,
+        )
+        if scaling_methods_config:
+            self.scaling_methods = [
+                GroupScalingMethod(m) if isinstance(m, str) else m
+                for m in scaling_methods_config
+            ]
+        else:
+            self.scaling_methods = [GroupScalingMethod.CSAW_BACKGROUND]
+
+        # Heatmaps and track plots are only produced for a single group scaling
+        # method, not the whole configured matrix: the plots exist to eyeball the
+        # signal, and one per method multiplies the plot count without adding
+        # much. The workflow rules pick the same representative method (see
+        # rules/visualise/heatmap.smk and browser.smk), so this must stay in sync
+        # with them or the DAG will request files no rule produces.
+        self.plot_scaling_method = self.scaling_methods[0]
+
+        if DataScalingTechnique.PER_GROUP in self.scale_methods:
+            self._validate_scaling_group_sizes()
 
         # Initialize an empty list to hold file collections
         self.file_collections: list[FileCollection] = []
+
+    def _validate_scaling_group_sizes(self) -> None:
+        """Fail fast if a scaling group is too small for its configured scaling method(s).
+
+        Bamnado's csaw-background/tmm/median-of-ratios methods compare bam files
+        against each other within a group, so they error out at run time when a
+        group has fewer than 2 samples (e.g. a single-antibody ChIP project with no
+        replicates, since normalized bigwigs only cover IP samples, not controls).
+        Catching this before the DAG runs avoids burning through the whole pipeline
+        only to fail on the last normalisation step.
+        """
+        if not self.sample_groupings:
+            return
+
+        for method in self.scaling_methods:
+            required = MIN_SAMPLES_FOR_SCALING_METHOD.get(method)
+            if required is None:
+                continue
+
+            for grouping_name in ("scaling", "consensus"):
+                if grouping_name not in self.sample_groupings:
+                    continue
+                for group in self.sample_groupings.get_grouping(grouping_name).groups:
+                    if 0 < len(group.samples) < required:
+                        raise UserFriendlyError(
+                            f"Scaling group '{group.name}' has only {len(group.samples)} "
+                            f"sample(s) ({', '.join(group.samples)}), but scaling method "
+                            f"'{method.value}' requires at least {required} samples per "
+                            f"group to compute normalisation factors.\n\n"
+                            f"🔧 How to fix:\n"
+                            f"   1. Add more replicates/antibodies to this scaling group "
+                            f"(set a shared 'scaling_group' value in your design CSV), or\n"
+                            f"   2. Switch to a single-sample-compatible method, e.g. "
+                            f"bigwigs.group_scaling_methods: [cpm], or\n"
+                            f"   3. Disable per-group scaling (remove '{DataScalingTechnique.PER_GROUP.value}' from "
+                            f"bigwigs.scale_methods) and use spike-in normalisation instead."
+                        )
 
     def add_qc_files(self) -> None:
         """Add quality control files to the output collection."""
@@ -501,21 +594,21 @@ class SeqnadoOutputBuilder:
         if self.config.assay_config.bigwigs is None:
             return
 
-        unscaled_scales = [m for m in self.scale_methods if m == DataScalingTechnique.UNSCALED]
-        normalized_scales = [m for m in self.scale_methods if m != DataScalingTechnique.UNSCALED]
+        per_sample_scales = [m for m in self.scale_methods if m == DataScalingTechnique.PER_SAMPLE]
+        normalized_scales = [m for m in self.scale_methods if m != DataScalingTechnique.PER_SAMPLE]
 
         # Unscaled bigwigs are generated for all samples (including controls)
-        if unscaled_scales:
+        if per_sample_scales:
             bigwig_files = BigWigFiles(
                 assay=self.assay,
                 names=self.samples.sample_names,
                 pileup_methods=self.config.assay_config.bigwigs.pileup_method,
-                scale_methods=unscaled_scales,
+                scale_methods=per_sample_scales,
                 output_dir=self.output_dir,
             )
             self.file_collections.append(bigwig_files)
 
-        # Normalized (e.g. CSAW) bigwigs only apply to IP samples, not controls
+        # Normalized (e.g. PER_GROUP) bigwigs only apply to IP samples, not controls
         if normalized_scales:
             if isinstance(self.samples, FastqCollectionForIP):
                 names = self.samples.ip_sample_names
@@ -526,6 +619,7 @@ class SeqnadoOutputBuilder:
                 names=names,
                 pileup_methods=self.config.assay_config.bigwigs.pileup_method,
                 scale_methods=normalized_scales,
+                scaling_methods=self.scaling_methods,
                 output_dir=self.output_dir,
             )
             self.file_collections.append(bigwig_files)
@@ -568,21 +662,21 @@ class SeqnadoOutputBuilder:
                     assay=self.assay,
                     names=[group.name],
                     pileup_methods=self.config.assay_config.bigwigs.pileup_method,
-                    scale_methods=[DataScalingTechnique.UNSCALED],
+                    scale_methods=[DataScalingTechnique.PER_SAMPLE],
                     output_dir=self.output_dir,
                     is_merged=True,
                 )
                 self.file_collections.append(bigwig_files)
 
     def add_grouped_normalized_bigwig_files(self) -> None:
-        """Add CSAW-scaled merged bigwig files to the output collection."""
+        """Add per-group-scaled merged bigwig files to the output collection."""
         # Skip if assay doesn't support bigwigs (e.g., METH uses methylation-specific generation)
         if self.config.assay_config.bigwigs is None:
             return
 
         normalized_scales = [
             s for s in self.scale_methods
-            if s == DataScalingTechnique.CSAW
+            if s == DataScalingTechnique.PER_GROUP
         ]
         if not normalized_scales:
             return
@@ -597,6 +691,7 @@ class SeqnadoOutputBuilder:
                 names=[group.name],
                 pileup_methods=self.config.assay_config.bigwigs.pileup_method,
                 scale_methods=normalized_scales,
+                scaling_methods=self.scaling_methods,
                 output_dir=self.output_dir,
                 is_merged=True,
             )
@@ -658,7 +753,7 @@ class SeqnadoOutputBuilder:
 
         for method in pileup_methods:
             method_name = method.value  # e.g., "bamnado", "deeptools"
-            # Add aggregated condition bigwigs (unscaled)
+            # Add aggregated condition bigwigs (per-sample-scaled)
             for cond in condition_groups.group_names:
                 for strand in strands:
                     files.append(f"{self.output_dir}/bigwigs/{method_name}/aggregated/{cond}{strand}.bigWig")
@@ -834,7 +929,7 @@ class SeqnadoOutputBuilder:
         if self.assay == Assay.METH:
             heatmaps = HeatmapFiles(
                 assay=self.assay,
-                scale_methods=[DataScalingTechnique.UNSCALED],
+                scale_methods=[DataScalingTechnique.PER_SAMPLE],
                 spikein_methods=[],
                 output_dir=self.output_dir,
                 is_merged=False,
@@ -858,24 +953,24 @@ class SeqnadoOutputBuilder:
         ]
 
         # Methods that only support UNSCALED for individual (not merged) bigwigs
-        _unscaled_only_individual = {PileupMethod.HOMER, PileupMethod.BAMNADO}
+        _per_sample_only_individual = {PileupMethod.HOMER, PileupMethod.BAMNADO}
         # Methods that only support UNSCALED for merged bigwigs
-        _unscaled_only_merged = {PileupMethod.HOMER}
+        _per_sample_only_merged = {PileupMethod.HOMER}
 
         for method in pileup_methods:
             for is_merged in ([False, True] if has_consensus else [False]):
                 if is_merged:
-                    restricted = method in _unscaled_only_merged
+                    restricted = method in _per_sample_only_merged
                 else:
-                    restricted = method in _unscaled_only_individual
+                    restricted = method in _per_sample_only_individual
 
                 if restricted:
                     # Restricted methods only support UNSCALED.
-                    # For individual bigwigs, unscaled files are only generated when
+                    # For individual bigwigs, per-sample-scaled files are only generated when
                     # UNSCALED is explicitly in scale_methods; skip if not present.
-                    if not is_merged and DataScalingTechnique.UNSCALED not in self.scale_methods:
+                    if not is_merged and DataScalingTechnique.PER_SAMPLE not in self.scale_methods:
                         continue
-                    scales = [DataScalingTechnique.UNSCALED]
+                    scales = [DataScalingTechnique.PER_SAMPLE]
                 else:
                     scales = list(self.scale_methods)
                     if has_spikein and DataScalingTechnique.SPIKEIN not in scales:
@@ -885,6 +980,7 @@ class SeqnadoOutputBuilder:
                     assay=self.assay,
                     scale_methods=scales,
                     spikein_methods=supported_spikein_methods,
+                    scaling_methods=[self.plot_scaling_method],
                     output_dir=self.output_dir,
                     is_merged=is_merged,
                     method=method,
@@ -933,9 +1029,9 @@ class SeqnadoOutputBuilder:
                 coordinates=self.config.assay_config.plotting.coordinates,
                 file_format=self.config.assay_config.plotting.file_format,
                 output_dir=self.output_dir,
-                scale=DataScalingTechnique.UNSCALED.value,
+                scale=DataScalingTechnique.PER_SAMPLE,
                 is_merged=False,
-                method=PileupMethod.METHYLDACKEL.value,
+                method=PileupMethod.METHYLDACKEL,
             )
             self.file_collections.append(plot_files)
             return
@@ -954,20 +1050,20 @@ class SeqnadoOutputBuilder:
             if m in (SpikeInMethod.ORLANDO, SpikeInMethod.WITH_INPUT)
         ]
 
-        _unscaled_only_individual = {PileupMethod.HOMER, PileupMethod.BAMNADO}
-        _unscaled_only_merged = {PileupMethod.HOMER}
+        _per_sample_only_individual = {PileupMethod.HOMER, PileupMethod.BAMNADO}
+        _per_sample_only_merged = {PileupMethod.HOMER}
 
         for method in pileup_methods:
             for is_merged in ([False, True] if has_consensus else [False]):
                 if is_merged:
-                    restricted = method in _unscaled_only_merged
+                    restricted = method in _per_sample_only_merged
                 else:
-                    restricted = method in _unscaled_only_individual
+                    restricted = method in _per_sample_only_individual
 
                 if restricted:
-                    if not is_merged and DataScalingTechnique.UNSCALED not in self.scale_methods:
+                    if not is_merged and DataScalingTechnique.PER_SAMPLE not in self.scale_methods:
                         continue
-                    method_scales = [DataScalingTechnique.UNSCALED]
+                    method_scales = [DataScalingTechnique.PER_SAMPLE]
                 else:
                     method_scales = list(self.scale_methods)
                     if has_spikein and DataScalingTechnique.SPIKEIN not in method_scales:
@@ -981,10 +1077,23 @@ class SeqnadoOutputBuilder:
                                 coordinates=self.config.assay_config.plotting.coordinates,
                                 file_format=self.config.assay_config.plotting.file_format,
                                 output_dir=self.output_dir,
-                                scale=scale.value,
+                                scale=scale,
                                 is_merged=is_merged,
-                                method=method.value,
-                                spikein_method=sm.value,
+                                method=method,
+                                spikein_method=sm,
+                            )
+                            self.file_collections.append(plot_files)
+                    elif scale == DataScalingTechnique.PER_GROUP and self.scaling_methods:
+                        # Only the representative scaling method gets track plots
+                        for scm in [self.plot_scaling_method]:
+                            plot_files = PlotFiles(
+                                coordinates=self.config.assay_config.plotting.coordinates,
+                                file_format=self.config.assay_config.plotting.file_format,
+                                output_dir=self.output_dir,
+                                scale=scale,
+                                is_merged=is_merged,
+                                method=method,
+                                scaling_method=scm,
                             )
                             self.file_collections.append(plot_files)
                     else:
@@ -992,9 +1101,9 @@ class SeqnadoOutputBuilder:
                             coordinates=self.config.assay_config.plotting.coordinates,
                             file_format=self.config.assay_config.plotting.file_format,
                             output_dir=self.output_dir,
-                            scale=scale.value,
+                            scale=scale,
                             is_merged=is_merged,
-                            method=method.value,
+                            method=method,
                         )
                         self.file_collections.append(plot_files)
 
@@ -1148,6 +1257,7 @@ class SeqnadoOutputBuilder:
             config=self.config,
             design_dataframe=design_df,
             output_dir=self.output_dir,
+            plot_scaling_method=self.plot_scaling_method,
         )
 
 

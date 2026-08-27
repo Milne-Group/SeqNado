@@ -1,3 +1,4 @@
+import re
 import shlex
 from typing import Optional, Literal, Annotated, ClassVar
 from enum import Enum
@@ -480,6 +481,12 @@ class Bamnado(BaseModel):
         ),
         description="BigWig aggregation configuration"
     )
+    bam_normalize: ToolConfig = Field(
+        default_factory=lambda: ToolConfig(
+            threads=8, command_line_arguments=CommandLineArguments(value="--bin-size 10000")
+        ),
+        description="Between-sample scale factor estimation configuration"
+    )
 
 
 class Subread(BaseModel):
@@ -846,8 +853,33 @@ class ThirdPartyToolsConfig(BaseModel):
             if exclude_patterns:
                 tool_config.command_line_arguments.add_exclude(*sorted(exclude_patterns))
 
+    @staticmethod
+    def _set_bin_size_flag(command_line_arguments: "CommandLineArguments", flag: str, binsize: int) -> None:
+        """Replace (or append) `flag <value>` in a CLI options string with `flag {binsize}`."""
+        pattern = re.compile(rf"({re.escape(flag)})(\s+)(\S+)")
+        if pattern.search(command_line_arguments.value):
+            command_line_arguments.value = pattern.sub(rf"\g<1>\g<2>{binsize}", command_line_arguments.value)
+        else:
+            command_line_arguments.value = f"{command_line_arguments.value} {flag} {binsize}".strip()
+
     @classmethod
-    def for_assay(cls, assay: Assay, **overrides) -> "ThirdPartyToolsConfig":
+    def _apply_binsize(cls, defaults: dict[str, BaseModel], binsize: int) -> None:
+        """Propagate BigwigConfig.binsize into bigwig-rendering tool CLI options.
+
+        Only affects track-resolution bin size (deeptools/bamnado `bam_coverage`) —
+        bamnado's `bam_normalize` `--bin-size` is a different concept (background
+        window size for scale-factor estimation) and is left independently configured.
+        """
+        deeptools = defaults.get("deeptools")
+        if deeptools is not None:
+            cls._set_bin_size_flag(deeptools.bam_coverage.command_line_arguments, "--binSize", binsize)
+
+        bamnado = defaults.get("bamnado")
+        if bamnado is not None:
+            cls._set_bin_size_flag(bamnado.bam_coverage.command_line_arguments, "--bin-size", binsize)
+
+    @classmethod
+    def for_assay(cls, assay: Assay, binsize: int | None = None, **overrides) -> "ThirdPartyToolsConfig":
         assay_tools = get_assay_specific_tools(assay)
         if not assay_tools:
             raise ValueError(f"No tools configured for assay {assay.value}")
@@ -871,8 +903,10 @@ class ThirdPartyToolsConfig(BaseModel):
             defaults[field_name] = tool_class()
 
         cls._apply_assay_tool_option_rules(assay, defaults)
-            
-        
+
+        if binsize is not None:
+            cls._apply_binsize(defaults, binsize)
+
         defaults.update(overrides)
         return cls(**defaults)
 

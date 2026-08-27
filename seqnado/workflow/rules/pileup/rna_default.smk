@@ -3,7 +3,7 @@ rule bigwigs_deeptools_rna_plus:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/unscaled/{sample}_plus.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}_plus.bigWig",
     params:
         options=str(CONFIG.third_party_tools.deeptools.bam_coverage.command_line_arguments),
     threads: CONFIG.third_party_tools.deeptools.bam_coverage.threads
@@ -11,7 +11,7 @@ rule bigwigs_deeptools_rna_plus:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log: OUTPUT_DIR + "/logs/pileups/deeptools/unscaled/{sample}_plus.log",
+    log: OUTPUT_DIR + "/logs/pileups/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}_plus.log",
     benchmark: OUTPUT_DIR + "/.benchmark/deeptools/makebigwigs_{sample}_plus.tsv",
     message: "Making plus strand bigWig with deeptools for sample {wildcards.sample}"
     shell: """
@@ -24,7 +24,7 @@ rule bigwigs_deeptools_rna_minus:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/unscaled/{sample}_minus.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}_minus.bigWig",
     params:
         options=str(CONFIG.third_party_tools.deeptools.bam_coverage.command_line_arguments),
     threads: CONFIG.third_party_tools.deeptools.bam_coverage.threads
@@ -32,7 +32,7 @@ rule bigwigs_deeptools_rna_minus:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log: OUTPUT_DIR + "/logs/pileups/deeptools/unscaled/{sample}_minus.log",
+    log: OUTPUT_DIR + "/logs/pileups/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}_minus.log",
     benchmark: OUTPUT_DIR + "/.benchmark/deeptools/makebigwigs_{sample}_minus.tsv",
     message: "Making minus strand bigWig with deeptools for sample {wildcards.sample}"
     shell: """
@@ -43,13 +43,13 @@ rule bigwigs_homer_rna:
     input:
         homer_tag_directory=OUTPUT_DIR + "/tag_dirs/{sample}",
     output:
-        bw_plus=OUTPUT_DIR + "/bigwigs/homer/unscaled/{sample}_plus.bigWig",
-        bw_minus=OUTPUT_DIR + "/bigwigs/homer/unscaled/{sample}_minus.bigWig",
+        bw_plus=OUTPUT_DIR + "/bigwigs/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}_plus.bigWig",
+        bw_minus=OUTPUT_DIR + "/bigwigs/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}_minus.bigWig",
     params:
         genome_name=CONFIG.genome.name,
         genome_chrom_sizes=CONFIG.genome.chromosome_sizes,
         options=str(CONFIG.third_party_tools.homer.make_bigwig.command_line_arguments),
-        outdir=OUTPUT_DIR + "/bigwigs/homer/unscaled/",
+        outdir=OUTPUT_DIR + "/bigwigs/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/",
         temp_bw_plus=lambda wc, output: output.bw_plus.replace(
             "_plus.bigWig", "pos.ucsc.bigWig"
         ),
@@ -84,7 +84,7 @@ rule bigwigs_bamnado_rna_plus:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/unscaled/{sample}_plus.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}_plus.bigWig",
     params:
         options=str(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments),
     threads: CONFIG.third_party_tools.bamnado.bam_coverage.threads,
@@ -105,7 +105,7 @@ rule bigwigs_bamnado_rna_minus:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
         bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
     output:
-        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/unscaled/{sample}_minus.bigWig",
+        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}_minus.bigWig",
     params:
         options=str(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments),
     threads: CONFIG.third_party_tools.bamnado.bam_coverage.threads,

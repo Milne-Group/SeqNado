@@ -52,7 +52,7 @@ mp.assays          # ['atac', 'chip', 'rna']
 mp.chip                      # SeqNadoProject for chip/
 mp["atac"]                   # SeqNadoProject for atac/
 mp.rna.load_counts()
-mp.chip.bigwigs(scale="csaw")
+mp.chip.bigwigs(scale="scaled-per-group")
 
 # Iterate
 for name, proj in mp.items():
@@ -67,8 +67,8 @@ for name, proj in mp.items():
 # All DMSO bigwigs from every assay
 mp.bigwigs(condition="DMSO")
 #    assay  path
-#    chip   seqnado_output/chip/bigwigs/deeptools/unscaled/sampleA_H3K27ac.bigWig
-#    rna    seqnado_output/rna/bigwigs/deeptools/unscaled/sampleA.bigWig
+#    chip   seqnado_output/chip/bigwigs/deeptools/scaled-per-sample/sampleA_H3K27ac.bigWig
+#    rna    seqnado_output/rna/bigwigs/deeptools/scaled-per-sample/sampleA.bigWig
 
 # Restrict to specific assays
 mp.bigwigs(condition="DMSO", assays=["chip", "cat"])
@@ -94,7 +94,7 @@ view.load_peaks()
 
 # Restrict to specific assays
 view = mp.filter(condition="DMSO", assays=["chip", "cat"])
-view.bigwigs(scale="unscaled")
+view.bigwigs(scale="scaled-per-sample")
 
 # Chainable
 mp.filter(condition="DMSO").filter(antibody="H3K27me3").bigwigs()
@@ -122,7 +122,7 @@ proj.antibodies       # ['H3K27ac', 'Input']
 proj.groups           # scaling groups from design
 
 proj.pileup_methods   # ['bamnado', 'deeptools']
-proj.scales           # ['csaw', 'spikein', 'unscaled']
+proj.scales           # ['scaled-per-group', 'scaled-per-sample', 'spikein']
 proj.spikein_methods  # ['orlando']
 proj.peak_methods     # ['lanceotron', 'macs2']
 proj.consensus_groups # groups with merged bigWigs / peaks
@@ -160,9 +160,9 @@ SeqNado enums can be used interchangeably with strings for `method`, `scale`, an
 ```python
 from seqnado.core import PileupMethod, DataScalingTechnique, PeakCallingMethod, SpikeInMethod
 
-proj.bigwigs(method=PileupMethod.DEEPTOOLS, scale=DataScalingTechnique.UNSCALED)
+proj.bigwigs(method=PileupMethod.DEEPTOOLS, scale=DataScalingTechnique.PER_SAMPLE)
 # equivalent to
-proj.bigwigs(method="deeptools", scale="unscaled")
+proj.bigwigs(method="deeptools", scale="scaled-per-sample")
 ```
 
 ### BigWigs
@@ -170,12 +170,12 @@ proj.bigwigs(method="deeptools", scale="unscaled")
 ```python
 proj.bigwigs()                          # all bigWigs
 proj.bigwigs(method="deeptools")
-proj.bigwigs(scale="csaw")
+proj.bigwigs(scale="scaled-per-group")
 proj.bigwigs(scale="spikein", spikein_method="orlando")
 proj.bigwigs(merged=True)               # consensus group tracks only
 proj.bigwigs(merged=False)              # individual sample tracks only
 proj.bigwigs(strand="plus")             # RNA-seq stranded tracks
-proj.bigwigs(condition="treated", scale="unscaled", merged=False)
+proj.bigwigs(condition="treated", scale="scaled-per-sample", merged=False)
 
 # Full metadata index
 proj.bigwig_dataframe()  # DataFrame: path, sample, method, scale, spikein_method, merged, strand
@@ -222,13 +222,13 @@ proj.vcf(annotated=True)
 proj.contacts()                         # MCC .mcool files
 
 proj.heatmaps()                         # DeepTools heatmap PDFs
-proj.heatmaps(method="deeptools", scale="csaw")
+proj.heatmaps(method="deeptools", scale="scaled-per-group")
 proj.heatmaps(plot_type="metaplot")
 
 proj.track_plots()                      # PlotNado visualisations
-proj.track_plots(method="deeptools", scale="unscaled")
+proj.track_plots(method="deeptools", scale="scaled-per-sample")
 
-proj.normalisation_factors()            # spike-in / CSAW factor TSVs
+proj.normalisation_factors()            # spike-in / per-group scaling factor TSVs
 proj.normalisation_factors(method="orlando")
 ```
 
@@ -282,7 +282,7 @@ proj.load_benchmarks(rule="bowtie2")
 proj.load_spikein_stats()
 # → columns: sample, reference_reads, spikein_reads
 
-# Spike-in / CSAW normalisation factors
+# Spike-in / per-group normalisation factors
 proj.load_normalisation_factors()
 proj.load_normalisation_factors(method="orlando")
 
@@ -312,7 +312,7 @@ treated.pileup_methods  # methods with data for treated samples
 treated.scales
 treated.peak_methods
 
-treated.bigwigs(scale="unscaled")
+treated.bigwigs(scale="scaled-per-sample")
 treated.peaks(method="macs2")
 treated.bams()
 treated.load_peaks()
@@ -330,7 +330,7 @@ The filter is additive: an explicit `sample=` kwarg on a filtered method call ta
 ### Annotating file lists with metadata
 
 ```python
-bws = proj.bigwigs(scale="unscaled", merged=False)
+bws = proj.bigwigs(scale="scaled-per-sample", merged=False)
 df = proj.enrich(bws)
 # → columns: path, sample, condition, antibody, group
 ```
@@ -378,7 +378,7 @@ proj.reload()
 ### Load all treated H3K27ac bigWigs with metadata
 
 ```python
-bws = proj.filter(condition="treated", antibody="H3K27ac").bigwigs(scale="csaw")
+bws = proj.filter(condition="treated", antibody="H3K27ac").bigwigs(scale="scaled-per-group")
 df = proj.enrich(bws)
 ```
 

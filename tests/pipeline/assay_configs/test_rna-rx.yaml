@@ -10,8 +10,8 @@ assay_config:
       - homer
     binsize: 10
     scale_methods:
-      - unscaled
-      - csaw
+      - scaled-per-sample
+      - scaled-per-group
   spikein:
     method:
       - deseq2

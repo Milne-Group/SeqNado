@@ -1,6 +1,6 @@
 from snakemake.io import expand
 from seqnado.inputs import SampleGroupings
-from seqnado import Assay
+from seqnado import Assay, DataScalingTechnique
 
 
 def get_condition_input_bigwigs(wildcards, pileup_method, spikein_method=None, output_dir: str | None = None, sample_groupings: SampleGroupings | None = None, assay: Assay | None = None, strand: str | None = None):
@@ -32,6 +32,6 @@ def get_condition_input_bigwigs(wildcards, pileup_method, spikein_method=None, o
             sample=samples,
         )
     return expand(
-        output_dir + f"/bigwigs/{pileup_method}/unscaled/{{sample}}{suffix}.bigWig",
+        output_dir + f"/bigwigs/{pileup_method}/{DataScalingTechnique.PER_SAMPLE.value}/{{sample}}{suffix}.bigWig",
         sample=samples,
     )

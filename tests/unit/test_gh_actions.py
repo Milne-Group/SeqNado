@@ -8,6 +8,7 @@ This module tests the scripts in .github/scripts/:
 
 import pytest
 import tempfile
+import tomllib
 from pathlib import Path
 import sys
 import yaml
@@ -68,7 +69,12 @@ class TestParseProject:
         core_deps, slurm_deps, py_req = parse_pyproject()
         
         assert len(core_deps) > 0, "Should find core dependencies"
-        assert py_req == ">=3.10", "Should find Python requirement"
+
+        # Compare against pyproject.toml rather than hardcoding the version
+        pyproject = Path(__file__).parent.parent.parent / "pyproject.toml"
+        with pyproject.open("rb") as fh:
+            expected_py_req = tomllib.load(fh)["project"]["requires-python"]
+        assert py_req == expected_py_req, "Should find Python requirement"
         
         # Check for expected core deps
         dep_strs = [str(d) for d in core_deps]
