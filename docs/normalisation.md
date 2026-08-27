@@ -6,6 +6,7 @@ SeqNado supports several normalisation strategies for generating coverage bigwig
 
 **ChIP-seq with spike-in?** Use `orlando` for simplicity or `with_input` if you have paired input controls.  
 **RNA-seq?** Use `deseq2` or `edgeR` — they correct for compositional bias.  
+**ATAC-seq with an exogenous spike-in?** Use `orlando` — this is a rare setup; most ATAC-seq runs should just use `scaled-per-group`.  
 **No spike-in and expect similar global levels across conditions?** Use `scaled-per-group`.  
 Need help choosing? See [Choosing a Method](#choosing-a-method) below.
 
@@ -41,7 +42,7 @@ Spike-in normalisation uses a known amount of exogenous material (chromatin or R
 
 **Reference:** Orlando DA, Chen MW, Brown VE, Solanki S, Choi YJ, Olson ER, Fritz CC, Bradner JE, Guenther MG. *Quantitative ChIP-Seq Normalization Reveals Global Modulation of the Epigenome.* Cell Reports. 2014;9(3):1163–1170. doi:[10.1016/j.celrep.2014.10.018](https://doi.org/10.1016/j.celrep.2014.10.018)
 
-**Designed for:** ChIP-seq, CUT&TAG, CUT&RUN (any assay that uses chromatin spike-in).
+**Designed for:** ChIP-seq, CUT&TAG, CUT&RUN, ATAC-seq (any assay that uses chromatin spike-in) — for ATAC-seq this is an uncommon setup requiring an exogenous spike-in genome added to the libraries.
 
 **Concept:** Scale each sample so that one million spike-in reads would have been sequenced, making signal proportional to the absolute amount of chromatin immunoprecipitated.
 
@@ -239,7 +240,7 @@ Each sample is scaled independently of every other sample — SeqNado applies no
 | Assay | Recommended methods | Notes |
 |---|---|---|
 | **ChIP-seq / CUT&TAG / CUT&RUN** | `orlando`, `with_input`, `scaled-per-group` | Prefer `orlando` or `with_input` when a chromatin spike-in was added — they are purpose-built and more direct than DESeq2/edgeR for this use case. Use `scaled-per-group` when no spike-in is available and you expect similar global levels across conditions. |
-| **ATAC-seq** | `scaled-per-group` | Library-size normalization is most appropriate for ATAC-seq. |
+| **ATAC-seq** | `scaled-per-group`, `orlando` | Library-size normalization (`scaled-per-group`) is the default recommendation for ATAC-seq. `orlando` is available for the rare case where an exogenous spike-in was actually added to the ATAC libraries. |
 | **RNA-seq** | `deseq2`, `edgeR` | These are the standard methods for RNA-seq — they correct for compositional bias. `orlando`/`with_input` require a chromatin-style spike-in split (see below). `scaled-per-group` is **not offered** for RNA-seq at all (see below). |
 
 ### Why isn't per-group scaling offered for RNA-seq?
