@@ -142,6 +142,26 @@ def build_genomes(
         "-sp",
         help="Spike-in genome name for composite builds (e.g., mm39)",
     ),
+    fasta: Optional[Path] = typer.Option(
+        None,
+        "--fasta",
+        help="Custom FASTA file for the primary genome, instead of downloading from UCSC (single genome only)",
+    ),
+    gtf: Optional[Path] = typer.Option(
+        None,
+        "--gtf",
+        help="Custom GTF file for the primary genome, instead of downloading from UCSC (single genome only)",
+    ),
+    spikein_fasta: Optional[Path] = typer.Option(
+        None,
+        "--spikein-fasta",
+        help="Custom FASTA file for the --spikein genome, instead of downloading from UCSC",
+    ),
+    spikein_gtf: Optional[Path] = typer.Option(
+        None,
+        "--spikein-gtf",
+        help="Custom GTF file for the --spikein genome, instead of downloading from UCSC",
+    ),
     preset: str = preset_option(),
     profile: Optional[Path] = typer.Option(
         None,
@@ -158,16 +178,25 @@ def build_genomes(
 ) -> None:
     """Download genome and build indices via Snakemake."""
     _configure_logging(verbose)
-    
-    genomes = [g.strip() for g in name.split(",") if g.strip()]
-    if not genomes:
-        logger.error("No valid genome names provided.")
-        raise typer.Exit(code=2)
 
-    if spikein and len(genomes) > 1:
-        logger.error(
-            "Spike-in (--spikein) is only supported with a single genome, not multiple."
+    # Import locally for snappy startup
+    from pydantic import ValidationError
+
+    from seqnado.config.configs import GenomeBuildConfig, UserFriendlyError
+
+    try:
+        build_config = GenomeBuildConfig.model_validate(
+            {
+                "genomes": name,
+                "spikein": spikein,
+                "fasta_path": fasta,
+                "gtf_path": gtf,
+                "spikein_fasta_path": spikein_fasta,
+                "spikein_gtf_path": spikein_gtf,
+            }
         )
+    except (UserFriendlyError, ValidationError) as e:
+        logger.error(str(e))
         raise typer.Exit(code=2)
 
     require_snakemake()
@@ -200,14 +229,8 @@ def build_genomes(
             builder = SnakemakeCommandBuilder(Path(snakefile_path), cores)
             
             # Prepare config values
-            config_values = {
-                "genome": ",".join(genomes),
-                "output_dir": str(outdir),
-                "threads": cores,  # Pass cores to rules as thread count
-            }
-            if spikein:
-                config_values["spikein"] = spikein
-            
+            config_values = build_config.to_snakemake_config(outdir, cores)
+
             # Add all config values in one call
             builder.add_config(**config_values)
             
@@ -223,7 +246,9 @@ def build_genomes(
                 builder.add_pass_through_args(list(ctx.args))
 
             genome_label = (
-                f"{genomes[0]}_{spikein}" if spikein else ",".join(genomes)
+                f"{build_config.genomes[0]}_{spikein}"
+                if spikein
+                else ",".join(build_config.genomes)
             )
             logger.info(f"Building genome(s): {genome_label}")
             logger.info(f"Output directory: {outdir}")

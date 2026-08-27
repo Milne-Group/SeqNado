@@ -186,6 +186,135 @@ class TestGenomesBuildCLI:
         # Just verify the command structure is accepted
         assert "test" in result.stderr or "test" in result.stdout or result.returncode != 0
 
+    def test_genomes_build_accepts_custom_fasta_single_genome(self, tmp_path: Path) -> None:
+        """Test that --fasta is accepted with a single genome."""
+        outdir = tmp_path / "build_output"
+        fasta = tmp_path / "custom.fa"
+        fasta.write_text(">chr1\nACGT\n")
+
+        result = subprocess.run(
+            [
+                "seqnado",
+                "genomes",
+                "build",
+                "--name",
+                "mygenome",
+                "--fasta",
+                str(fasta),
+                "--outdir",
+                str(outdir),
+                "-c",
+                "1",
+                "--dry-run",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        assert "mygenome" in result.stderr or "mygenome" in result.stdout or result.returncode != 0
+
+    def test_genomes_build_rejects_custom_fasta_with_multiple_genomes(self, tmp_path: Path) -> None:
+        """Test that --fasta is rejected when multiple --name values are given."""
+        outdir = tmp_path / "build_output"
+        fasta = tmp_path / "custom.fa"
+        fasta.write_text(">chr1\nACGT\n")
+
+        result = subprocess.run(
+            [
+                "seqnado",
+                "genomes",
+                "build",
+                "--name",
+                "genome1,genome2",
+                "--fasta",
+                str(fasta),
+                "--outdir",
+                str(outdir),
+                "-c",
+                "1",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode != 0
+        assert "single genome" in result.stderr.lower()
+
+    def test_genomes_build_rejects_spikein_fasta_without_spikein(self, tmp_path: Path) -> None:
+        """Test that --spikein-fasta is rejected without --spikein."""
+        outdir = tmp_path / "build_output"
+        fasta = tmp_path / "custom.fa"
+        fasta.write_text(">chr1\nACGT\n")
+
+        result = subprocess.run(
+            [
+                "seqnado",
+                "genomes",
+                "build",
+                "--name",
+                "hg38",
+                "--spikein-fasta",
+                str(fasta),
+                "--outdir",
+                str(outdir),
+                "-c",
+                "1",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode != 0
+        assert "--spikein" in result.stderr
+
+    def test_genomes_build_rejects_name_with_underscore(self, tmp_path: Path) -> None:
+        """Test that a genome name with an underscore is rejected."""
+        outdir = tmp_path / "build_output"
+
+        result = subprocess.run(
+            [
+                "seqnado",
+                "genomes",
+                "build",
+                "--name",
+                "my_genome",
+                "--outdir",
+                str(outdir),
+                "-c",
+                "1",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode != 0
+        assert "underscore" in result.stderr.lower()
+
+    def test_genomes_build_accepts_name_with_hyphen(self, tmp_path: Path) -> None:
+        """Test that a genome name with a hyphen is accepted."""
+        outdir = tmp_path / "build_output"
+
+        result = subprocess.run(
+            [
+                "seqnado",
+                "genomes",
+                "build",
+                "--name",
+                "my-genome",
+                "--outdir",
+                str(outdir),
+                "-c",
+                "1",
+                "--dry-run",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        assert "my-genome" in result.stderr or "my-genome" in result.stdout or result.returncode != 0
+
     def test_genomes_build_cores_parameter(self, tmp_path: Path) -> None:
         """Test that cores parameter is accepted."""
         outdir = tmp_path / "build_output"

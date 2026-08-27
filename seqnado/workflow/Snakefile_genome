@@ -8,6 +8,7 @@ from pathlib import Path
 
 from seqnado.workflow.helpers.common import define_memory_requested, define_time_requested
 from seqnado.utils import remove_unwanted_run_files
+from seqnado.config.configs import GenomeBuildConfig
 
 ################################
 # Hardcoded Config
@@ -17,11 +18,21 @@ THREADS = int(config.get("threads", 8))  # Default to 8 if not specified
 
 ################################
 # Load Configuration
+#
+# GenomeBuildConfig is reused from the CLI side (seqnado/config/configs.py):
+# Snakemake runs the workflow in its own process, so this rebuilds a fresh
+# instance from the plain `config` dict rather than sharing the literal CLI
+# object -- but it's the same validated model/logic on both sides, so the
+# custom-fasta/gtf mapping rules aren't duplicated here.
 ################################
-GENOMES = [g.strip() for g in config["genome"].split(",") if g.strip()]
+BUILD_CONFIG = GenomeBuildConfig.from_snakemake_config(config)
+
+GENOMES = BUILD_CONFIG.genomes
 GENOME = GENOMES[0]  # Primary genome (used by composite rules)
 OUTPUT_DIR = config["output_dir"]
-SPIKEIN = config.get("spikein", None)
+SPIKEIN = BUILD_CONFIG.spikein
+CUSTOM_FASTA = BUILD_CONFIG.custom_fasta  # {genome_name: path} for --fasta/--spikein-fasta
+CUSTOM_GTF = BUILD_CONFIG.custom_gtf  # {genome_name: path} for --gtf/--spikein-gtf
 
 
 ################################
@@ -29,7 +40,7 @@ SPIKEIN = config.get("spikein", None)
 # Prevent download rules from matching composite genome names (e.g., hg38_mm39)
 ################################
 wildcard_constraints:
-    genome="[a-zA-Z0-9]+",
+    genome="[a-zA-Z0-9-]+",
 
 
 ################################

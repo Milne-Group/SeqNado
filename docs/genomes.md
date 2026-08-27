@@ -54,6 +54,48 @@ seqnado genomes build --name hg38 --spikein dm6 --outdir /path/to/genomes --pres
 
 The composite genome is named `hg38_dm6` and spike-in chromosomes are prefixed (e.g. `dm6_chr2L`).
 
+### Custom FASTA
+
+If your genome isn't on UCSC (a custom assembly, a non-model organism, or a
+custom spike-in), point the build at your own FASTA/GTF instead of
+downloading. `--name` still gives the genome an identifier — it's just used to
+name the output directory and register it in `genome_config.json`, not to look
+anything up on UCSC:
+
+```bash
+seqnado genomes build --name mygenome --fasta /path/to/custom.fa --gtf /path/to/custom.gtf --outdir /path/to/genomes --preset ls
+```
+
+`--gtf` is only required if you need the STAR index (e.g. for RNA-seq); the
+blacklist download is always best-effort and falls back to an empty file when
+nothing is found for the name.
+
+The same flags exist for a custom spike-in: `--spikein-fasta` and
+`--spikein-gtf` (require `--spikein`). Primary and spike-in genomes are
+resolved independently, so you can mix a UCSC download with a custom source
+on either side:
+
+```bash
+# UCSC primary genome + custom spike-in FASTA/GTF
+seqnado genomes build --name hg38 --spikein myspikein \
+    --spikein-fasta /path/to/spikein.fa --spikein-gtf /path/to/spikein.gtf \
+    --outdir /path/to/genomes --preset ls
+
+# Custom primary genome + UCSC spike-in
+seqnado genomes build --name mygenome --fasta /path/to/custom.fa --gtf /path/to/custom.gtf \
+    --spikein dm6 \
+    --outdir /path/to/genomes --preset ls
+
+# Both custom
+seqnado genomes build --name mygenome --fasta /path/to/custom.fa --gtf /path/to/custom.gtf \
+    --spikein myspikein --spikein-fasta /path/to/spikein.fa --spikein-gtf /path/to/spikein.gtf \
+    --outdir /path/to/genomes --preset ls
+```
+
+Genome/spike-in names may contain letters, digits, and hyphens, but **not
+underscores** — the composite genome name is built as `{primary}_{spikein}`,
+so an underscore inside either name would make that ambiguous.
+
 ### Dry run
 
 Preview planned jobs without executing them:
@@ -91,6 +133,10 @@ On successful completion, the build automatically registers the genome in `~/.co
 | `--name`, `-n`      | *(required)*    | Genome name(s), comma-separated |
 | `--outdir`, `-o`    | `./genome_build`| Output directory |
 | `--spikein`, `-sp`  | —               | Spike-in genome name for composite builds |
+| `--fasta`           | —               | Custom FASTA for the primary genome, instead of downloading from UCSC (single genome only) |
+| `--gtf`             | —               | Custom GTF for the primary genome, instead of downloading from UCSC (single genome only) |
+| `--spikein-fasta`   | —               | Custom FASTA for the `--spikein` genome, instead of downloading from UCSC |
+| `--spikein-gtf`     | —               | Custom GTF for the `--spikein` genome, instead of downloading from UCSC |
 | `--preset`          | `le`            | Snakemake profile preset (see below) |
 | `--profile`         | —               | Path to a Snakemake profile directory (overrides --preset) |
 | `--cores`, `-c`     | `4`             | Number of cores available to Snakemake; controls max parallelism and threads per rule |
