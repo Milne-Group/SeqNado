@@ -92,7 +92,7 @@ def validate_bowtie2_index_prefix(p: Path) -> None:
     if not matches:
         raise ValueError(
             f"No Bowtie2 index files found for prefix '{p}'. "
-            f"Expected something like '{p}.1.bt2' or '{p}.rev.1.bt2l'."
+            f"Expected files like '{p.name}.1.bt2' or '{p.name}.rev.1.bt2l' in {p.parent}."
         )
 
 

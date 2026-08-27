@@ -37,6 +37,7 @@ from seqnado.config import (
 from seqnado.config.user_input import (
     build_default_assay_config,
     load_genome_configs,
+    GenomeConfigError,
 )
 
 
@@ -210,6 +211,38 @@ class TestLoadGenomeConfigs:
         result = load_genome_configs(Assay.ATAC)
 
         assert result["test_genome"].name == "test_genome"
+
+    def test_load_genome_configs_collects_errors_for_invalid_entries(
+        self, tmp_path, monkeypatch, mock_data_dir
+    ):
+        """An invalid genome entry is skipped from the result but reported via
+        the `errors` list with a concrete field and message, not just dropped."""
+        config_dir = tmp_path / ".config" / "seqnado"
+        config_dir.mkdir(parents=True)
+        config_file = config_dir / "genome_config.json"
+
+        bt2_index = str(mock_data_dir / "bt2_chr21_dm6_chr2L" / "bt2_chr21_dm6_chr2L")
+
+        genome_data = {
+            "good": {"bt2_index": bt2_index},
+            "broken": {"bt2_index": bt2_index, "fasta": "/does/not/exist.fa"},
+        }
+
+        config_file.write_text(json.dumps(genome_data))
+        monkeypatch.setenv("SEQNADO_CONFIG", str(tmp_path))
+
+        errors: list[GenomeConfigError] = []
+        result = load_genome_configs(Assay.ATAC, errors=errors)
+
+        assert "good" in result
+        assert "broken" not in result
+
+        assert len(errors) == 1
+        assert errors[0].genome_name == "broken"
+        assert errors[0].config_path == config_file
+        messages = [msg for _, msg in errors[0].issues]
+        assert any("Genome file not found" in msg for msg in messages)
+        assert any("exist.fa" in msg for msg in messages)
 
 
 class TestBuildDefaultAssayConfig:
