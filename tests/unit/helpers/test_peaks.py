@@ -55,7 +55,7 @@ class TestGetControlFile:
         output_dir = "/test/output"
 
         result = get_control_file(wildcards, FileType.BIGWIG, input_files, output_dir)
-        expected = f"/test/output/bigwigs/deeptools/{DataScalingTechnique.UNSCALED.value}/control1.bigWig"
+        expected = f"/test/output/bigwigs/deeptools/{DataScalingTechnique.PER_SAMPLE.value}/control1.bigWig"
         assert result == expected
 
     def test_get_control_tag_directory(self):

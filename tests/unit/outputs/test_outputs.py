@@ -12,7 +12,7 @@ from seqnado import (
     PeakCallingMethod,
     PileupMethod,
     QuantificationMethod,
-    ScalingMethod,
+    GroupScalingMethod,
     SNPCallingMethod,
     SpikeInMethod,
 )
@@ -267,7 +267,7 @@ class TestBigWigFiles:
             assay=Assay.CHIP,
             names=["sample1", "sample2"],
             pileup_methods=[PileupMethod.DEEPTOOLS],
-            scale_methods=[DataScalingTechnique.UNSCALED],
+            scale_methods=[DataScalingTechnique.PER_SAMPLE],
         )
 
         files = bw.files
@@ -281,7 +281,7 @@ class TestBigWigFiles:
             assay=Assay.RNA,
             names=["sample1"],
             pileup_methods=[PileupMethod.DEEPTOOLS],
-            scale_methods=[DataScalingTechnique.UNSCALED],
+            scale_methods=[DataScalingTechnique.PER_SAMPLE],
         )
 
         files = bw.files
@@ -295,7 +295,7 @@ class TestBigWigFiles:
             assay=Assay.CHIP,
             names=["sample1"],
             pileup_methods=[PileupMethod.DEEPTOOLS, PileupMethod.HOMER],
-            scale_methods=[DataScalingTechnique.UNSCALED],
+            scale_methods=[DataScalingTechnique.PER_SAMPLE],
         )
 
         files = bw.files
@@ -309,37 +309,37 @@ class TestBigWigFiles:
             assay=Assay.CHIP,
             names=["sample1"],
             pileup_methods=[PileupMethod.DEEPTOOLS],
-            scale_methods=[DataScalingTechnique.UNSCALED, DataScalingTechnique.CSAW],
+            scale_methods=[DataScalingTechnique.PER_SAMPLE, DataScalingTechnique.PER_GROUP],
         )
 
         files = bw.files
         assert len(files) == 2  # One per scale method
-        assert any("unscaled" in f for f in files)
-        assert any("csaw" in f for f in files)
+        assert any("scaled-per-sample" in f for f in files)
+        assert any("scaled-per-group" in f for f in files)
 
-    def test_bigwig_files_csaw_scaling_methods(self):
+    def test_bigwig_files_per_group_scaling_methods(self):
         """Test BigWigFiles with multiple bamnado scaling sub-methods for CSAW technique."""
         bw = BigWigFiles(
             assay=Assay.CHIP,
             names=["sample1"],
             pileup_methods=[PileupMethod.DEEPTOOLS],
-            scale_methods=[DataScalingTechnique.CSAW],
-            scaling_methods=[ScalingMethod.CSAW_BACKGROUND, ScalingMethod.TMM],
+            scale_methods=[DataScalingTechnique.PER_GROUP],
+            scaling_methods=[GroupScalingMethod.CSAW_BACKGROUND, GroupScalingMethod.TMM],
         )
 
         files = bw.files
         assert len(files) == 2  # One per bamnado scaling method
-        assert any("csaw_background" in f for f in files)
+        assert any("csaw-background" in f for f in files)
         assert any("/tmm/" in f for f in files)
 
-    def test_bigwig_files_rna_excludes_csaw(self):
+    def test_bigwig_files_rna_excludes_per_group(self):
         """CSAW/bamnado library-scaling is genomics-only and must be skipped for RNA."""
         bw = BigWigFiles(
             assay=Assay.RNA,
             names=["sample1"],
             pileup_methods=[PileupMethod.DEEPTOOLS],
-            scale_methods=[DataScalingTechnique.CSAW],
-            scaling_methods=[ScalingMethod.CSAW_BACKGROUND],
+            scale_methods=[DataScalingTechnique.PER_GROUP],
+            scaling_methods=[GroupScalingMethod.CSAW_BACKGROUND],
         )
 
         assert bw.files == []
@@ -350,13 +350,13 @@ class TestBigWigFiles:
             assay=Assay.CHIP,
             names=["sample1"],
             pileup_methods=[PileupMethod.HOMER],
-            scale_methods=[DataScalingTechnique.CSAW, DataScalingTechnique.UNSCALED],
+            scale_methods=[DataScalingTechnique.PER_GROUP, DataScalingTechnique.PER_SAMPLE],
         )
 
         files = bw.files
         # HOMER with CSAW should be filtered out
-        assert not any("csaw" in f for f in files)
-        assert any("unscaled" in f for f in files)
+        assert not any("scaled-per-group" in f for f in files)
+        assert any("scaled-per-sample" in f for f in files)
 
     def test_bigwig_prefix_property(self):
         """Test prefix property."""
@@ -388,16 +388,16 @@ class TestBigWigFiles:
         )
 
         assert bw._is_compatible(
-            PileupMethod.HOMER, DataScalingTechnique.UNSCALED, assay=Assay.CHIP
+            PileupMethod.HOMER, DataScalingTechnique.PER_SAMPLE, assay=Assay.CHIP
         )
         assert not bw._is_compatible(
-            PileupMethod.HOMER, DataScalingTechnique.CSAW, assay=Assay.CHIP
+            PileupMethod.HOMER, DataScalingTechnique.PER_GROUP, assay=Assay.CHIP
         )
         assert not bw._is_compatible(
             PileupMethod.HOMER, DataScalingTechnique.SPIKEIN, assay=Assay.CHIP
         )
         assert not bw._is_compatible(
-            PileupMethod.DEEPTOOLS, DataScalingTechnique.UNSCALED, assay=Assay.MCC
+            PileupMethod.DEEPTOOLS, DataScalingTechnique.PER_SAMPLE, assay=Assay.MCC
         )
 
 
@@ -839,7 +839,7 @@ class TestGeoSubmissionFiles:
             assay=Assay.CHIP,
             names=["sample1"],
             seqnado_files=[
-                "seqnado_output/bigwigs/deeptools/unscaled/sample1.bigWig",
+                "seqnado_output/bigwigs/deeptools/scaled-per-sample/sample1.bigWig",
                 "seqnado_output/peaks/macs2/sample1.bed",
             ],
         )
@@ -847,7 +847,7 @@ class TestGeoSubmissionFiles:
         files = geo.processed_data_files
         assert len(files) == 2
         # Check that files are flattened and renamed
-        assert any("deeptools_unscaled" in f for f in files)
+        assert any("deeptools_scaled-per-sample" in f for f in files)
         assert any("macs2" in f for f in files)
 
     def test_geo_submission_filters_extensions(self):
@@ -856,7 +856,7 @@ class TestGeoSubmissionFiles:
             assay=Assay.CHIP,
             names=["sample1"],
             seqnado_files=[
-                "seqnado_output/bigwigs/deeptools/unscaled/file.bigWig",
+                "seqnado_output/bigwigs/deeptools/scaled-per-sample/file.bigWig",
                 "seqnado_output/file.txt",  # Not in allowed extensions
                 "seqnado_output/file.bed",
             ],
@@ -949,33 +949,33 @@ class TestSeqnadoOutputFilesCore:
         from seqnado.outputs.core import SeqnadoOutputFiles
 
         files = [
-            "output/bigwigs/deeptools/unscaled/sample1.bigWig",
+            "output/bigwigs/deeptools/scaled-per-sample/sample1.bigWig",
             "output/bigwigs/deeptools/cpm/sample1.bigWig",
-            "output/bigwigs/homer/unscaled/sample2.bigWig",
+            "output/bigwigs/homer/scaled-per-sample/sample2.bigWig",
         ]
         output = SeqnadoOutputFiles(files=files, sample_names=["sample1", "sample2"])
 
         result = output.select_bigwig_subtype(
-            method=PileupMethod.DEEPTOOLS, scale=DataScalingTechnique.UNSCALED
+            method=PileupMethod.DEEPTOOLS, scale=DataScalingTechnique.PER_SAMPLE
         )
         assert len(result) == 1
-        assert "deeptools" in result[0] and "unscaled" in result[0]
+        assert "deeptools" in result[0] and "scaled-per-sample" in result[0]
 
     def test_select_bigwig_subtype_with_assay(self):
         """Test select_bigwig_subtype method with assay filter."""
         from seqnado.outputs.core import SeqnadoOutputFiles
 
         files = [
-            "output/bigwigs/deeptools/unscaled/atac_sample1.bigWig",
-            "output/bigwigs/deeptools/unscaled/rna_sample1.bigWig",
-            "output/bigwigs/deeptools/unscaled/chip_sample1.bigWig",
+            "output/bigwigs/deeptools/scaled-per-sample/atac_sample1.bigWig",
+            "output/bigwigs/deeptools/scaled-per-sample/rna_sample1.bigWig",
+            "output/bigwigs/deeptools/scaled-per-sample/chip_sample1.bigWig",
         ]
         output = SeqnadoOutputFiles(files=files, sample_names=["atac_sample1"])
 
         # Filter for ATAC
         result = output.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
-            scale=DataScalingTechnique.UNSCALED,
+            scale=DataScalingTechnique.PER_SAMPLE,
             assay=Assay.ATAC,
         )
         assert len(result) == 1
@@ -984,7 +984,7 @@ class TestSeqnadoOutputFilesCore:
         # Filter for RNA
         result = output.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
-            scale=DataScalingTechnique.UNSCALED,
+            scale=DataScalingTechnique.PER_SAMPLE,
             assay=Assay.RNA,
         )
         assert len(result) == 1
@@ -1552,9 +1552,9 @@ class TestSeqnadoOutputFilesProperties:
         """Test track_plots property filters correctly."""
         output = SeqnadoOutputFiles(
             files=[
-                "seqnado_output/track_plots/deeptools/unscaled/region.pdf",
+                "seqnado_output/track_plots/deeptools/scaled-per-sample/region.pdf",
                 "seqnado_output/peaks/s1.bed",
-                "seqnado_output/track_plots/homer/unscaled/region.pdf",
+                "seqnado_output/track_plots/homer/scaled-per-sample/region.pdf",
             ],
             sample_names=["s1"],
         )
@@ -1580,19 +1580,19 @@ class TestSeqnadoOutputFilesProperties:
         """Test select_bigwig_subtype filtering."""
         output = SeqnadoOutputFiles(
             files=[
-                "seqnado_output/bigwigs/deeptools/unscaled/s1.bigWig",
+                "seqnado_output/bigwigs/deeptools/scaled-per-sample/s1.bigWig",
                 "seqnado_output/bigwigs/deeptools/cpm/s1.bigWig",
-                "seqnado_output/bigwigs/homer/unscaled/s1.bigWig",
+                "seqnado_output/bigwigs/homer/scaled-per-sample/s1.bigWig",
             ],
             sample_names=["s1"],
         )
         # Test filtering by method and scale
-        deep_unscaled = output.select_bigwig_subtype(
+        deep_per_sample = output.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
-            scale=DataScalingTechnique.UNSCALED
+            scale=DataScalingTechnique.PER_SAMPLE
         )
-        assert len(deep_unscaled) == 1
-        assert "deeptools/unscaled" in deep_unscaled[0]
+        assert len(deep_per_sample) == 1
+        assert "deeptools/scaled-per-sample" in deep_per_sample[0]
 
 
 class TestSeqnadoOutputFactoryCore:
@@ -1609,7 +1609,7 @@ class TestSeqnadoOutputFactoryCore:
         assay_cfg = ATACAssayConfig(
             bigwigs=BigwigConfig(
                 pileup_method=[PileupMethod.DEEPTOOLS],
-                scale=[DataScalingTechnique.UNSCALED],
+                scale=[DataScalingTechnique.PER_SAMPLE],
             )
         )
         cfg = SeqnadoConfig(
@@ -1965,7 +1965,7 @@ class TestConditionBigwigFiles:
 
         files_list = out.files
 
-        # Should contain unscaled aggregated and subtraction files
+        # Should contain per-sample-scaled aggregated and subtraction files
         assert any("bamnado/aggregated/ctrl.bigWig" in f for f in files_list)
         assert any("bamnado/subtraction/ctrl_vs_treat.bigWig" in f for f in files_list)
 
@@ -2034,15 +2034,15 @@ class TestConditionBigwigFiles:
 class TestScalingGroupSizeValidation:
     """Pre-run validation that scaling groups have enough samples for the configured scaling method."""
 
-    def _cfg(self, tmp_path: Path, scaling_methods=None) -> SeqnadoConfig:
+    def _cfg(self, tmp_path: Path, group_scaling_methods=None) -> SeqnadoConfig:
         star = tmp_path / "star"
         star.mkdir()
         genome = GenomeConfig(name="hg38", index=STARIndex(prefix=star))
         assay_cfg = ChIPAssayConfig(
             bigwigs=BigwigConfig(
                 pileup_method=[PileupMethod.DEEPTOOLS],
-                scale_methods=["csaw"],
-                scaling_methods=scaling_methods,
+                scale_methods=["scaled-per-group"],
+                group_scaling_methods=group_scaling_methods,
             )
         )
         return SeqnadoConfig(
@@ -2066,12 +2066,12 @@ class TestScalingGroupSizeValidation:
             }
         )
 
-        with pytest.raises(UserFriendlyError, match="csaw_background.*at least 2"):
+        with pytest.raises(UserFriendlyError, match="csaw-background.*at least 2"):
             SeqnadoOutputBuilder(Assay.CHIP, samples, cfg, sample_groupings=groups)
 
     def test_single_sample_scaling_group_ok_for_cpm(self, tmp_path):
         """CPM is per-sample, so a single-sample group is fine."""
-        cfg = self._cfg(tmp_path, scaling_methods=["cpm"])
+        cfg = self._cfg(tmp_path, group_scaling_methods=["cpm"])
         samples = _small_collection(tmp_path)
 
         groups = SampleGroupings(
@@ -2126,20 +2126,20 @@ def _two_sample_collection(tmp: Path) -> FastqCollection:
     )
 
 
-class TestBamnadoScalingMethodBuilderIntegration:
-    """End-to-end wiring: each bamnado ScalingMethod produces the right bigwig
+class TestBamnadoGroupScalingMethodBuilderIntegration:
+    """End-to-end wiring: each bamnado GroupScalingMethod produces the right bigwig
     paths through the full SeqnadoOutputBuilder, not just the BigWigFiles class
     tested in isolation elsewhere."""
 
-    def _cfg(self, tmp_path: Path, scaling_methods: list[str]) -> SeqnadoConfig:
+    def _cfg(self, tmp_path: Path, group_scaling_methods: list[str]) -> SeqnadoConfig:
         star = tmp_path / "star"
         star.mkdir()
         genome = GenomeConfig(name="hg38", index=STARIndex(prefix=star))
         assay_cfg = ChIPAssayConfig(
             bigwigs=BigwigConfig(
                 pileup_method=[PileupMethod.DEEPTOOLS],
-                scale_methods=["csaw"],
-                scaling_methods=scaling_methods,
+                scale_methods=["scaled-per-group"],
+                group_scaling_methods=group_scaling_methods,
             )
         )
         return SeqnadoConfig(
@@ -2153,18 +2153,18 @@ class TestBamnadoScalingMethodBuilderIntegration:
     @pytest.mark.parametrize(
         "scaling_method",
         [
-            ScalingMethod.CSAW_BACKGROUND,
-            ScalingMethod.TMM,
-            ScalingMethod.MEDIAN_OF_RATIOS,
-            ScalingMethod.CPM,
+            GroupScalingMethod.CSAW_BACKGROUND,
+            GroupScalingMethod.TMM,
+            GroupScalingMethod.MEDIAN_OF_RATIOS,
+            GroupScalingMethod.CPM,
         ],
     )
     def test_scaling_method_produces_expected_bigwig_path(self, tmp_path, scaling_method):
-        cfg = self._cfg(tmp_path, scaling_methods=[scaling_method.value])
+        cfg = self._cfg(tmp_path, group_scaling_methods=[scaling_method.value])
         samples = _two_sample_collection(tmp_path)
 
         # A 2-sample group satisfies every method's minimum, including the
-        # multi-sample-only ones (csaw_background/tmm/median_of_ratios).
+        # multi-sample-only ones (csaw-background/tmm/median-of-ratios).
         groups = SampleGroupings(
             groupings={
                 "scaling": SampleGroups(
@@ -2179,7 +2179,7 @@ class TestBamnadoScalingMethodBuilderIntegration:
         builder.add_individual_bigwig_files()
         files = builder.build().files
 
-        expected = f"deeptools/csaw/{scaling_method.value}/s1.bigWig"
+        expected = f"deeptools/scaled-per-group/{scaling_method.value}/s1.bigWig"
         assert any(expected in f for f in files), (
             f"Expected a path containing '{expected}' for scaling method "
             f"{scaling_method.value!r}, got: {files}"
@@ -2189,7 +2189,7 @@ class TestBamnadoScalingMethodBuilderIntegration:
         """Requesting several bamnado methods at once produces one bigwig set per method."""
         cfg = self._cfg(
             tmp_path,
-            scaling_methods=["csaw_background", "tmm", "median_of_ratios", "cpm"],
+            group_scaling_methods=["csaw-background", "tmm", "median-of-ratios", "cpm"],
         )
         samples = _two_sample_collection(tmp_path)
 
@@ -2207,7 +2207,7 @@ class TestBamnadoScalingMethodBuilderIntegration:
         builder.add_individual_bigwig_files()
         files = builder.build().files
 
-        for method in ("csaw_background", "tmm", "median_of_ratios", "cpm"):
-            assert any(f"csaw/{method}/" in f for f in files), (
+        for method in ("csaw-background", "tmm", "median-of-ratios", "cpm"):
+            assert any(f"scaled-per-group/{method}/" in f for f in files), (
                 f"Missing bigwig output for scaling method '{method}': {files}"
             )

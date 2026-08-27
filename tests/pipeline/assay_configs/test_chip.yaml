@@ -17,15 +17,7 @@ assay_config:
       - homer
     binsize: 100
     scale_methods:
-      - unscaled
-      - csaw
-    # The pipeline test fixture fabricates a second (subsampled) MLL2 "replicate"
-    # from the real MLL reads so the "default" scaling group has 2 members,
-    # letting all bamnado scaling methods run for real (see conftest.py::design).
-    scaling_methods:
-      - csaw_background
-      - tmm
-      - median_of_ratios
-      - cpm
+      - scaled-per-sample
+      - scaled-per-group
     perform_comparisons: True
   create_dataset: True 

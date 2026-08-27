@@ -79,7 +79,7 @@ def subsample_fastq_pair(
     Used to fabricate a second, genuinely-different-depth "replicate" from a
     single-sample test fixture (e.g. the chip-rx dataset only ships one
     antibody), so scaling methods that need >=2 samples per group
-    (csaw_background/tmm/median_of_ratios) can be exercised in pipeline tests
+    (csaw-background/tmm/median-of-ratios) can be exercised in pipeline tests
     without new reference data. Pure stdlib so it needs nothing beyond Python
     on the test host (no seqtk/seqkit dependency).
     """

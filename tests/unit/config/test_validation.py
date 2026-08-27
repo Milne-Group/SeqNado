@@ -221,18 +221,18 @@ class TestBigwigConfig:
         assert PileupMethod.HOMER in config.pileup_method
         assert config.binsize == 50
 
-    def test_bigwig_config_with_scaling_methods(self):
-        """Test bigwig config accepts bamnado scaling sub-methods for the CSAW technique."""
+    def test_bigwig_config_with_group_scaling_methods(self):
+        """Test bigwig config accepts bamnado scaling sub-methods for the per-group technique."""
         config = BigwigConfig(
-            scale_methods=["csaw"],
-            scaling_methods=["csaw_background", "tmm"],
+            scale_methods=["scaled-per-group"],
+            group_scaling_methods=["csaw-background", "tmm"],
         )
-        assert config.scaling_methods == ["csaw_background", "tmm"]
+        assert config.group_scaling_methods == ["csaw-background", "tmm"]
 
-    def test_bigwig_config_scaling_methods_default_none(self):
-        """Test bigwig config scaling_methods defaults to None (bamnado picks csaw_background)."""
+    def test_bigwig_config_group_scaling_methods_default_none(self):
+        """Test bigwig config group_scaling_methods defaults to None (bamnado picks csaw-background)."""
         config = BigwigConfig()
-        assert config.scaling_methods is None
+        assert config.group_scaling_methods is None
 
 
 class TestPlottingConfig:
