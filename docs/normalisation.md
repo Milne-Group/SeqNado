@@ -6,7 +6,7 @@ SeqNado supports several normalisation strategies for generating coverage bigwig
 
 **ChIP-seq with spike-in?** Use `orlando` for simplicity or `with_input` if you have paired input controls.  
 **RNA-seq?** Use `deseq2` or `edgeR` — they correct for compositional bias.  
-**No spike-in and expect similar global levels across conditions?** Use `csaw`.  
+**No spike-in and expect similar global levels across conditions?** Use `scaled-per-group`.  
 Need help choosing? See [Choosing a Method](#choosing-a-method) below.
 
 ## Summary Table
@@ -167,29 +167,29 @@ $$
 
 ---
 
-## CSAW Library-Size Scaling
+## Per-Group Library-Size Scaling
 
 **Reference:** Lun ATL, Smyth GK. *csaw: a Bioconductor package for differential binding analysis of ChIP-seq data using sliding windows.* Nucleic Acids Research. 2016;44(5):e45. doi:[10.1093/nar/gkv1191](https://doi.org/10.1093/nar/gkv1191)
 
-**Designed for:** ChIP-seq, CUT&TAG, CUT&RUN, ATAC-seq — **genomics assays only**. Not offered for RNA-seq: a handful of highly-expressed genes dominate RNA-seq read counts (compositional bias), which library-size scaling does not correct for. SeqNado filters `csaw` out of the config for RNA-seq automatically (with a warning) and defines no CSAW-technique bigwig rules for RNA. Use spike-in normalisation (`orlando`, `deseq2`, `edger`) for RNA-seq instead.
+**Designed for:** ChIP-seq, CUT&TAG, CUT&RUN, ATAC-seq — **genomics assays only**. Not offered for RNA-seq: a handful of highly-expressed genes dominate RNA-seq read counts (compositional bias), which library-size scaling does not correct for. SeqNado filters `scaled-per-group` out of the config for RNA-seq automatically (with a warning) and defines no per-group-technique bigwig rules for RNA. Use spike-in normalisation (`orlando`, `deseq2`, `edger`) for RNA-seq instead.
 
 **Concept:** Equalise read depth across samples within a scaling group by comparing read counts in genomic bins. This normalises for library size differences without relying on exogenous spike-in material.
 
-**Engine:** Scale factors are computed by [bamnado](https://github.com/alsmith151/BamNado)'s `bam-normalize` subcommand — bamnado is a **required** dependency whenever `csaw` is in `scale_methods` (configure it via `third_party_tools.bamnado`, or run `seqnado tools install bamnado`). There is no hand-rolled fallback.
+**Engine:** Scale factors are computed by [bamnado](https://github.com/alsmith151/BamNado)'s `bam-normalize` subcommand — bamnado is a **required** dependency whenever `scaled-per-group` is in `scale_methods` (configure it via `third_party_tools.bamnado`, or run `seqnado tools install bamnado`). There is no hand-rolled fallback.
 
 !!! note "In plain terms"
     Sometimes you don't have a spike-in, but you still need to make samples comparable. This technique counts reads in many windows tiled across the genome and asks: "how many reads did each sample produce, once obviously-enriched regions are set aside?" Samples that were sequenced more deeply get scaled down and shallower ones get scaled up, so that all samples appear to have the same total read count. This corrects for sequencing depth differences but **not** for genuine biological differences in the amount of immunoprecipitated chromatin — it is most appropriate when you expect the global level of the mark to be similar across conditions.
 
-**Bamnado scaling methods:** the `csaw` technique is parametrised by a bamnado `bam-normalize` method, configurable per-project via `bigwigs.scaling_methods` (defaults to `csaw_background`, reproducing the historical SeqNado behaviour):
+**Bamnado scaling methods:** the `scaled-per-group` technique is parametrised by a bamnado `bam-normalize` method, configurable per-project via `bigwigs.group_scaling_methods` (defaults to `csaw_background`, reproducing the historical SeqNado behaviour):
 
-| `scaling_methods` value | Algorithm | Notes |
+| `group_scaling_methods` value | Algorithm | Notes |
 |---|---|---|
 | `csaw_background` (default) | TMM restricted to large background bins, excluding the top 5% most-enriched bins | Closest match to the `csaw::normFactors` reference method above |
 | `tmm` | Standard TMM (edgeR `calcNormFactors(method="TMM")`-style) over all bins | No enriched-bin exclusion |
 | `median_of_ratios` | DESeq2-style median-of-ratios estimator, computed on genomic bins rather than genes | |
 | `cpm` | Naive depth-only baseline (counts per million) | For comparison against the other methods |
 
-Multiple methods can be selected at once (e.g. `scaling_methods: [csaw_background, tmm]`) — each produces its own set of bigwigs under `bigwigs/{pileup_method}/csaw/{scaling_method}/`.
+Multiple methods can be selected at once (e.g. `group_scaling_methods: [csaw_background, tmm]`) — each produces its own set of bigwigs under `bigwigs/{pileup_method}/scaled-per-group/{scaling_method}/`.
 
 **Per-sample formula:** each configured `scaling_method` computes a per-sample scale factor from binned read counts across the samples in a scaling group (via `bamnado bam-normalize --bams ... --method {scaling_method}`); see the algorithm notes above for exactly how each method derives its factor from the bin count matrix.
 
