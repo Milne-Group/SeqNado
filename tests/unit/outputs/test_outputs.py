@@ -2185,6 +2185,85 @@ class TestBamnadoGroupScalingMethodBuilderIntegration:
             f"{scaling_method.value!r}, got: {files}"
         )
 
+    def _plot_cfg(self, tmp_path: Path, group_scaling_methods: list[str]) -> SeqnadoConfig:
+        """Same as _cfg but with heatmaps and track plots switched on."""
+        from seqnado.config.configs import PlottingConfig
+
+        bed_file = tmp_path / "coords.bed"
+        bed_file.write_text("chr1\t1000\t2000\tregion1\n")
+
+        star = tmp_path / "star"
+        star.mkdir(exist_ok=True)
+        genome = GenomeConfig(name="hg38", index=STARIndex(prefix=star))
+        assay_cfg = ChIPAssayConfig(
+            bigwigs=BigwigConfig(
+                pileup_method=[PileupMethod.DEEPTOOLS],
+                scale_methods=["scaled-per-group"],
+                group_scaling_methods=group_scaling_methods,
+            ),
+            create_heatmaps=True,
+            plotting=PlottingConfig(coordinates=str(bed_file), file_format="pdf"),
+        )
+        return SeqnadoConfig(
+            assay=Assay.CHIP,
+            project=dict(name="p"),
+            genome=genome,
+            metadata=tmp_path / "m.csv",
+            assay_config=assay_cfg,
+        )
+
+    def _builder_with_plots(self, tmp_path, group_scaling_methods):
+        cfg = self._plot_cfg(tmp_path, group_scaling_methods)
+        samples = _two_sample_collection(tmp_path)
+        groups = SampleGroupings(
+            groupings={
+                "scaling": SampleGroups(
+                    groups=[SampleGroup(name="default", samples=["s1", "s2"])]
+                )
+            }
+        )
+        builder = SeqnadoOutputBuilder(
+            Assay.CHIP, samples, cfg, sample_groupings=groups
+        )
+        builder.add_heatmap_files()
+        builder.add_plot_files()
+        return builder
+
+    def test_heatmaps_and_plots_cover_one_scaling_method_only(self, tmp_path):
+        """Heatmaps/track plots are produced for a single group scaling method.
+
+        The workflow rules (rules/visualise/heatmap.smk, browser.smk) only define
+        one set of heatmap/track-plot rules for the per-group technique, keyed on
+        OUTPUT.plot_scaling_method. If the expected-file list covered every
+        configured method, Snakemake would be asked for files no rule produces.
+        """
+        methods = ["csaw-background", "tmm", "median-of-ratios", "cpm"]
+        builder = self._builder_with_plots(tmp_path, methods)
+        output = builder.build()
+
+        assert output.plot_scaling_method is GroupScalingMethod.CSAW_BACKGROUND
+
+        for kind in ("heatmap/", "track_plots/"):
+            present = {
+                m for m in methods
+                if any(f"scaled-per-group/{m}/" in f and kind in f for f in output.files)
+            }
+            assert present == {"csaw-background"}, (
+                f"{kind} should cover only the representative scaling method, "
+                f"got {sorted(present)}"
+            )
+
+    def test_plot_scaling_method_follows_config_order(self, tmp_path):
+        """The representative method is the first configured one, not a hardcoded
+        csaw-background — configuring cpm alone must not ask for csaw-background
+        heatmaps whose backing bigwigs are never generated."""
+        builder = self._builder_with_plots(tmp_path, ["cpm"])
+        output = builder.build()
+
+        assert output.plot_scaling_method is GroupScalingMethod.CPM
+        assert any("scaled-per-group/cpm/" in f and "heatmap/" in f for f in output.files)
+        assert not any("csaw-background" in f for f in output.files)
+
     def test_multiple_scaling_methods_all_present(self, tmp_path):
         """Requesting several bamnado methods at once produces one bigwig set per method."""
         cfg = self._cfg(

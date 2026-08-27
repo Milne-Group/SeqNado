@@ -75,6 +75,9 @@ class SeqnadoOutputFiles(BaseModel):
     config: Any = None
     design_dataframe: Any = None  # pd.DataFrame - use Any to avoid circular imports
     output_dir: str = "seqnado_output"
+    # The single group scaling method that heatmaps and track plots are produced
+    # for; the workflow rules read this so they stay in sync with the file list.
+    plot_scaling_method: GroupScalingMethod = GroupScalingMethod.CSAW_BACKGROUND
 
     class Config:
         arbitrary_types_allowed = True
@@ -511,6 +514,14 @@ class SeqnadoOutputBuilder:
             ]
         else:
             self.scaling_methods = [GroupScalingMethod.CSAW_BACKGROUND]
+
+        # Heatmaps and track plots are only produced for a single group scaling
+        # method, not the whole configured matrix: the plots exist to eyeball the
+        # signal, and one per method multiplies the plot count without adding
+        # much. The workflow rules pick the same representative method (see
+        # rules/visualise/heatmap.smk and browser.smk), so this must stay in sync
+        # with them or the DAG will request files no rule produces.
+        self.plot_scaling_method = self.scaling_methods[0]
 
         if DataScalingTechnique.PER_GROUP in self.scale_methods:
             self._validate_scaling_group_sizes()
@@ -969,7 +980,7 @@ class SeqnadoOutputBuilder:
                     assay=self.assay,
                     scale_methods=scales,
                     spikein_methods=supported_spikein_methods,
-                    scaling_methods=self.scaling_methods,
+                    scaling_methods=[self.plot_scaling_method],
                     output_dir=self.output_dir,
                     is_merged=is_merged,
                     method=method,
@@ -1073,8 +1084,8 @@ class SeqnadoOutputBuilder:
                             )
                             self.file_collections.append(plot_files)
                     elif scale == DataScalingTechnique.PER_GROUP and self.scaling_methods:
-                        # Create one PlotFiles per bamnado scaling method for separate output dirs
-                        for scm in self.scaling_methods:
+                        # Only the representative scaling method gets track plots
+                        for scm in [self.plot_scaling_method]:
                             plot_files = PlotFiles(
                                 coordinates=self.config.assay_config.plotting.coordinates,
                                 file_format=self.config.assay_config.plotting.file_format,
@@ -1246,6 +1257,7 @@ class SeqnadoOutputBuilder:
             config=self.config,
             design_dataframe=design_df,
             output_dir=self.output_dir,
+            plot_scaling_method=self.plot_scaling_method,
         )
 
 

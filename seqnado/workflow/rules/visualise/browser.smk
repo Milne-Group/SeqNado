@@ -1,10 +1,11 @@
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
 from seqnado import Assay, DataScalingTechnique, PileupMethod, GroupScalingMethod, SpikeInMethod
 
-# Browser tracks for the per-group technique are generated for the default bamnado
-# scaling method only (csaw-background) — additional configured group_scaling_methods
-# (tmm/median-of-ratios/cpm) still produce bigwigs, just not dedicated browser tracks.
-_DEFAULT_SCALING_METHOD = GroupScalingMethod.CSAW_BACKGROUND.value
+# Browser tracks for the per-group technique are generated for one bamnado scaling
+# method only — additional configured group_scaling_methods still produce bigwigs,
+# just not dedicated browser tracks. OUTPUT picks which one, so the rules and the
+# expected-file list cannot drift apart.
+_DEFAULT_SCALING_METHOD = OUTPUT.plot_scaling_method.value
 
 _spikein_cfg = CONFIG.assay_config.spikein
 _spikein_methods = _spikein_cfg.method if _spikein_cfg else []

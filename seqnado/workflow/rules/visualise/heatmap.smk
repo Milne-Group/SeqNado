@@ -6,10 +6,11 @@ _spikein_methods = _spikein_cfg.method if _spikein_cfg else []
 _has_spikein_orlando = SpikeInMethod.ORLANDO in _spikein_methods
 _has_spikein_withinput = SpikeInMethod.WITH_INPUT in _spikein_methods
 
-# Heatmaps for the per-group technique are generated for the default bamnado scaling
-# method only (csaw-background) — additional configured group_scaling_methods
-# (tmm/median-of-ratios/cpm) still produce bigwigs, just not dedicated heatmaps.
-_DEFAULT_SCALING_METHOD = GroupScalingMethod.CSAW_BACKGROUND.value
+# Heatmaps for the per-group technique are generated for one bamnado scaling
+# method only — additional configured group_scaling_methods still produce
+# bigwigs, just not dedicated heatmaps. OUTPUT picks which one, so the rules and
+# the expected-file list cannot drift apart.
+_DEFAULT_SCALING_METHOD = OUTPUT.plot_scaling_method.value
 
 # Heatmap and metaplot generation from bigWig files.
 # One set of rules per (pileup method) × (scale) × (merged) combination.

@@ -199,7 +199,7 @@ $$
 | `median-of-ratios` | DESeq2-style median-of-ratios estimator, computed on genomic bins rather than genes | |
 | `cpm` | Naive depth-only baseline (counts per million) | For comparison against the other methods |
 
-Multiple methods can be selected at once (e.g. `group_scaling_methods: [csaw-background, tmm]`) — each produces its own set of bigwigs under `bigwigs/{pileup_method}/scaled-per-group/{scaling_method}/`.
+Multiple methods can be selected at once (e.g. `group_scaling_methods: [csaw-background, tmm]`) — each produces its own set of bigwigs under `bigwigs/{pileup_method}/scaled-per-group/{scaling_method}/`. Heatmaps and track plots are generated for the **first** listed method only, so put the method you mainly want to look at first.
 
 **Per-sample formula:** each configured `scaling_method` computes a per-sample scale factor from binned read counts across the samples in a scaling group (via `bamnado bam-normalize --bams ... --method {scaling_method}`); see the algorithm notes above for exactly how each method derives its factor from the bin count matrix.
 
