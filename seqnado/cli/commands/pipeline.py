@@ -13,7 +13,6 @@ from loguru import logger
 
 from seqnado.cli.app_instance import app
 from seqnado.cli.autocomplete import assay_autocomplete
-from seqnado.cli.commands.benchmark import run_benchmark_report
 from seqnado.cli.snakemake_builder import SnakemakeCommandBuilder
 from seqnado.cli.utils import (
     _configure_logging,
@@ -26,7 +25,6 @@ from seqnado.cli.utils import (
     verbose_option,
     preset_option,
 )
-from seqnado.outputs.multiomics import find_assay_config_paths
 from seqnado.utils import (
     resolve_profile_path,
     extract_cores_from_options,
@@ -44,6 +42,7 @@ def _ensure_default_snakemake_flag(options: List[str], flag: str) -> List[str]:
 def _run_benchmark_after_success(verbose: bool) -> None:
     """Best-effort benchmark/report generation after a successful pipeline run."""
     try:
+        from seqnado.cli.commands.benchmark import run_benchmark_report
         run_benchmark_report(benchmark_dir=Path(".benchmark"), verbose=verbose)
     except typer.Exit as exc:
         if exc.exit_code not in (0, None):
@@ -246,6 +245,7 @@ def pipeline(
     require_snakemake()
 
     # Detect multiomics configs early
+    from seqnado.outputs.multiomics import find_assay_config_paths
     config_files = find_assay_config_paths(Path("."))
     use_multiomics = len(config_files) > 1 and not config_file and not assay
 

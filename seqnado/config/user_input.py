@@ -451,7 +451,7 @@ def get_ucsc_hub_config() -> Optional[UCSCHubConfig]:
     color_by = [color_by_input] if isinstance(color_by_input, str) else color_by_input
 
     return UCSCHubConfig(
-        directory=directory, email=email, color_by=color_by, genome_name=genome_name
+        directory=directory, email=email, color_by=color_by, genome=genome_name
     )
 
 
@@ -747,7 +747,6 @@ def build_default_assay_config(
         directory="seqnado_output/hub/",
         genome=genome_config.name,
         email="user@example.com",
-        genome_name=genome_config.name,
     )
     create_heatmaps = False
     geo_files = False
@@ -966,6 +965,29 @@ def build_default_workflow_config(assay: Assay) -> SeqnadoConfig:
         sys.exit(1)
 
 
+def _render_config_dict(
+    template: Path,
+    config_dict: Dict,
+    outfile: Path,
+    seqnado_version: str,
+) -> None:
+    """Render an already-built config dict to a file via the Jinja template."""
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(template.parent))
+    tpl = env.get_template(template.name)
+
+    config_dict = dict(config_dict)
+    config_dict["version"] = seqnado_version
+
+    try:
+        rendered_content = tpl.render(**config_dict)
+    except jinja2.TemplateError as e:
+        logger.error(f"Template rendering error: {e}")
+        sys.exit(1)
+
+    with open(outfile, "w") as f:
+        f.write(rendered_content)
+
+
 def render_config(
     template: Path,
     workflow_config: SeqnadoConfig,
@@ -975,22 +997,183 @@ def render_config(
 ) -> None:
     """Render the workflow configuration to a file."""
 
-    env = jinja2.Environment(loader=jinja2.FileSystemLoader(template.parent))
-    template = env.get_template(template.name)
-
     # Convert the Pydantic model to a dictionary for rendering
     # Always include fields with None values to ensure required fields like ucsc_hub are present
     config_dict = workflow_config.model_dump(mode="json", exclude_none=False)
-    config_dict["version"] = seqnado_version
+    _render_config_dict(template, config_dict, outfile, seqnado_version)
 
-    try:
-        rendered_content = template.render(**config_dict)
-    except jinja2.TemplateError as e:
-        logger.error(f"Template rendering error: {e}")
-        sys.exit(1)
 
-    with open(outfile, "w") as f:
-        f.write(rendered_content)
+# Optional assay-config sections that are `None` until the user opts in, and the
+# getter that prompts for each one (mirrors the gating in `build_assay_config`).
+_FILLABLE_SECTION_GETTERS: Dict[str, tuple] = {
+    "bigwigs": (get_bigwig_config, True),
+    "plotting": (get_plotting_config, False),
+    "ucsc_hub": (get_ucsc_hub_config, False),
+    "spikein": (get_spikein_config, True),
+    "peak_calling": (get_peak_calling_config, True),
+    "snp_calling": (get_snp_calling_config, False),
+    "methylation": (get_methylation_config, False),
+    "rna_quantification": (get_rna_quantification_config, False),
+}
+
+# The corresponding model to build a hand-editable scaffold from in non-interactive mode.
+_FILLABLE_SECTION_MODELS: Dict[str, type] = {
+    "bigwigs": BigwigConfig,
+    "plotting": PlottingConfig,
+    "ucsc_hub": UCSCHubConfig,
+    "spikein": SpikeInConfig,
+    "peak_calling": PeakCallingConfig,
+    "snp_calling": SNPCallingConfig,
+    "methylation": MethylationConfig,
+    "rna_quantification": RNAQuantificationConfig,
+}
+
+# Fields on CommonComputedFieldsMixin/PeakCallingMixin/etc. that are derived from
+# "is this section None or not" and must be cleared before revalidating, otherwise
+# the before-validator sees a stale non-None value and skips recomputing it.
+_DERIVED_PRESENCE_FLAGS: Dict[str, str] = {
+    "bigwigs": "create_bigwigs",
+    "plotting": "plot_with_plotnado",
+    "ucsc_hub": "create_ucsc_hub",
+    "spikein": "has_spikein",
+    "peak_calling": "call_peaks",
+    "snp_calling": "call_snps",
+    "methylation": "call_methylation",
+}
+
+# Some sections are only offered for a subset of assays in build_assay_config()'s
+# match-case, even though the field itself isn't type-locked to None for the
+# others (e.g. SpikeInConfig is a plain field on BaseAssayConfig, but only
+# CHIP/CAT/RNA ever call get_spikein_config()). Fields not listed here are
+# already exactly gated by field presence (e.g. peak_calling only exists on
+# assay classes that support it, and get_peak_calling_config() itself no-ops
+# for unsupported assays before prompting).
+_SECTION_SUPPORTED_ASSAYS: Dict[str, set] = {
+    "bigwigs": {Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.RNA, Assay.MCC},
+    "plotting": {Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.RNA, Assay.MCC, Assay.METH},
+    "ucsc_hub": {Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.RNA, Assay.MCC},
+    "spikein": {Assay.CHIP, Assay.CAT, Assay.RNA},
+}
+
+
+def _placeholder_for_annotation(annotation):
+    """A structurally-valid but obviously-fake value for a required field with no default."""
+    import enum
+    from typing import get_args, get_origin
+
+    origin = get_origin(annotation)
+    if origin is list:
+        args = get_args(annotation)
+        inner = args[0] if args else None
+        return [_placeholder_for_annotation(inner)] if inner is not None else []
+    if isinstance(annotation, type) and issubclass(annotation, enum.Enum):
+        return next(iter(annotation))
+    if annotation is int:
+        return 0
+    if annotation is bool:
+        return False
+    return "CHANGE_ME"
+
+
+def _scaffold_instance(model_cls):
+    """Build a fully-keyed instance of model_cls for hand-editing.
+
+    Fields with a default keep it; required fields with no default (e.g. the
+    `method` field on SpikeInConfig/SNPCallingConfig/...) get an obvious
+    placeholder. Built via model_construct so placeholder values that wouldn't
+    otherwise validate don't raise.
+    """
+    values = {
+        name: _placeholder_for_annotation(field.annotation)
+        for name, field in model_cls.model_fields.items()
+        if field.is_required()
+    }
+    return model_cls.model_construct(**values)
+
+
+def _fillable_sections(assay: Assay, assay_config: AssaySpecificConfig) -> List[str]:
+    """Optional section names on assay_config that are unset and support filling."""
+    fillable = []
+    for name in _FILLABLE_SECTION_GETTERS:
+        supported_assays = _SECTION_SUPPORTED_ASSAYS.get(name)
+        if supported_assays is not None and assay not in supported_assays:
+            continue
+        field = type(assay_config).model_fields.get(name)
+        if field is None:
+            continue
+        if field.annotation is type(None):
+            # Hard-locked to None for this assay (e.g. METH/CRISPR ucsc_hub).
+            continue
+        if getattr(assay_config, name, None) is not None:
+            continue
+        fillable.append(name)
+    return fillable
+
+
+def fill_missing_config(
+    path: Path,
+    template: Path,
+    seqnado_version: str,
+    output: Optional[Path] = None,
+    interactive: bool = True,
+) -> Optional[Path]:
+    """Load a config YAML and fill in optional sections left null (e.g. `ucsc_hub:
+    null` because the user declined a UCSC hub the first time round).
+
+    In interactive mode, re-runs the same getter used during `seqnado config` for
+    each unset section (each getter has its own "Make X? yes/no" gate, so
+    declining again is still possible). In non-interactive mode, no prompts are
+    issued; each unset section is instead expanded into a fully-keyed scaffold so
+    the schema is visible for hand-editing, and the file is written even though
+    placeholder values won't pass validation until edited.
+
+    Returns the path written to, or None if there was nothing to fill in.
+    """
+    config = SeqnadoConfig.from_yaml(path)
+    assay = config.assay
+
+    if config.assay_config is None:
+        logger.info("Nothing to fill in — config has no assay_config section.")
+        return None
+
+    fillable = _fillable_sections(assay, config.assay_config)
+
+    if not fillable:
+        logger.info("Nothing to fill in — all optional sections are already set.")
+        return None
+
+    logger.info(
+        f"Filling in {len(fillable)} unset section(s) for {assay.value}: "
+        f"{', '.join(fillable)}"
+    )
+
+    config_dict = config.model_dump(mode="json", exclude_none=False)
+    target = output or path
+
+    if interactive:
+        for name in fillable:
+            getter, needs_assay = _FILLABLE_SECTION_GETTERS[name]
+            value = getter(assay) if needs_assay else getter()
+            config_dict["assay_config"][name] = (
+                value.model_dump(mode="json") if value is not None else None
+            )
+            derived_flag = _DERIVED_PRESENCE_FLAGS.get(name)
+            if derived_flag is not None:
+                config_dict["assay_config"].pop(derived_flag, None)
+
+        new_config = SeqnadoConfig(**config_dict)
+        render_config(template, new_config, target, seqnado_version)
+    else:
+        for name in fillable:
+            scaffold = _scaffold_instance(_FILLABLE_SECTION_MODELS[name])
+            config_dict["assay_config"][name] = scaffold.model_dump(mode="json")
+            logger.warning(
+                f"Scaffolded '{name}' with placeholder values — hand-edit before use."
+            )
+        _render_config_dict(template, config_dict, target, seqnado_version)
+
+    logger.success(f"Wrote filled-in config → {target}")
+    return target
 
 
 def build_multiomics_config(
