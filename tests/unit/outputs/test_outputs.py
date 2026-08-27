@@ -2107,3 +2107,107 @@ class TestScalingGroupSizeValidation:
 
         # Should not raise
         SeqnadoOutputBuilder(Assay.CHIP, samples, cfg, sample_groupings=None)
+
+
+def _two_sample_collection(tmp: Path) -> FastqCollection:
+    r1 = tmp / "s1_R1.fastq.gz"
+    r1.write_text("@r\nN\n+\n#\n")
+    r2 = tmp / "s2_R1.fastq.gz"
+    r2.write_text("@r\nN\n+\n#\n")
+    fs1 = FastqSet(sample_id="s1", r1=FastqFile(path=r1))
+    fs2 = FastqSet(sample_id="s2", r1=FastqFile(path=r2))
+    # Assay.ATAC here is just to satisfy FastqCollection's own validation (it
+    # rejects IP-requiring assays like ChIP); the builder's assay=Assay.CHIP
+    # argument is what actually drives output path generation.
+    return FastqCollection(
+        assay=Assay.ATAC,
+        metadata=[Metadata(assay=Assay.ATAC), Metadata(assay=Assay.ATAC)],
+        fastq_sets=[fs1, fs2],
+    )
+
+
+class TestBamnadoScalingMethodBuilderIntegration:
+    """End-to-end wiring: each bamnado ScalingMethod produces the right bigwig
+    paths through the full SeqnadoOutputBuilder, not just the BigWigFiles class
+    tested in isolation elsewhere."""
+
+    def _cfg(self, tmp_path: Path, scaling_methods: list[str]) -> SeqnadoConfig:
+        star = tmp_path / "star"
+        star.mkdir()
+        genome = GenomeConfig(name="hg38", index=STARIndex(prefix=star))
+        assay_cfg = ChIPAssayConfig(
+            bigwigs=BigwigConfig(
+                pileup_method=[PileupMethod.DEEPTOOLS],
+                scale_methods=["csaw"],
+                scaling_methods=scaling_methods,
+            )
+        )
+        return SeqnadoConfig(
+            assay=Assay.CHIP,
+            project=dict(name="p"),
+            genome=genome,
+            metadata=tmp_path / "m.csv",
+            assay_config=assay_cfg,
+        )
+
+    @pytest.mark.parametrize(
+        "scaling_method",
+        [
+            ScalingMethod.CSAW_BACKGROUND,
+            ScalingMethod.TMM,
+            ScalingMethod.MEDIAN_OF_RATIOS,
+            ScalingMethod.CPM,
+        ],
+    )
+    def test_scaling_method_produces_expected_bigwig_path(self, tmp_path, scaling_method):
+        cfg = self._cfg(tmp_path, scaling_methods=[scaling_method.value])
+        samples = _two_sample_collection(tmp_path)
+
+        # A 2-sample group satisfies every method's minimum, including the
+        # multi-sample-only ones (csaw_background/tmm/median_of_ratios).
+        groups = SampleGroupings(
+            groupings={
+                "scaling": SampleGroups(
+                    groups=[SampleGroup(name="default", samples=["s1", "s2"])]
+                )
+            }
+        )
+
+        builder = SeqnadoOutputBuilder(
+            Assay.CHIP, samples, cfg, sample_groupings=groups
+        )
+        builder.add_individual_bigwig_files()
+        files = builder.build().files
+
+        expected = f"deeptools/csaw/{scaling_method.value}/s1.bigWig"
+        assert any(expected in f for f in files), (
+            f"Expected a path containing '{expected}' for scaling method "
+            f"{scaling_method.value!r}, got: {files}"
+        )
+
+    def test_multiple_scaling_methods_all_present(self, tmp_path):
+        """Requesting several bamnado methods at once produces one bigwig set per method."""
+        cfg = self._cfg(
+            tmp_path,
+            scaling_methods=["csaw_background", "tmm", "median_of_ratios", "cpm"],
+        )
+        samples = _two_sample_collection(tmp_path)
+
+        groups = SampleGroupings(
+            groupings={
+                "scaling": SampleGroups(
+                    groups=[SampleGroup(name="default", samples=["s1", "s2"])]
+                )
+            }
+        )
+
+        builder = SeqnadoOutputBuilder(
+            Assay.CHIP, samples, cfg, sample_groupings=groups
+        )
+        builder.add_individual_bigwig_files()
+        files = builder.build().files
+
+        for method in ("csaw_background", "tmm", "median_of_ratios", "cpm"):
+            assert any(f"csaw/{method}/" in f for f in files), (
+                f"Missing bigwig output for scaling method '{method}': {files}"
+            )

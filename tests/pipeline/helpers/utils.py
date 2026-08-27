@@ -1,4 +1,6 @@
+import gzip
 import json
+import random
 import re
 import shutil
 import tarfile
@@ -62,6 +64,50 @@ def get_fastq_pattern(assay: str) -> str:
     if not pattern:
         raise ValueError(f"Unsupported assay: {assay}")
     return pattern
+
+
+def subsample_fastq_pair(
+    r1_in: Path,
+    r2_in: Path,
+    r1_out: Path,
+    r2_out: Path,
+    fraction: float,
+    seed: int = 1234,
+) -> None:
+    """Randomly subsample a paired FASTQ file to a fraction of its read pairs.
+
+    Used to fabricate a second, genuinely-different-depth "replicate" from a
+    single-sample test fixture (e.g. the chip-rx dataset only ships one
+    antibody), so scaling methods that need >=2 samples per group
+    (csaw_background/tmm/median_of_ratios) can be exercised in pipeline tests
+    without new reference data. Pure stdlib so it needs nothing beyond Python
+    on the test host (no seqtk/seqkit dependency).
+    """
+
+    def _read_records(path: Path) -> list[list[str]]:
+        with gzip.open(path, "rt") as f:
+            lines = f.readlines()
+        return [lines[i : i + 4] for i in range(0, len(lines), 4)]
+
+    def _write_records(path: Path, records: list[list[str]]) -> None:
+        with gzip.open(path, "wt") as f:
+            for record in records:
+                f.writelines(record)
+
+    r1_records = _read_records(r1_in)
+    r2_records = _read_records(r2_in)
+    if len(r1_records) != len(r2_records):
+        raise ValueError(
+            f"R1/R2 record count mismatch for {r1_in.name}: "
+            f"{len(r1_records)} vs {len(r2_records)}"
+        )
+
+    n = len(r1_records)
+    k = max(1, int(n * fraction))
+    indices = sorted(random.Random(seed).sample(range(n), k))
+
+    _write_records(r1_out, [r1_records[i] for i in indices])
+    _write_records(r2_out, [r2_records[i] for i in indices])
 
 
 @dataclass(frozen=True)
