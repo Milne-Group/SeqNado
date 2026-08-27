@@ -7,8 +7,15 @@ from pathlib import Path
 
 import pytest
 
+import pydantic
+
 from seqnado import Assay
-from seqnado.config.configs import BowtieIndex, GenomeConfig, STARIndex
+from seqnado.config.configs import (
+    BowtieIndex,
+    GenomeBuildConfig,
+    GenomeConfig,
+    STARIndex,
+)
 from seqnado.config.user_input import load_genome_configs
 
 
@@ -367,6 +374,124 @@ class TestLoadGenomeConfigs:
         except (ValueError, AttributeError, SystemExit):
             # Expected for invalid assay
             pass
+
+
+class TestGenomeBuildConfig:
+    """Test suite for `GenomeBuildConfig` (validates `seqnado genomes build`)."""
+
+    def _fasta_and_gtf(self, tmp_path: Path) -> tuple[Path, Path]:
+        fasta = tmp_path / "custom.fa"
+        fasta.write_text(">chr1\nACGT\n")
+        gtf = tmp_path / "custom.gtf"
+        gtf.write_text('chr1\t.\tgene\t1\t4\t.\t+\t.\tgene_id "test"\n')
+        return fasta, gtf
+
+    def test_single_genome_with_custom_fasta_and_gtf(self, tmp_path: Path) -> None:
+        fasta, gtf = self._fasta_and_gtf(tmp_path)
+        config = GenomeBuildConfig(genomes="mygenome", fasta_path=fasta, gtf_path=gtf)
+
+        assert config.genomes == ["mygenome"]
+        assert config.custom_fasta == {"mygenome": str(fasta)}
+        assert config.custom_gtf == {"mygenome": str(gtf)}
+
+    def test_comma_separated_genomes_parsed(self) -> None:
+        config = GenomeBuildConfig(genomes="hg38, mm39, dm6")
+        assert config.genomes == ["hg38", "mm39", "dm6"]
+
+    def test_fasta_rejected_with_multiple_genomes(self, tmp_path: Path) -> None:
+        fasta, _ = self._fasta_and_gtf(tmp_path)
+        with pytest.raises(Exception, match="single genome"):
+            GenomeBuildConfig(genomes="hg38,mm39", fasta_path=fasta)
+
+    def test_spikein_rejected_with_multiple_genomes(self) -> None:
+        with pytest.raises(Exception, match="single genome"):
+            GenomeBuildConfig(genomes="hg38,mm39", spikein="dm6")
+
+    def test_spikein_fasta_requires_spikein(self, tmp_path: Path) -> None:
+        fasta, _ = self._fasta_and_gtf(tmp_path)
+        with pytest.raises(Exception, match="--spikein"):
+            GenomeBuildConfig(genomes="hg38", spikein_fasta_path=fasta)
+
+    def test_spikein_gtf_requires_spikein(self, tmp_path: Path) -> None:
+        _, gtf = self._fasta_and_gtf(tmp_path)
+        with pytest.raises(Exception, match="--spikein"):
+            GenomeBuildConfig(genomes="hg38", spikein_gtf_path=gtf)
+
+    def test_genome_name_with_underscore_rejected(self) -> None:
+        with pytest.raises(Exception, match="underscore"):
+            GenomeBuildConfig(genomes="my_genome")
+
+    def test_spikein_name_with_underscore_rejected(self) -> None:
+        with pytest.raises(Exception, match="underscore"):
+            GenomeBuildConfig(genomes="hg38", spikein="dm_6")
+
+    def test_genome_name_with_hyphen_accepted(self) -> None:
+        config = GenomeBuildConfig(genomes="my-genome-v2")
+        assert config.genomes == ["my-genome-v2"]
+
+    def test_fasta_path_must_exist(self, tmp_path: Path) -> None:
+        with pytest.raises(pydantic.ValidationError, match="does not exist"):
+            GenomeBuildConfig(genomes="hg38", fasta_path=tmp_path / "missing.fa")
+
+    def test_fasta_path_existence_skipped_with_context(self, tmp_path: Path) -> None:
+        config = GenomeBuildConfig.model_validate(
+            {"genomes": "hg38", "fasta_path": tmp_path / "missing.fa"},
+            context={"skip_path_validation": True},
+        )
+        assert config.fasta_path == tmp_path / "missing.fa"
+
+    def test_no_genomes_rejected(self) -> None:
+        with pytest.raises(Exception, match="No valid genome names"):
+            GenomeBuildConfig(genomes="")
+
+    def test_to_snakemake_config_minimal(self) -> None:
+        config = GenomeBuildConfig(genomes="hg38")
+        cfg = config.to_snakemake_config(output_dir=Path("/tmp/out"), threads=4)
+
+        assert cfg == {
+            "genome": "hg38",
+            "output_dir": "/tmp/out",
+            "threads": 4,
+        }
+
+    def test_to_snakemake_config_with_spikein_and_custom_paths(
+        self, tmp_path: Path
+    ) -> None:
+        fasta, gtf = self._fasta_and_gtf(tmp_path)
+        spikein_fasta = tmp_path / "spikein.fa"
+        spikein_fasta.write_text(">chr2\nACGT\n")
+
+        config = GenomeBuildConfig(
+            genomes="hg38",
+            spikein="dm6",
+            fasta_path=fasta,
+            gtf_path=gtf,
+            spikein_fasta_path=spikein_fasta,
+        )
+        cfg = config.to_snakemake_config(output_dir=Path("/tmp/out"), threads=2)
+
+        assert cfg["spikein"] == "dm6"
+        assert cfg["fasta_path"] == str(fasta)
+        assert cfg["gtf_path"] == str(gtf)
+        assert cfg["spikein_fasta_path"] == str(spikein_fasta)
+        assert "spikein_gtf_path" not in cfg
+
+    def test_from_snakemake_config_round_trip(self, tmp_path: Path) -> None:
+        fasta, gtf = self._fasta_and_gtf(tmp_path)
+        original = GenomeBuildConfig(genomes="hg38", spikein="dm6", fasta_path=fasta, gtf_path=gtf)
+        flat = original.to_snakemake_config(output_dir=tmp_path, threads=4)
+
+        rebuilt = GenomeBuildConfig.from_snakemake_config(flat)
+
+        assert rebuilt.genomes == ["hg38"]
+        assert rebuilt.spikein == "dm6"
+        assert rebuilt.custom_fasta == {"hg38": str(fasta)}
+        assert rebuilt.custom_gtf == {"hg38": str(gtf)}
+
+    def test_custom_fasta_empty_when_no_custom_paths(self) -> None:
+        config = GenomeBuildConfig(genomes="hg38", spikein="dm6")
+        assert config.custom_fasta == {}
+        assert config.custom_gtf == {}
 
 
 class TestGenomeConfigSerializationAndDeserialization:

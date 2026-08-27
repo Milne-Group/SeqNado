@@ -91,6 +91,44 @@ class TestGenomeBuildDryRun:
         assert "hg38" in output, "hg38 not found in dry-run output"
         assert "mm39" in output, "mm39 not found in dry-run output"
 
+    def test_custom_fasta_dry_run(self, tmp_path: Path) -> None:
+        """Dry-run with --fasta stages a local FASTA instead of downloading from UCSC."""
+        fasta = tmp_path / "custom.fa"
+        fasta.write_text(">chr1\nACGT\n")
+
+        result = subprocess.run(
+            [
+                "seqnado",
+                "genomes",
+                "build",
+                "--name",
+                "mygenome",
+                "--fasta",
+                str(fasta),
+                "--outdir",
+                "output",
+                "--preset",
+                "le",
+                "--dry-run",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            cwd=tmp_path,
+        )
+
+        print("STDOUT:", result.stdout)
+        print("STDERR:", result.stderr)
+        assert result.returncode == 0, (
+            f"Dry-run failed (rc={result.returncode}):\n{result.stderr}"
+        )
+
+        output = result.stdout + result.stderr
+        # Same rule names as the UCSC path -- they just stage locally instead
+        # of downloading when a custom FASTA is supplied.
+        for rule in ["download_fasta", "download_chrom_sizes"]:
+            assert rule in output, f"Expected rule '{rule}' not found in dry-run output"
+
     def test_spikein_dry_run(self, tmp_path: Path) -> None:
         """Dry-run with --spikein plans composite genome rules."""
         result = subprocess.run(
@@ -122,6 +160,42 @@ class TestGenomeBuildDryRun:
 
         output = result.stdout + result.stderr
         assert "hg38_dm6" in output, "Composite genome name not in dry-run output"
+
+
+@pytest.mark.genome_build
+@pytest.mark.snakemake
+class TestGenomeBuildNotFoundOnUCSC:
+    """A genome name that doesn't exist on UCSC should fail with a clear message."""
+
+    def test_unknown_genome_fails_with_informative_error(self, tmp_path: Path) -> None:
+        result = subprocess.run(
+            [
+                "seqnado",
+                "genomes",
+                "build",
+                "--name",
+                "definitely-not-a-real-genome",
+                "--outdir",
+                "output",
+                "--preset",
+                "le",
+                "-c",
+                "1",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            cwd=tmp_path,
+        )
+
+        print("STDOUT:", result.stdout)
+        print("STDERR:", result.stderr)
+        assert result.returncode != 0
+
+        output = result.stdout + result.stderr
+        assert "not found on UCSC" in output
+        assert "definitely-not-a-real-genome" in output
+        assert "--fasta" in output
 
 
 def _stage_genome(resources: GenomeResources, out_dir: Path, genome_name: str) -> None:

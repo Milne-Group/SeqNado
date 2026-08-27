@@ -299,6 +299,160 @@ class GenomeConfig(BaseModel):
             return "Unknown"
 
 
+_GENOME_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]*$")
+
+
+def _split_comma_list(v):
+    if isinstance(v, str):
+        return [g.strip() for g in v.split(",") if g.strip()]
+    return v
+
+
+def _validate_genome_name(name: str) -> str:
+    if not _GENOME_NAME_RE.match(name):
+        raise UserFriendlyError(
+            f"Invalid genome name '{name}': use letters, digits, and hyphens only "
+            "(underscores are reserved for the '{primary}_{spikein}' composite name)."
+        )
+    return name
+
+
+class GenomeBuildConfig(BaseModel, PathValidatorMixin):
+    """Validates a `seqnado genomes build` invocation before it reaches Snakemake.
+
+    Reused on both sides of the CLI -> Snakemake process boundary: the CLI
+    builds one instance to validate user input and flatten it into Snakemake's
+    `config` dict (`to_snakemake_config`), and `Snakefile_genome` rebuilds an
+    instance from that dict (`from_snakemake_config`) so the custom-fasta/gtf
+    mapping logic (`custom_fasta`, `custom_gtf`) lives in one place only.
+    """
+
+    genomes: Annotated[list[str], BeforeValidator(_split_comma_list)]
+    spikein: Annotated[str | None, BeforeValidator(none_str_to_none)] = None
+    fasta_path: Annotated[Path | None, BeforeValidator(none_str_to_none)] = None
+    gtf_path: Annotated[Path | None, BeforeValidator(none_str_to_none)] = None
+    spikein_fasta_path: Annotated[Path | None, BeforeValidator(none_str_to_none)] = None
+    spikein_gtf_path: Annotated[Path | None, BeforeValidator(none_str_to_none)] = None
+
+    @field_validator("genomes")
+    def validate_genome_names(cls, v: list[str]) -> list[str]:
+        if not v:
+            raise UserFriendlyError("No valid genome names provided.")
+        return [_validate_genome_name(name) for name in v]
+
+    @field_validator("spikein")
+    def validate_spikein_name(cls, v: str | None, info: ValidationInfo) -> str | None:
+        if v is None:
+            return v
+        v = _validate_genome_name(v)
+        if len(info.data.get("genomes", [])) > 1:
+            raise UserFriendlyError(
+                "--spikein is only supported with a single genome, "
+                "not multiple --name values."
+            )
+        return v
+
+    @field_validator("fasta_path")
+    def validate_fasta_path(cls, v: Path | None, info: ValidationInfo) -> Path | None:
+        v = cls.validate_path_exists(v, "Custom FASTA path", info)
+        if v is not None and len(info.data.get("genomes", [])) > 1:
+            raise UserFriendlyError(
+                "--fasta is only supported with a single genome, "
+                "not multiple --name values."
+            )
+        return v
+
+    @field_validator("gtf_path")
+    def validate_gtf_path(cls, v: Path | None, info: ValidationInfo) -> Path | None:
+        v = cls.validate_path_exists(v, "Custom GTF path", info)
+        if v is not None and len(info.data.get("genomes", [])) > 1:
+            raise UserFriendlyError(
+                "--gtf is only supported with a single genome, "
+                "not multiple --name values."
+            )
+        return v
+
+    @field_validator("spikein_fasta_path")
+    def validate_spikein_fasta_path(
+        cls, v: Path | None, info: ValidationInfo
+    ) -> Path | None:
+        v = cls.validate_path_exists(v, "Custom spike-in FASTA path", info)
+        if v is not None and not info.data.get("spikein"):
+            raise UserFriendlyError("--spikein-fasta requires --spikein.")
+        return v
+
+    @field_validator("spikein_gtf_path")
+    def validate_spikein_gtf_path(
+        cls, v: Path | None, info: ValidationInfo
+    ) -> Path | None:
+        v = cls.validate_path_exists(v, "Custom spike-in GTF path", info)
+        if v is not None and not info.data.get("spikein"):
+            raise UserFriendlyError("--spikein-gtf requires --spikein.")
+        return v
+
+    def to_snakemake_config(self, output_dir: Path, threads: int) -> dict:
+        """Flatten into the primitive dict Snakemake's `config` object expects."""
+        cfg: dict = {
+            "genome": ",".join(self.genomes),
+            "output_dir": str(output_dir),
+            "threads": threads,
+        }
+        if self.spikein:
+            cfg["spikein"] = self.spikein
+        if self.fasta_path:
+            cfg["fasta_path"] = str(self.fasta_path)
+        if self.gtf_path:
+            cfg["gtf_path"] = str(self.gtf_path)
+        if self.spikein_fasta_path:
+            cfg["spikein_fasta_path"] = str(self.spikein_fasta_path)
+        if self.spikein_gtf_path:
+            cfg["spikein_gtf_path"] = str(self.spikein_gtf_path)
+        return cfg
+
+    @classmethod
+    def from_snakemake_config(cls, config: dict) -> "GenomeBuildConfig":
+        """Reconstruct from Snakemake's flat `config` dict.
+
+        Snakemake runs the workflow in its own process, so this is a fresh
+        instance rather than the literal CLI object -- but it's the same
+        validated model/logic on both sides, so `Snakefile_genome` never
+        duplicates the custom-fasta/gtf mapping rules. Paths were already
+        validated when the CLI built the original instance, so re-checking
+        existence here would just be redundant.
+        """
+        return cls.model_validate(
+            {
+                "genomes": config["genome"],
+                "spikein": config.get("spikein"),
+                "fasta_path": config.get("fasta_path"),
+                "gtf_path": config.get("gtf_path"),
+                "spikein_fasta_path": config.get("spikein_fasta_path"),
+                "spikein_gtf_path": config.get("spikein_gtf_path"),
+            },
+            context={"skip_path_validation": True},
+        )
+
+    @property
+    def custom_fasta(self) -> dict[str, str]:
+        """Map of genome name -> custom FASTA path, for primary + spike-in."""
+        m: dict[str, str] = {}
+        if self.fasta_path:
+            m[self.genomes[0]] = str(self.fasta_path)
+        if self.spikein and self.spikein_fasta_path:
+            m[self.spikein] = str(self.spikein_fasta_path)
+        return m
+
+    @property
+    def custom_gtf(self) -> dict[str, str]:
+        """Map of genome name -> custom GTF path, for primary + spike-in."""
+        m: dict[str, str] = {}
+        if self.gtf_path:
+            m[self.genomes[0]] = str(self.gtf_path)
+        if self.spikein and self.spikein_gtf_path:
+            m[self.spikein] = str(self.spikein_gtf_path)
+        return m
+
+
 class ProjectConfig(BaseModel):
     """Configuration for the SeqNado project."""
 
