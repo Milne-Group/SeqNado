@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import shutil
-import subprocess
 from importlib import resources
 from pathlib import Path
 from typing import Optional
@@ -19,7 +18,6 @@ from seqnado.cli.utils import (
     require_snakemake,
     generate_design_dataframe,
     resolve_profile,
-    execute_snakemake,
     verbose_option,
     preset_option,
     dry_run_option,
@@ -235,14 +233,11 @@ def download(
         raw_extra_args = list(ctx.args)  # tokens Typer didn't map to declared params
         builder.add_pass_through_args(raw_extra_args)
 
-        # Build command
-        cmd = builder.build()
-        
         logger.info("Starting GEO download with Snakemake...")
-        
+
         # Execute Snakemake
         cwd = str(Path.cwd())
-        exit_code = execute_snakemake(cmd, cwd, verbose or dry_run)
+        exit_code = builder.run(cwd, print_cmd=verbose or dry_run)
 
         if exit_code != 0:
             logger.error(f"Snakemake failed with exit code {exit_code}")

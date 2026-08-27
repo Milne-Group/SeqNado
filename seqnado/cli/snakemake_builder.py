@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 from typing import List, Optional
 
 from loguru import logger
+from snakemake.cli import args_to_api, parse_args
 
 from seqnado.utils import get_preset_profiles, resolve_profile_path
 
@@ -46,13 +48,13 @@ class SnakemakeCommandBuilder:
         self.cmd.extend(["-c", str(self.cores)])
 
     def add_configfile(self, config_file: Path | str) -> SnakemakeCommandBuilder:
-        """Add configfile to command. Returns self for chaining."""
+        """Add configfile to command."""
         self.cmd.extend(["--configfile", str(config_file)])
         return self
 
     def add_config(self, **kwargs) -> SnakemakeCommandBuilder:
         """
-        Add key=value config pairs to command. Returns self for chaining.
+        Add key=value config pairs to command.
         
         Example:
             builder.add_config(genome="hg38", output_dir="/tmp")
@@ -63,7 +65,7 @@ class SnakemakeCommandBuilder:
 
     def add_profile_from_path(self, profile_path: Path | str) -> SnakemakeCommandBuilder:
         """
-        Add a pre-resolved Snakemake profile path to command. Returns self for chaining.
+        Add a pre-resolved Snakemake profile path to command.
         
         Args:
             profile_path: Resolved path to profile directory
@@ -103,24 +105,24 @@ class SnakemakeCommandBuilder:
         return self
 
     def add_unlock(self) -> SnakemakeCommandBuilder:
-        """Add --unlock flag. Returns self for chaining."""
+        """Add --unlock flag."""
         self.cmd.append("--unlock")
         return self
 
     def add_dry_run(self) -> SnakemakeCommandBuilder:
-        """Add --dry-run flag. Returns self for chaining."""
+        """Add --dry-run flag."""
         self.cmd.append("--dry-run")
         return self
 
     def add_show_failed_logs(self) -> SnakemakeCommandBuilder:
-        """Add --show-failed-logs flag. Returns self for chaining."""
+        """Add --show-failed-logs flag."""
         if "--show-failed-logs" not in self.cmd:
             self.cmd.append("--show-failed-logs")
         return self
 
     def add_container_support(self) -> SnakemakeCommandBuilder:
         """
-        Add container support (apptainer or singularity). Returns self for chaining.
+        Add container support (apptainer or singularity).
         """
         if shutil.which("apptainer"):
             self.cmd.append("--use-apptainer")
@@ -137,7 +139,7 @@ class SnakemakeCommandBuilder:
 
     def add_pass_through_args(self, args: List[str], filter_fn=None) -> SnakemakeCommandBuilder:
         """
-        Add pass-through arguments to Snakemake command. Returns self for chaining.
+        Add pass-through arguments to Snakemake command.
         
         Args:
             args: List of arguments to pass through
@@ -160,7 +162,7 @@ class SnakemakeCommandBuilder:
 
     def add_target(self, target: str) -> SnakemakeCommandBuilder:
         """
-        Add a specific target/rule to execute. Returns self for chaining.
+        Add a specific target/rule to execute.
         
         Args:
             target: Target rule name (e.g., "geo_download_all")
@@ -175,7 +177,7 @@ class SnakemakeCommandBuilder:
 
     def add_directory(self, directory: str = ".") -> SnakemakeCommandBuilder:
         """
-        Add --directory flag to run in a specific directory. Returns self for chaining.
+        Add --directory flag to run in a specific directory.
         
         Args:
             directory: Target directory (default: ".")
@@ -188,7 +190,7 @@ class SnakemakeCommandBuilder:
 
     def add_default_resources(self, **kwargs) -> SnakemakeCommandBuilder:
         """
-        Add --default-resources flag with key=value pairs. Returns self for chaining.
+        Add --default-resources flag with key=value pairs.
         
         Args:
             **kwargs: Resource key=value pairs (e.g., slurm_partition="short")
@@ -203,7 +205,7 @@ class SnakemakeCommandBuilder:
 
     def add_queue(self, queue: str, preset: str) -> SnakemakeCommandBuilder:
         """
-        Add queue/partition to default resources (for Slurm presets). Returns self for chaining.
+        Add queue/partition to default resources (for Slurm presets).
         
         Args:
             queue: Queue name (e.g., "short", "long")
@@ -212,13 +214,20 @@ class SnakemakeCommandBuilder:
         Returns:
             self for method chaining
         """
-        if queue and preset and preset.startswith("s"):
+        if not queue:
+            return self
+        if preset and preset.startswith("s"):
             self.cmd.extend(["--default-resources", f"slurm_partition={queue}"])
+        else:
+            logger.warning(
+                f"--queue '{queue}' ignored: only applies to Slurm profiles (preset 'ss'), got '{preset}'. "
+                "Use --default-resources to set resource values for non-Slurm presets."
+            )
         return self
 
     def add_workflow_args(self, workflow_args: List[str]) -> SnakemakeCommandBuilder:
         """
-        Add workflow_args config for nested Snakemake runs (multiomics mode). Returns self for chaining.
+        Add workflow_args config for nested Snakemake runs (multiomics mode).
         
         Args:
             workflow_args: List of arguments to pass to nested Snakemake runs
@@ -231,6 +240,40 @@ class SnakemakeCommandBuilder:
             self.cmd.extend(["--config", f"workflow_args={workflow_args_str}"])
         return self
 
+    def add_use_conda(self) -> SnakemakeCommandBuilder:
+        """Add --use-conda flag."""
+        self.cmd.append("--use-conda")
+        return self
+
+    def add_use_envmodules(self) -> SnakemakeCommandBuilder:
+        """Add --use-envmodules flag."""
+        self.cmd.append("--use-envmodules")
+        return self
+
+    def add_forceall(self) -> SnakemakeCommandBuilder:
+        """Add --forceall flag."""
+        self.cmd.append("--forceall")
+        return self
+
+    def add_touch(self) -> SnakemakeCommandBuilder:
+        """Add --touch flag."""
+        self.cmd.append("--touch")
+        return self
+
+    def add_notemp(self) -> SnakemakeCommandBuilder:
+        """Add --notemp flag."""
+        self.cmd.append("--notemp")
+        return self
+
+    def add_report(
+        self, path: Path | str, stylesheet: Path | str | None = None
+    ) -> SnakemakeCommandBuilder:
+        """Add --report flag (and optional --report-stylesheet)."""
+        self.cmd.extend(["--report", str(path)])
+        if stylesheet:
+            self.cmd.extend(["--report-stylesheet", str(stylesheet)])
+        return self
+
     def build(self) -> List[str]:
         """Return the complete command as a list of strings."""
         return self.cmd + self.targets
@@ -238,3 +281,29 @@ class SnakemakeCommandBuilder:
     def build_str(self) -> str:
         """Return the complete command as a shell command string."""
         return " ".join(self.cmd + self.targets)
+
+    def run(self, cwd: str, print_cmd: bool = False) -> int:
+        """
+        Resolve cwd, then invoke Snakemake in-process via its own CLI entrypoint
+        (parse_args + args_to_api — the same functions snakemake.cli.main() calls).
+
+        This reuses Snakemake's own profile-YAML/YTE parsing and full flag
+        validation instead of reimplementing any of it.
+        """
+        resolved_cwd = str(Path(cwd).resolve())
+        os.chdir(resolved_cwd)
+        os.environ["PWD"] = resolved_cwd
+
+        argv = self.build()[1:]  # drop the leading "snakemake" sentinel
+        if "--directory" not in argv:
+            argv = argv + ["--directory", resolved_cwd]
+
+        if print_cmd:
+            logger.info("Snakemake args:\n$ snakemake " + " ".join(map(str, argv)))
+
+        try:
+            parser, args = parse_args(argv)
+            success = args_to_api(args, parser)
+        except SystemExit as e:
+            return e.code if isinstance(e.code, int) else 1
+        return 0 if success else 1
