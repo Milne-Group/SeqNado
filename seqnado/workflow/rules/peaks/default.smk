@@ -282,7 +282,7 @@ ruleorder: call_peaks_homer_with_input > call_peaks_homer_no_input
 
 rule call_peaks_lanceotron_with_input:
     input:
-        treatment=OUTPUT_DIR + "/bigwigs/deeptools/unscaled/{sample_id}.bigWig",
+        treatment=OUTPUT_DIR + "/bigwigs/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample_id}.bigWig",
         control=lambda wc: get_control_file(wc, file_type=FileType.BIGWIG, INPUT_FILES=INPUT_FILES, OUTPUT_DIR=OUTPUT_DIR),
     output:
         peaks=OUTPUT_DIR + "/peaks/lanceotron/{sample_id}.bed",
@@ -322,7 +322,7 @@ rule call_peaks_lanceotron_with_input:
 
 rule call_peaks_lanceotron_no_input:
     input:
-        treatment=OUTPUT_DIR + "/bigwigs/deeptools/unscaled/{sample_id}.bigWig",
+        treatment=OUTPUT_DIR + "/bigwigs/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample_id}.bigWig",
     output:
         peaks=OUTPUT_DIR + "/peaks/lanceotron/{sample_id}.bed",
         ltron_peaks=temp(OUTPUT_DIR + "/peaks/lanceotron/{sample_id}_L-tron.bed"),

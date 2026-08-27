@@ -50,7 +50,7 @@ def get_scaling_factor(wildcards, scaling_file):
 
 def get_scaling_factor_for_merged_group(wildcards, sample_groupings, output_dir):
     """
-    Compute the CSAW scaling factor for a merged consensus-group bigwig.
+    Compute the normalized scaling factor for a merged consensus-group bigwig.
 
     The merged BAM is the physical concatenation of all per-sample BAMs, so its
     total library size is sum(L_i).  The per-sample scale factors are

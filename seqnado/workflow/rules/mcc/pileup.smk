@@ -86,13 +86,13 @@ use rule bigwigs_mcc_replicates as bigwigs_mcc_grouped_raw with:
         group="|".join(SAMPLE_GROUPINGS.get_grouping("consensus").group_names),
         viewpoint_group="|".join(VIEWPOINT_TO_GROUPED_VIEWPOINT.values()),
     log:
-        OUTPUT_DIR + "/logs/bigwig/{group}_{viewpoint_group}_unscaled.log",
+        OUTPUT_DIR + "/logs/bigwig/{group}_{viewpoint_group}_" + DataScalingTechnique.PER_SAMPLE.value + ".log",
     benchmark:
-        OUTPUT_DIR + "/.benchmark/bigwig/{group}_{viewpoint_group}_unscaled.tsv",
+        OUTPUT_DIR + "/.benchmark/bigwig/{group}_{viewpoint_group}_" + DataScalingTechnique.PER_SAMPLE.value + ".tsv",
     container:
         "docker://ghcr.io/alsmith151/bamnado:latest",
     message:
-        "Generating unscaled bigWig for MCC group {wildcards.group} and viewpoint group {wildcards.viewpoint_group}"
+        "Generating per-sample bigWig for MCC group {wildcards.group} and viewpoint group {wildcards.viewpoint_group}"
 
 
 rule confirm_bigwigs_generated:
@@ -107,7 +107,7 @@ rule confirm_bigwigs_generated:
             group=SAMPLE_GROUPINGS.get_grouping("consensus").group_names,
             viewpoint_group=VIEWPOINT_TO_GROUPED_VIEWPOINT.values(),
         ),
-        unscaled_consensus=expand(
+        per_sample_consensus=expand(
             OUTPUT_DIR + "/bigwigs/mcc/{group}_{viewpoint_group}.bigWig",
             group=SAMPLE_GROUPINGS.get_grouping("consensus").group_names,
             viewpoint_group=VIEWPOINT_TO_GROUPED_VIEWPOINT.values(),

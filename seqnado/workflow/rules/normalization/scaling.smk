@@ -1,4 +1,4 @@
-from seqnado import ScalingMethod
+from seqnado import GroupScalingMethod
 from seqnado.workflow.helpers.bam import get_bam_files_for_scaling_group
 from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested
 
@@ -11,11 +11,10 @@ rule bamnado_scaling_factors:
         scaling_factors=OUTPUT_DIR + "/resources/{scaling_method}/{group}_scaling_factors.tsv",
     params:
         bams=lambda wc, input: " ".join(f"-b {b}" for b in input.bam),
-        method=lambda wc: wc.scaling_method.replace("_", "-"),
         options=str(CONFIG.third_party_tools.bamnado.bam_normalize.command_line_arguments),
     threads: CONFIG.third_party_tools.bamnado.bam_normalize.threads
     wildcard_constraints:
-        scaling_method="|".join(m.value for m in ScalingMethod),
+        scaling_method="|".join(m.value for m in GroupScalingMethod),
         group="|".join(
             {
                 *SAMPLE_GROUPINGS.get_grouping("scaling").group_names,
@@ -33,5 +32,5 @@ rule bamnado_scaling_factors:
     message:
         "Calculating {wildcards.scaling_method} scaling factors for group {wildcards.group}"
     shell: """
-    bamnado bam-normalize {params.bams} --method {params.method} --format tsv {params.options} -o {output.scaling_factors} > {log} 2>&1
+    bamnado bam-normalize {params.bams} --method {wildcards.scaling_method} --format tsv {params.options} -o {output.scaling_factors} > {log} 2>&1
     """

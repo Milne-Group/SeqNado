@@ -1,4 +1,4 @@
-from seqnado import Assay, PileupMethod, DataScalingTechnique, ScalingMethod, SpikeInMethod
+from seqnado import Assay, PileupMethod, DataScalingTechnique, GroupScalingMethod, SpikeInMethod
 from seqnado.workflow.helpers.common import define_memory_requested, define_time_requested
 
 _spikein_cfg = CONFIG.assay_config.spikein
@@ -6,22 +6,22 @@ _spikein_methods = _spikein_cfg.method if _spikein_cfg else []
 _has_spikein_orlando = SpikeInMethod.ORLANDO in _spikein_methods
 _has_spikein_withinput = SpikeInMethod.WITH_INPUT in _spikein_methods
 
-# Heatmaps for the CSAW technique are generated for the default bamnado scaling
-# method only (csaw_background) — additional configured scaling_methods
-# (tmm/median_of_ratios/cpm) still produce bigwigs, just not dedicated heatmaps.
-_DEFAULT_SCALING_METHOD = ScalingMethod.CSAW_BACKGROUND.value
+# Heatmaps for the per-group technique are generated for the default bamnado scaling
+# method only (csaw-background) — additional configured group_scaling_methods
+# (tmm/median-of-ratios/cpm) still produce bigwigs, just not dedicated heatmaps.
+_DEFAULT_SCALING_METHOD = GroupScalingMethod.CSAW_BACKGROUND.value
 
 # Heatmap and metaplot generation from bigWig files.
 # One set of rules per (pileup method) × (scale) × (merged) combination.
 # Compatible combinations:
-#   deeptools    : individual → unscaled/csaw/spikein_orlando/spikein_withinput ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
-#   bamnado      : individual → unscaled/spikein_orlando/spikein_withinput      ; merged → unscaled/csaw/spikein_orlando/spikein_withinput
-#   (csaw is genomics-only — excluded entirely for RNA-seq)
-#   homer        : individual → unscaled              ; merged → unscaled
-#   methyldackel : individual → unscaled (METH assay only, reads from bigwigs/taps or bigwigs/wgbs)
+#   deeptools    : individual → per_sample/per_group/spikein_orlando/spikein_withinput ; merged → per_sample/per_group/spikein_orlando/spikein_withinput
+#   bamnado      : individual → per_sample/spikein_orlando/spikein_withinput      ; merged → per_sample/per_group/spikein_orlando/spikein_withinput
+#   (per_group is genomics-only — excluded entirely for RNA-seq)
+#   homer        : individual → per_sample              ; merged → per_sample
+#   methyldackel : individual → per_sample (METH assay only, reads from bigwigs/taps or bigwigs/wgbs)
 
 
-# ─── methyldackel · individual · unscaled (METH assay only) ──────────────────
+# ─── methyldackel · individual · per_sample (METH assay only) ──────────────────
 if ASSAY == Assay.METH:
     _meth_method = CONFIG.assay_config.methylation.method.value  # "taps" or "wgbs"
 
@@ -29,12 +29,12 @@ if ASSAY == Assay.METH:
     _deeptools_matrix_threads = CONFIG.third_party_tools.deeptools.compute_matrix.threads if CONFIG.third_party_tools.deeptools else 4
     _deeptools_heatmap_options = str(CONFIG.third_party_tools.deeptools.plot_heatmap.command_line_arguments) if CONFIG.third_party_tools.deeptools else ""
 
-    rule heatmap_methyldackel_unscaled_matrix:
+    rule heatmap_methyldackel_per_sample_matrix:
         input:
             bigwigs=OUTPUT.select_files(".bigWig", include=f"bigwigs/{_meth_method}/", exclude="geo_submission"),
         output:
             matrix=temp(OUTPUT.select_heatmap_matrix(
-                DataScalingTechnique.UNSCALED,
+                DataScalingTechnique.PER_SAMPLE,
                 method=PileupMethod.METHYLDACKEL,
             )),
         params:
@@ -45,19 +45,19 @@ if ASSAY == Assay.METH:
             runtime=lambda wildcards, attempt: f"{1 * 2**attempt}h",
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-        log: OUTPUT_DIR + "/logs/heatmap/methyldackel/unscaled/matrix.log"
-        benchmark: OUTPUT_DIR + "/.benchmark/heatmap/methyldackel/unscaled/matrix.tsv"
+        log: OUTPUT_DIR + "/logs/heatmap/methyldackel/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.log"
+        benchmark: OUTPUT_DIR + "/.benchmark/heatmap/methyldackel/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.tsv"
         message: "Computing methylation heatmap matrix from bigWig files"
         shell: """
         computeMatrix scale-regions -p {threads} {params.options} --smartLabels --missingDataAsZero -S {input.bigwigs} -R {params.gtf} -o {output.matrix} >> {log} 2>&1
         """
 
-    rule heatmap_methyldackel_unscaled_plot:
+    rule heatmap_methyldackel_per_sample_plot:
         input:
-            matrix=rules.heatmap_methyldackel_unscaled_matrix.output.matrix,
+            matrix=rules.heatmap_methyldackel_per_sample_matrix.output.matrix,
         output:
             heatmap=OUTPUT.select_heatmap_plot(
-                DataScalingTechnique.UNSCALED,
+                DataScalingTechnique.PER_SAMPLE,
                 method=PileupMethod.METHYLDACKEL,
             ),
         params:
@@ -65,43 +65,43 @@ if ASSAY == Assay.METH:
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-        log: OUTPUT_DIR + "/logs/heatmap/methyldackel/unscaled/heatmap.log"
-        benchmark: OUTPUT_DIR + "/.benchmark/heatmap/methyldackel/unscaled/heatmap.tsv"
+        log: OUTPUT_DIR + "/logs/heatmap/methyldackel/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.log"
+        benchmark: OUTPUT_DIR + "/.benchmark/heatmap/methyldackel/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.tsv"
         message: "Generating methylation heatmap from matrix"
         shell: """
         plotHeatmap -m {input.matrix} -out {output.heatmap} {params.options}
         """
 
-    rule heatmap_methyldackel_unscaled_metaplot:
+    rule heatmap_methyldackel_per_sample_metaplot:
         input:
-            matrix=rules.heatmap_methyldackel_unscaled_matrix.output.matrix,
+            matrix=rules.heatmap_methyldackel_per_sample_matrix.output.matrix,
         output:
             metaplot=OUTPUT.select_heatmap_metaplot(
-                DataScalingTechnique.UNSCALED,
+                DataScalingTechnique.PER_SAMPLE,
                 method=PileupMethod.METHYLDACKEL,
             ),
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-        log: OUTPUT_DIR + "/logs/heatmap/methyldackel/unscaled/metaplot.log"
-        benchmark: OUTPUT_DIR + "/.benchmark/heatmap/methyldackel/unscaled/metaplot.tsv"
+        log: OUTPUT_DIR + "/logs/heatmap/methyldackel/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.log"
+        benchmark: OUTPUT_DIR + "/.benchmark/heatmap/methyldackel/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.tsv"
         message: "Generating methylation metaplot from heatmap matrix"
         shell: """
         plotProfile -m {input.matrix} -out {output.metaplot} --perGroup
         """
 
 
-# ─── deeptools · individual · unscaled (base rules) ──────────────────────────
-rule heatmap_deeptools_unscaled_matrix:
+# ─── deeptools · individual · per_sample (base rules) ──────────────────────────
+rule heatmap_deeptools_per_sample_matrix:
     input:
         bigwigs=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
-            scale=DataScalingTechnique.UNSCALED,
+            scale=DataScalingTechnique.PER_SAMPLE,
             ip_only=True,
         ),
     output:
         matrix=temp(OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED
+            DataScalingTechnique.PER_SAMPLE
             )),
     params:
         gtf=CONFIG.genome.gtf,
@@ -111,92 +111,92 @@ rule heatmap_deeptools_unscaled_matrix:
         runtime=lambda wildcards, attempt: f"{1 * 2**attempt}h",
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log: OUTPUT_DIR + "/logs/heatmap/deeptools/unscaled/matrix.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/unscaled/matrix.tsv",
-    message: "Computing deeptools unscaled heatmap matrix from bigWig files"
+    log: OUTPUT_DIR + "/logs/heatmap/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.tsv",
+    message: "Computing deeptools per_sample heatmap matrix from bigWig files"
     shell: """
     computeMatrix scale-regions -p {threads} {params.options} --smartLabels --missingDataAsZero -S {input.bigwigs} -R {params.gtf} -o {output.matrix} >> {log} 2>&1
     """
 
 
-rule heatmap_deeptools_unscaled_plot:
+rule heatmap_deeptools_per_sample_plot:
     input:
-        matrix=rules.heatmap_deeptools_unscaled_matrix.output.matrix,
+        matrix=rules.heatmap_deeptools_per_sample_matrix.output.matrix,
     output:
         heatmap=OUTPUT.select_heatmap_plot(
-            DataScalingTechnique.UNSCALED),
+            DataScalingTechnique.PER_SAMPLE),
     params:
         options=str(CONFIG.third_party_tools.deeptools.plot_heatmap.command_line_arguments),
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log: OUTPUT_DIR + "/logs/heatmap/deeptools/unscaled/heatmap.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/unscaled/heatmap.tsv",
-    message: "Generating deeptools unscaled heatmap from matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.tsv",
+    message: "Generating deeptools per_sample heatmap from matrix"
     shell: """
     plotHeatmap -m {input.matrix} -out {output.heatmap} {params.options}
     """
 
 
-rule heatmap_deeptools_unscaled_metaplot:
+rule heatmap_deeptools_per_sample_metaplot:
     input:
-        matrix=rules.heatmap_deeptools_unscaled_matrix.output.matrix,
+        matrix=rules.heatmap_deeptools_per_sample_matrix.output.matrix,
     output:
         metaplot=OUTPUT.select_heatmap_metaplot(
-            DataScalingTechnique.UNSCALED),
+            DataScalingTechnique.PER_SAMPLE),
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-    log: OUTPUT_DIR + "/logs/heatmap/deeptools/unscaled/metaplot.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/unscaled/metaplot.tsv",
-    message: "Generating deeptools unscaled metaplot from heatmap matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.tsv",
+    message: "Generating deeptools per_sample metaplot from heatmap matrix"
     shell: """
     plotProfile -m {input.matrix} -out {output.metaplot} --perGroup
     """
 
 
-# ─── deeptools · individual · csaw ───────────────────────────────────────────
-use rule heatmap_deeptools_unscaled_matrix as heatmap_deeptools_csaw_matrix with:
+# ─── deeptools · individual · per_group ───────────────────────────────────────────
+use rule heatmap_deeptools_per_sample_matrix as heatmap_deeptools_per_group_matrix with:
     input:
         bigwigs=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
-            scale=DataScalingTechnique.CSAW,
+            scale=DataScalingTechnique.PER_GROUP,
             scaling_method=_DEFAULT_SCALING_METHOD,
             ip_only=True,
         ),
     output:
         matrix=temp(OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.CSAW, scaling_method=_DEFAULT_SCALING_METHOD)),
-    log: OUTPUT_DIR + "/logs/heatmap/deeptools/csaw/matrix.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/csaw/matrix.tsv",
-    message: "Computing deeptools CSAW-scaled heatmap matrix from bigWig files"
+            DataScalingTechnique.PER_GROUP, scaling_method=_DEFAULT_SCALING_METHOD)),
+    log: OUTPUT_DIR + "/logs/heatmap/deeptools/" + DataScalingTechnique.PER_GROUP.value + "/matrix.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/" + DataScalingTechnique.PER_GROUP.value + "/matrix.tsv",
+    message: "Computing deeptools per-group-scaled heatmap matrix from bigWig files"
 
-use rule heatmap_deeptools_unscaled_plot as heatmap_deeptools_csaw_plot with:
+use rule heatmap_deeptools_per_sample_plot as heatmap_deeptools_per_group_plot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.CSAW, scaling_method=_DEFAULT_SCALING_METHOD),
+            DataScalingTechnique.PER_GROUP, scaling_method=_DEFAULT_SCALING_METHOD),
     output:
         heatmap=OUTPUT.select_heatmap_plot(
-            DataScalingTechnique.CSAW, scaling_method=_DEFAULT_SCALING_METHOD),
-    log: OUTPUT_DIR + "/logs/heatmap/deeptools/csaw/heatmap.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/csaw/heatmap.tsv",
-    message: "Generating deeptools CSAW-scaled heatmap from matrix"
+            DataScalingTechnique.PER_GROUP, scaling_method=_DEFAULT_SCALING_METHOD),
+    log: OUTPUT_DIR + "/logs/heatmap/deeptools/" + DataScalingTechnique.PER_GROUP.value + "/heatmap.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/" + DataScalingTechnique.PER_GROUP.value + "/heatmap.tsv",
+    message: "Generating deeptools per-group-scaled heatmap from matrix"
 
-use rule heatmap_deeptools_unscaled_metaplot as heatmap_deeptools_csaw_metaplot with:
+use rule heatmap_deeptools_per_sample_metaplot as heatmap_deeptools_per_group_metaplot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.CSAW, scaling_method=_DEFAULT_SCALING_METHOD),
+            DataScalingTechnique.PER_GROUP, scaling_method=_DEFAULT_SCALING_METHOD),
     output:
         metaplot=OUTPUT.select_heatmap_metaplot(
-            DataScalingTechnique.CSAW, scaling_method=_DEFAULT_SCALING_METHOD),
-    log: OUTPUT_DIR + "/logs/heatmap/deeptools/csaw/metaplot.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/csaw/metaplot.tsv",
-    message: "Generating deeptools CSAW-scaled metaplot from matrix"
+            DataScalingTechnique.PER_GROUP, scaling_method=_DEFAULT_SCALING_METHOD),
+    log: OUTPUT_DIR + "/logs/heatmap/deeptools/" + DataScalingTechnique.PER_GROUP.value + "/metaplot.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/" + DataScalingTechnique.PER_GROUP.value + "/metaplot.tsv",
+    message: "Generating deeptools per-group-scaled metaplot from matrix"
 
 
 # ─── deeptools · individual · spikein · orlando ───────────────────────────────
 if _has_spikein_orlando:
-    use rule heatmap_deeptools_unscaled_matrix as heatmap_deeptools_spikein_orlando_matrix with:
+    use rule heatmap_deeptools_per_sample_matrix as heatmap_deeptools_spikein_orlando_matrix with:
         input:
             bigwigs=OUTPUT.select_bigwig_subtype(
                 method=PileupMethod.DEEPTOOLS,
@@ -212,7 +212,7 @@ if _has_spikein_orlando:
         benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/spikein/orlando/matrix.tsv",
         message: "Computing deeptools orlando spike-in heatmap matrix from bigWig files"
 
-    use rule heatmap_deeptools_unscaled_plot as heatmap_deeptools_spikein_orlando_plot with:
+    use rule heatmap_deeptools_per_sample_plot as heatmap_deeptools_spikein_orlando_plot with:
         input:
             matrix=OUTPUT.select_heatmap_matrix(
             DataScalingTechnique.SPIKEIN,
@@ -225,7 +225,7 @@ if _has_spikein_orlando:
         benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/spikein/orlando/heatmap.tsv",
         message: "Generating deeptools orlando spike-in heatmap from matrix"
 
-    use rule heatmap_deeptools_unscaled_metaplot as heatmap_deeptools_spikein_orlando_metaplot with:
+    use rule heatmap_deeptools_per_sample_metaplot as heatmap_deeptools_spikein_orlando_metaplot with:
         input:
             matrix=OUTPUT.select_heatmap_matrix(
             DataScalingTechnique.SPIKEIN,
@@ -241,7 +241,7 @@ if _has_spikein_orlando:
 
 # ─── deeptools · individual · spikein · with_input ───────────────────────────
 if _has_spikein_withinput:
-    use rule heatmap_deeptools_unscaled_matrix as heatmap_deeptools_spikein_withinput_matrix with:
+    use rule heatmap_deeptools_per_sample_matrix as heatmap_deeptools_spikein_withinput_matrix with:
         input:
             bigwigs=OUTPUT.select_bigwig_subtype(
                 method=PileupMethod.DEEPTOOLS,
@@ -257,7 +257,7 @@ if _has_spikein_withinput:
         benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/spikein/with_input/matrix.tsv",
         message: "Computing deeptools with_input spike-in heatmap matrix from bigWig files"
 
-    use rule heatmap_deeptools_unscaled_plot as heatmap_deeptools_spikein_withinput_plot with:
+    use rule heatmap_deeptools_per_sample_plot as heatmap_deeptools_spikein_withinput_plot with:
         input:
             matrix=OUTPUT.select_heatmap_matrix(
             DataScalingTechnique.SPIKEIN,
@@ -270,7 +270,7 @@ if _has_spikein_withinput:
         benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/spikein/with_input/heatmap.tsv",
         message: "Generating deeptools with_input spike-in heatmap from matrix"
 
-    use rule heatmap_deeptools_unscaled_metaplot as heatmap_deeptools_spikein_withinput_metaplot with:
+    use rule heatmap_deeptools_per_sample_metaplot as heatmap_deeptools_spikein_withinput_metaplot with:
         input:
             matrix=OUTPUT.select_heatmap_matrix(
             DataScalingTechnique.SPIKEIN,
@@ -284,96 +284,96 @@ if _has_spikein_withinput:
         message: "Generating deeptools with_input spike-in metaplot from matrix"
 
 
-# ─── deeptools · merged · unscaled ───────────────────────────────────────────
-use rule heatmap_deeptools_unscaled_matrix as heatmap_deeptools_merged_matrix with:
+# ─── deeptools · merged · per_sample ───────────────────────────────────────────
+use rule heatmap_deeptools_per_sample_matrix as heatmap_deeptools_merged_matrix with:
     input:
         bigwigs=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
-            scale=DataScalingTechnique.UNSCALED,
+            scale=DataScalingTechnique.PER_SAMPLE,
             is_merged=True,
         ),
     output:
         matrix=temp(OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED,
+            DataScalingTechnique.PER_SAMPLE,
             is_merged=True)),
-    log: OUTPUT_DIR + "/logs/heatmap/merged/deeptools/unscaled/matrix.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/unscaled/matrix.tsv",
-    message: "Computing deeptools merged unscaled heatmap matrix from bigWig files"
+    log: OUTPUT_DIR + "/logs/heatmap/merged/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.tsv",
+    message: "Computing deeptools merged per_sample heatmap matrix from bigWig files"
 
-use rule heatmap_deeptools_unscaled_plot as heatmap_deeptools_merged_plot with:
+use rule heatmap_deeptools_per_sample_plot as heatmap_deeptools_merged_plot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED,
+            DataScalingTechnique.PER_SAMPLE,
             is_merged=True),
     output:
         heatmap=OUTPUT.select_heatmap_plot(
-            DataScalingTechnique.UNSCALED,
+            DataScalingTechnique.PER_SAMPLE,
             is_merged=True),
-    log: OUTPUT_DIR + "/logs/heatmap/merged/deeptools/unscaled/heatmap.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/unscaled/heatmap.tsv",
-    message: "Generating deeptools merged unscaled heatmap from matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/merged/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.tsv",
+    message: "Generating deeptools merged per_sample heatmap from matrix"
 
-use rule heatmap_deeptools_unscaled_metaplot as heatmap_deeptools_merged_metaplot with:
+use rule heatmap_deeptools_per_sample_metaplot as heatmap_deeptools_merged_metaplot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED,
+            DataScalingTechnique.PER_SAMPLE,
             is_merged=True),
     output:
         metaplot=OUTPUT.select_heatmap_metaplot(
-            DataScalingTechnique.UNSCALED,
+            DataScalingTechnique.PER_SAMPLE,
             is_merged=True),
-    log: OUTPUT_DIR + "/logs/heatmap/merged/deeptools/unscaled/metaplot.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/unscaled/metaplot.tsv",
-    message: "Generating deeptools merged unscaled metaplot from matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/merged/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.tsv",
+    message: "Generating deeptools merged per_sample metaplot from matrix"
 
 
-# ─── deeptools · merged · csaw ───────────────────────────────────────────────
-use rule heatmap_deeptools_unscaled_matrix as heatmap_deeptools_merged_csaw_matrix with:
+# ─── deeptools · merged · per_group ───────────────────────────────────────────────
+use rule heatmap_deeptools_per_sample_matrix as heatmap_deeptools_merged_per_group_matrix with:
     input:
         bigwigs=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.DEEPTOOLS,
-            scale=DataScalingTechnique.CSAW,
+            scale=DataScalingTechnique.PER_GROUP,
             scaling_method=_DEFAULT_SCALING_METHOD,
             is_merged=True,
         ),
     output:
         matrix=temp(OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.CSAW,
+            DataScalingTechnique.PER_GROUP,
             is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD)),
-    log: OUTPUT_DIR + "/logs/heatmap/merged/deeptools/csaw/matrix.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/csaw/matrix.tsv",
-    message: "Computing deeptools merged CSAW-scaled heatmap matrix from bigWig files"
+    log: OUTPUT_DIR + "/logs/heatmap/merged/deeptools/" + DataScalingTechnique.PER_GROUP.value + "/matrix.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/" + DataScalingTechnique.PER_GROUP.value + "/matrix.tsv",
+    message: "Computing deeptools merged per-group-scaled heatmap matrix from bigWig files"
 
-use rule heatmap_deeptools_unscaled_plot as heatmap_deeptools_merged_csaw_plot with:
+use rule heatmap_deeptools_per_sample_plot as heatmap_deeptools_merged_per_group_plot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.CSAW,
+            DataScalingTechnique.PER_GROUP,
             is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
     output:
         heatmap=OUTPUT.select_heatmap_plot(
-            DataScalingTechnique.CSAW,
+            DataScalingTechnique.PER_GROUP,
             is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
-    log: OUTPUT_DIR + "/logs/heatmap/merged/deeptools/csaw/heatmap.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/csaw/heatmap.tsv",
-    message: "Generating deeptools merged CSAW-scaled heatmap from matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/merged/deeptools/" + DataScalingTechnique.PER_GROUP.value + "/heatmap.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/" + DataScalingTechnique.PER_GROUP.value + "/heatmap.tsv",
+    message: "Generating deeptools merged per-group-scaled heatmap from matrix"
 
-use rule heatmap_deeptools_unscaled_metaplot as heatmap_deeptools_merged_csaw_metaplot with:
+use rule heatmap_deeptools_per_sample_metaplot as heatmap_deeptools_merged_per_group_metaplot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.CSAW,
+            DataScalingTechnique.PER_GROUP,
             is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
     output:
         metaplot=OUTPUT.select_heatmap_metaplot(
-            DataScalingTechnique.CSAW,
+            DataScalingTechnique.PER_GROUP,
             is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
-    log: OUTPUT_DIR + "/logs/heatmap/merged/deeptools/csaw/metaplot.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/csaw/metaplot.tsv",
-    message: "Generating deeptools merged CSAW-scaled metaplot from matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/merged/deeptools/" + DataScalingTechnique.PER_GROUP.value + "/metaplot.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/" + DataScalingTechnique.PER_GROUP.value + "/metaplot.tsv",
+    message: "Generating deeptools merged per-group-scaled metaplot from matrix"
 
 
 # ─── deeptools · merged · spikein · orlando ──────────────────────────────────
 if _has_spikein_orlando:
-    use rule heatmap_deeptools_unscaled_matrix as heatmap_deeptools_merged_spikein_orlando_matrix with:
+    use rule heatmap_deeptools_per_sample_matrix as heatmap_deeptools_merged_spikein_orlando_matrix with:
         input:
             bigwigs=OUTPUT.select_bigwig_subtype(
                 method=PileupMethod.DEEPTOOLS,
@@ -390,7 +390,7 @@ if _has_spikein_orlando:
         benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/spikein/orlando/matrix.tsv",
         message: "Computing deeptools merged orlando spike-in heatmap matrix from bigWig files"
 
-    use rule heatmap_deeptools_unscaled_plot as heatmap_deeptools_merged_spikein_orlando_plot with:
+    use rule heatmap_deeptools_per_sample_plot as heatmap_deeptools_merged_spikein_orlando_plot with:
         input:
             matrix=OUTPUT.select_heatmap_matrix(
             DataScalingTechnique.SPIKEIN,
@@ -405,7 +405,7 @@ if _has_spikein_orlando:
         benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/spikein/orlando/heatmap.tsv",
         message: "Generating deeptools merged orlando spike-in heatmap from matrix"
 
-    use rule heatmap_deeptools_unscaled_metaplot as heatmap_deeptools_merged_spikein_orlando_metaplot with:
+    use rule heatmap_deeptools_per_sample_metaplot as heatmap_deeptools_merged_spikein_orlando_metaplot with:
         input:
             matrix=OUTPUT.select_heatmap_matrix(
             DataScalingTechnique.SPIKEIN,
@@ -423,7 +423,7 @@ if _has_spikein_orlando:
 
 # ─── deeptools · merged · spikein · with_input ───────────────────────────────
 if _has_spikein_withinput:
-    use rule heatmap_deeptools_unscaled_matrix as heatmap_deeptools_merged_spikein_withinput_matrix with:
+    use rule heatmap_deeptools_per_sample_matrix as heatmap_deeptools_merged_spikein_withinput_matrix with:
         input:
             bigwigs=OUTPUT.select_bigwig_subtype(
                 method=PileupMethod.DEEPTOOLS,
@@ -440,7 +440,7 @@ if _has_spikein_withinput:
         benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/spikein/with_input/matrix.tsv",
         message: "Computing deeptools merged with_input spike-in heatmap matrix from bigWig files"
 
-    use rule heatmap_deeptools_unscaled_plot as heatmap_deeptools_merged_spikein_withinput_plot with:
+    use rule heatmap_deeptools_per_sample_plot as heatmap_deeptools_merged_spikein_withinput_plot with:
         input:
             matrix=OUTPUT.select_heatmap_matrix(
             DataScalingTechnique.SPIKEIN,
@@ -455,7 +455,7 @@ if _has_spikein_withinput:
         benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/deeptools/spikein/with_input/heatmap.tsv",
         message: "Generating deeptools merged with_input spike-in heatmap from matrix"
 
-    use rule heatmap_deeptools_unscaled_metaplot as heatmap_deeptools_merged_spikein_withinput_metaplot with:
+    use rule heatmap_deeptools_per_sample_metaplot as heatmap_deeptools_merged_spikein_withinput_metaplot with:
         input:
             matrix=OUTPUT.select_heatmap_matrix(
             DataScalingTechnique.SPIKEIN,
@@ -471,149 +471,149 @@ if _has_spikein_withinput:
         message: "Generating deeptools merged with_input spike-in metaplot from matrix"
 
 
-# ─── bamnado · individual · unscaled ─────────────────────────────────────────
-use rule heatmap_deeptools_unscaled_matrix as heatmap_bamnado_unscaled_matrix with:
+# ─── bamnado · individual · per_sample ─────────────────────────────────────────
+use rule heatmap_deeptools_per_sample_matrix as heatmap_bamnado_per_sample_matrix with:
     input:
         bigwigs=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.BAMNADO,
-            scale=DataScalingTechnique.UNSCALED,
+            scale=DataScalingTechnique.PER_SAMPLE,
             ip_only=True,
         ),
     output:
         matrix=temp(OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.BAMNADO)),
-    log: OUTPUT_DIR + "/logs/heatmap/bamnado/unscaled/matrix.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/bamnado/unscaled/matrix.tsv",
-    message: "Computing bamnado unscaled heatmap matrix from bigWig files"
+    log: OUTPUT_DIR + "/logs/heatmap/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.tsv",
+    message: "Computing bamnado per_sample heatmap matrix from bigWig files"
 
-use rule heatmap_deeptools_unscaled_plot as heatmap_bamnado_unscaled_plot with:
+use rule heatmap_deeptools_per_sample_plot as heatmap_bamnado_per_sample_plot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.BAMNADO),
     output:
         heatmap=OUTPUT.select_heatmap_plot(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.BAMNADO),
-    log: OUTPUT_DIR + "/logs/heatmap/bamnado/unscaled/heatmap.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/bamnado/unscaled/heatmap.tsv",
-    message: "Generating bamnado unscaled heatmap from matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.tsv",
+    message: "Generating bamnado per_sample heatmap from matrix"
 
-use rule heatmap_deeptools_unscaled_metaplot as heatmap_bamnado_unscaled_metaplot with:
+use rule heatmap_deeptools_per_sample_metaplot as heatmap_bamnado_per_sample_metaplot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.BAMNADO),
     output:
         metaplot=OUTPUT.select_heatmap_metaplot(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.BAMNADO),
-    log: OUTPUT_DIR + "/logs/heatmap/bamnado/unscaled/metaplot.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/bamnado/unscaled/metaplot.tsv",
-    message: "Generating bamnado unscaled metaplot from matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.tsv",
+    message: "Generating bamnado per_sample metaplot from matrix"
 
 
-# ─── bamnado · merged · unscaled ─────────────────────────────────────────────
-use rule heatmap_deeptools_unscaled_matrix as heatmap_bamnado_merged_unscaled_matrix with:
+# ─── bamnado · merged · per_sample ─────────────────────────────────────────────
+use rule heatmap_deeptools_per_sample_matrix as heatmap_bamnado_merged_per_sample_matrix with:
     input:
         bigwigs=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.BAMNADO,
-            scale=DataScalingTechnique.UNSCALED,
+            scale=DataScalingTechnique.PER_SAMPLE,
             is_merged=True,
         ),
     output:
         matrix=temp(OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.BAMNADO,
             is_merged=True)),
-    log: OUTPUT_DIR + "/logs/heatmap/merged/bamnado/unscaled/matrix.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/unscaled/matrix.tsv",
-    message: "Computing bamnado merged unscaled heatmap matrix from bigWig files"
+    log: OUTPUT_DIR + "/logs/heatmap/merged/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.tsv",
+    message: "Computing bamnado merged per_sample heatmap matrix from bigWig files"
 
-use rule heatmap_deeptools_unscaled_plot as heatmap_bamnado_merged_unscaled_plot with:
+use rule heatmap_deeptools_per_sample_plot as heatmap_bamnado_merged_per_sample_plot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.BAMNADO,
             is_merged=True),
     output:
         heatmap=OUTPUT.select_heatmap_plot(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.BAMNADO,
             is_merged=True),
-    log: OUTPUT_DIR + "/logs/heatmap/merged/bamnado/unscaled/heatmap.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/unscaled/heatmap.tsv",
-    message: "Generating bamnado merged unscaled heatmap from matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/merged/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.tsv",
+    message: "Generating bamnado merged per_sample heatmap from matrix"
 
-use rule heatmap_deeptools_unscaled_metaplot as heatmap_bamnado_merged_unscaled_metaplot with:
+use rule heatmap_deeptools_per_sample_metaplot as heatmap_bamnado_merged_per_sample_metaplot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.BAMNADO,
             is_merged=True),
     output:
         metaplot=OUTPUT.select_heatmap_metaplot(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.BAMNADO,
             is_merged=True),
-    log: OUTPUT_DIR + "/logs/heatmap/merged/bamnado/unscaled/metaplot.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/unscaled/metaplot.tsv",
-    message: "Generating bamnado merged unscaled metaplot from matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/merged/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.tsv",
+    message: "Generating bamnado merged per_sample metaplot from matrix"
 
 
-# ─── bamnado · merged · csaw ─────────────────────────────────────────────────
-use rule heatmap_deeptools_unscaled_matrix as heatmap_bamnado_merged_csaw_matrix with:
+# ─── bamnado · merged · per_group ─────────────────────────────────────────────────
+use rule heatmap_deeptools_per_sample_matrix as heatmap_bamnado_merged_per_group_matrix with:
     input:
         bigwigs=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.BAMNADO,
-            scale=DataScalingTechnique.CSAW,
+            scale=DataScalingTechnique.PER_GROUP,
             scaling_method=_DEFAULT_SCALING_METHOD,
             is_merged=True,
         ),
     output:
         matrix=temp(OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.CSAW,
+            DataScalingTechnique.PER_GROUP,
             method=PileupMethod.BAMNADO,
             is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD)),
-    log: OUTPUT_DIR + "/logs/heatmap/merged/bamnado/csaw/matrix.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/csaw/matrix.tsv",
-    message: "Computing bamnado merged CSAW-scaled heatmap matrix from bigWig files"
+    log: OUTPUT_DIR + "/logs/heatmap/merged/bamnado/" + DataScalingTechnique.PER_GROUP.value + "/matrix.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/" + DataScalingTechnique.PER_GROUP.value + "/matrix.tsv",
+    message: "Computing bamnado merged per-group-scaled heatmap matrix from bigWig files"
 
-use rule heatmap_deeptools_unscaled_plot as heatmap_bamnado_merged_csaw_plot with:
+use rule heatmap_deeptools_per_sample_plot as heatmap_bamnado_merged_per_group_plot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.CSAW,
+            DataScalingTechnique.PER_GROUP,
             method=PileupMethod.BAMNADO,
             is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
     output:
         heatmap=OUTPUT.select_heatmap_plot(
-            DataScalingTechnique.CSAW,
+            DataScalingTechnique.PER_GROUP,
             method=PileupMethod.BAMNADO,
             is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
-    log: OUTPUT_DIR + "/logs/heatmap/merged/bamnado/csaw/heatmap.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/csaw/heatmap.tsv",
-    message: "Generating bamnado merged CSAW-scaled heatmap from matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/merged/bamnado/" + DataScalingTechnique.PER_GROUP.value + "/heatmap.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/" + DataScalingTechnique.PER_GROUP.value + "/heatmap.tsv",
+    message: "Generating bamnado merged per-group-scaled heatmap from matrix"
 
-use rule heatmap_deeptools_unscaled_metaplot as heatmap_bamnado_merged_csaw_metaplot with:
+use rule heatmap_deeptools_per_sample_metaplot as heatmap_bamnado_merged_per_group_metaplot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.CSAW,
+            DataScalingTechnique.PER_GROUP,
             method=PileupMethod.BAMNADO,
             is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
     output:
         metaplot=OUTPUT.select_heatmap_metaplot(
-            DataScalingTechnique.CSAW,
+            DataScalingTechnique.PER_GROUP,
             method=PileupMethod.BAMNADO,
             is_merged=True, scaling_method=_DEFAULT_SCALING_METHOD),
-    log: OUTPUT_DIR + "/logs/heatmap/merged/bamnado/csaw/metaplot.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/csaw/metaplot.tsv",
-    message: "Generating bamnado merged CSAW-scaled metaplot from matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/merged/bamnado/" + DataScalingTechnique.PER_GROUP.value + "/metaplot.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/" + DataScalingTechnique.PER_GROUP.value + "/metaplot.tsv",
+    message: "Generating bamnado merged per-group-scaled metaplot from matrix"
 
 
 # ─── bamnado · merged · spikein · orlando ────────────────────────────────────
 if _has_spikein_orlando:
-    use rule heatmap_deeptools_unscaled_matrix as heatmap_bamnado_merged_spikein_orlando_matrix with:
+    use rule heatmap_deeptools_per_sample_matrix as heatmap_bamnado_merged_spikein_orlando_matrix with:
         input:
             bigwigs=OUTPUT.select_bigwig_subtype(
                 method=PileupMethod.BAMNADO,
@@ -631,7 +631,7 @@ if _has_spikein_orlando:
         benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/spikein/orlando/matrix.tsv",
         message: "Computing bamnado merged orlando spike-in heatmap matrix from bigWig files"
 
-    use rule heatmap_deeptools_unscaled_plot as heatmap_bamnado_merged_spikein_orlando_plot with:
+    use rule heatmap_deeptools_per_sample_plot as heatmap_bamnado_merged_spikein_orlando_plot with:
         input:
             matrix=OUTPUT.select_heatmap_matrix(
             DataScalingTechnique.SPIKEIN, 
@@ -648,7 +648,7 @@ if _has_spikein_orlando:
         benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/spikein/orlando/heatmap.tsv",
         message: "Generating bamnado merged orlando spike-in heatmap from matrix"
 
-    use rule heatmap_deeptools_unscaled_metaplot as heatmap_bamnado_merged_spikein_orlando_metaplot with:
+    use rule heatmap_deeptools_per_sample_metaplot as heatmap_bamnado_merged_spikein_orlando_metaplot with:
         input:
             matrix=OUTPUT.select_heatmap_matrix(
             DataScalingTechnique.SPIKEIN, 
@@ -668,7 +668,7 @@ if _has_spikein_orlando:
 
 # ─── bamnado · merged · spikein · with_input ─────────────────────────────────
 if _has_spikein_withinput:
-    use rule heatmap_deeptools_unscaled_matrix as heatmap_bamnado_merged_spikein_withinput_matrix with:
+    use rule heatmap_deeptools_per_sample_matrix as heatmap_bamnado_merged_spikein_withinput_matrix with:
         input:
             bigwigs=OUTPUT.select_bigwig_subtype(
                 method=PileupMethod.BAMNADO,
@@ -686,7 +686,7 @@ if _has_spikein_withinput:
         benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/spikein/with_input/matrix.tsv",
         message: "Computing bamnado merged with_input spike-in heatmap matrix from bigWig files"
 
-    use rule heatmap_deeptools_unscaled_plot as heatmap_bamnado_merged_spikein_withinput_plot with:
+    use rule heatmap_deeptools_per_sample_plot as heatmap_bamnado_merged_spikein_withinput_plot with:
         input:
             matrix=OUTPUT.select_heatmap_matrix(
                 DataScalingTechnique.SPIKEIN, 
@@ -704,7 +704,7 @@ if _has_spikein_withinput:
         benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/bamnado/spikein/with_input/heatmap.tsv",
         message: "Generating bamnado merged with_input spike-in heatmap from matrix"
 
-    use rule heatmap_deeptools_unscaled_metaplot as heatmap_bamnado_merged_spikein_withinput_metaplot with:
+    use rule heatmap_deeptools_per_sample_metaplot as heatmap_bamnado_merged_spikein_withinput_metaplot with:
         input:
             matrix=OUTPUT.select_heatmap_matrix(
             DataScalingTechnique.SPIKEIN, 
@@ -722,94 +722,94 @@ if _has_spikein_withinput:
         message: "Generating bamnado merged with_input spike-in metaplot from matrix"
 
 
-# ─── homer · individual · unscaled ───────────────────────────────────────────
-use rule heatmap_deeptools_unscaled_matrix as heatmap_homer_unscaled_matrix with:
+# ─── homer · individual · per_sample ───────────────────────────────────────────
+use rule heatmap_deeptools_per_sample_matrix as heatmap_homer_per_sample_matrix with:
     input:
         bigwigs=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.HOMER,
-            scale=DataScalingTechnique.UNSCALED,
+            scale=DataScalingTechnique.PER_SAMPLE,
             ip_only=True,
         ),
     output:
         matrix=temp(OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.HOMER)),
-    log: OUTPUT_DIR + "/logs/heatmap/homer/unscaled/matrix.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/homer/unscaled/matrix.tsv",
-    message: "Computing homer unscaled heatmap matrix from bigWig files"
+    log: OUTPUT_DIR + "/logs/heatmap/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.tsv",
+    message: "Computing homer per_sample heatmap matrix from bigWig files"
 
-use rule heatmap_deeptools_unscaled_plot as heatmap_homer_unscaled_plot with:
+use rule heatmap_deeptools_per_sample_plot as heatmap_homer_per_sample_plot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.HOMER),
     output:
         heatmap=OUTPUT.select_heatmap_plot(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.HOMER),
-    log: OUTPUT_DIR + "/logs/heatmap/homer/unscaled/heatmap.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/homer/unscaled/heatmap.tsv",
-    message: "Generating homer unscaled heatmap from matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.tsv",
+    message: "Generating homer per_sample heatmap from matrix"
 
-use rule heatmap_deeptools_unscaled_metaplot as heatmap_homer_unscaled_metaplot with:
+use rule heatmap_deeptools_per_sample_metaplot as heatmap_homer_per_sample_metaplot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.HOMER),
     output:
         metaplot=OUTPUT.select_heatmap_metaplot(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.HOMER),
-    log: OUTPUT_DIR + "/logs/heatmap/homer/unscaled/metaplot.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/homer/unscaled/metaplot.tsv",
-    message: "Generating homer unscaled metaplot from matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.tsv",
+    message: "Generating homer per_sample metaplot from matrix"
 
 
-# ─── homer · merged · unscaled ───────────────────────────────────────────────
-use rule heatmap_deeptools_unscaled_matrix as heatmap_homer_merged_unscaled_matrix with:
+# ─── homer · merged · per_sample ───────────────────────────────────────────────
+use rule heatmap_deeptools_per_sample_matrix as heatmap_homer_merged_per_sample_matrix with:
     input:
         bigwigs=OUTPUT.select_bigwig_subtype(
             method=PileupMethod.HOMER,
-            scale=DataScalingTechnique.UNSCALED,
+            scale=DataScalingTechnique.PER_SAMPLE,
             is_merged=True,
         ),
     output:
         matrix=temp(OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.HOMER,
             is_merged=True)),
-    log: OUTPUT_DIR + "/logs/heatmap/merged/homer/unscaled/matrix.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/homer/unscaled/matrix.tsv",
-    message: "Computing homer merged unscaled heatmap matrix from bigWig files"
+    log: OUTPUT_DIR + "/logs/heatmap/merged/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.tsv",
+    message: "Computing homer merged per_sample heatmap matrix from bigWig files"
 
-use rule heatmap_deeptools_unscaled_plot as heatmap_homer_merged_unscaled_plot with:
+use rule heatmap_deeptools_per_sample_plot as heatmap_homer_merged_per_sample_plot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.HOMER,
             is_merged=True),
     output:
         heatmap=OUTPUT.select_heatmap_plot(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.HOMER,
             is_merged=True),
-    log: OUTPUT_DIR + "/logs/heatmap/merged/homer/unscaled/heatmap.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/homer/unscaled/heatmap.tsv",
-    message: "Generating homer merged unscaled heatmap from matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/merged/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.tsv",
+    message: "Generating homer merged per_sample heatmap from matrix"
 
-use rule heatmap_deeptools_unscaled_metaplot as heatmap_homer_merged_unscaled_metaplot with:
+use rule heatmap_deeptools_per_sample_metaplot as heatmap_homer_merged_per_sample_metaplot with:
     input:
         matrix=OUTPUT.select_heatmap_matrix(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.HOMER, 
             is_merged=True
         ),
     output:
         metaplot=OUTPUT.select_heatmap_metaplot(
-            DataScalingTechnique.UNSCALED, 
+            DataScalingTechnique.PER_SAMPLE, 
             method=PileupMethod.HOMER, 
             is_merged=True
         ),
-    log: OUTPUT_DIR + "/logs/heatmap/merged/homer/unscaled/metaplot.log",
-    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/homer/unscaled/metaplot.tsv",
-    message: "Generating homer merged unscaled metaplot from matrix"
+    log: OUTPUT_DIR + "/logs/heatmap/merged/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/heatmap/merged/homer/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.tsv",
+    message: "Generating homer merged per_sample metaplot from matrix"

@@ -7,8 +7,8 @@ from seqnado.workflow.helpers.normalization import (
 )
 
 # Spike-in normalized, stranded bigwigs for individual RNA samples
-# (CSAW/bamnado library-scaling is genomics-only — not appropriate for RNA-seq's
-# compositional read-count bias — so RNA has no CSAW-technique bigwig rules.)
+# (Bamnado per-group library-scaling is genomics-only — not appropriate for RNA-seq's
+# compositional read-count bias — so RNA has no per-group-technique bigwig rules.)
 
 rule bigwigs_deeptools_rna_spikein_plus:
     input:

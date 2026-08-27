@@ -36,7 +36,7 @@ def get_control_file(wildcards, file_type: FileType, INPUT_FILES, OUTPUT_DIR):
         case FileType.BIGWIG:
             return (
                 OUTPUT_DIR
-                + f"/bigwigs/deeptools/{DataScalingTechnique.UNSCALED.value}/{control_name}.bigWig"
+                + f"/bigwigs/deeptools/{DataScalingTechnique.PER_SAMPLE.value}/{control_name}.bigWig"
             )
         case FileType.TAG_DIRECTORY:
             return OUTPUT_DIR + f"/tag_dirs/{control_name}"

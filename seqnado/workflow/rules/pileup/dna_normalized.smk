@@ -17,7 +17,7 @@ if CONFIG.third_party_tools.deeptools is not None:
             bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
             scaling_factors=lambda wc: OUTPUT_DIR + f"/resources/{wc.scaling_method}/{get_group_for_sample(wc, INPUT_FILES)}_scaling_factors.tsv",
         output:
-            bigwig=OUTPUT_DIR + "/bigwigs/deeptools/csaw/{scaling_method}/{sample}.bigWig",
+            bigwig=OUTPUT_DIR + "/bigwigs/deeptools/" + DataScalingTechnique.PER_GROUP.value + "/{scaling_method}/{sample}.bigWig",
         params:
             scale=lambda wc: get_scaling_factor(
                 wc,
@@ -58,7 +58,7 @@ if CONFIG.third_party_tools.bamnado is not None:
             bai=OUTPUT_DIR + "/aligned/{sample}.bam.bai",
             scaling_factors=lambda wc: OUTPUT_DIR + f"/resources/{wc.scaling_method}/{get_group_for_sample(wc, INPUT_FILES)}_scaling_factors.tsv",
         output:
-            bigwig=OUTPUT_DIR + "/bigwigs/bamnado/csaw/{scaling_method}/{sample}.bigWig",
+            bigwig=OUTPUT_DIR + "/bigwigs/bamnado/" + DataScalingTechnique.PER_GROUP.value + "/{scaling_method}/{sample}.bigWig",
         params:
             scale=lambda wc: get_scaling_factor(
                 wc,

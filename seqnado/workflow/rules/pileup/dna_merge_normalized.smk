@@ -16,7 +16,7 @@ if CONFIG.third_party_tools.deeptools is not None:
             bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
             scaling_factors=OUTPUT_DIR + "/resources/{scaling_method}/{group}_scaling_factors.tsv",
         output:
-            bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/csaw/{scaling_method}/{group}.bigWig",
+            bigwig=OUTPUT_DIR + "/bigwigs/deeptools/merged/" + DataScalingTechnique.PER_GROUP.value + "/{scaling_method}/{group}.bigWig",
         params:
             scale=lambda wc: get_scaling_factor_for_merged_group(wc, SAMPLE_GROUPINGS, OUTPUT_DIR),
             options=lambda wc: format_deeptools_options(
@@ -30,8 +30,8 @@ if CONFIG.third_party_tools.deeptools is not None:
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-        log: OUTPUT_DIR + "/logs/bigwigs/deeptools/merged/csaw/{scaling_method}/{group}.log",
-        benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/deeptools/merged/csaw/{scaling_method}/{group}.tsv",
+        log: OUTPUT_DIR + "/logs/bigwigs/deeptools/merged/" + DataScalingTechnique.PER_GROUP.value + "/{scaling_method}/{group}.log",
+        benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/deeptools/merged/" + DataScalingTechnique.PER_GROUP.value + "/{scaling_method}/{group}.tsv",
         message: "Making {wildcards.scaling_method}-scaled merged bigWig with deeptools for group {wildcards.group}"
         wildcard_constraints:
             group="|".join(SAMPLE_GROUPINGS.get_grouping('consensus').group_names),
@@ -78,7 +78,7 @@ if CONFIG.third_party_tools.bamnado is not None:
             bai=OUTPUT_DIR + "/aligned/merged/{group}.bam.bai",
             scaling_factors=OUTPUT_DIR + "/resources/{scaling_method}/{group}_scaling_factors.tsv",
         output:
-            bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/csaw/{scaling_method}/{group}.bigWig",
+            bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/" + DataScalingTechnique.PER_GROUP.value + "/{scaling_method}/{group}.bigWig",
         params:
             scale=lambda wc: get_scaling_factor_for_merged_group(wc, SAMPLE_GROUPINGS, OUTPUT_DIR),
             options=str(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments),
@@ -87,8 +87,8 @@ if CONFIG.third_party_tools.bamnado is not None:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
-        log: OUTPUT_DIR + "/logs/bigwigs/bamnado/merged/csaw/{scaling_method}/{group}.log",
-        benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/bamnado/merged/csaw/{scaling_method}/{group}.tsv",
+        log: OUTPUT_DIR + "/logs/bigwigs/bamnado/merged/" + DataScalingTechnique.PER_GROUP.value + "/{scaling_method}/{group}.log",
+        benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/bamnado/merged/" + DataScalingTechnique.PER_GROUP.value + "/{scaling_method}/{group}.tsv",
         message: "Making {wildcards.scaling_method}-scaled merged bigWig with bamnado for group {wildcards.group}"
         wildcard_constraints:
             group="|".join(SAMPLE_GROUPINGS.get_grouping('consensus').group_names),

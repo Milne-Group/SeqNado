@@ -44,7 +44,7 @@ if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
 
     rule bigwigs_aggregated:
         """
-        Aggregate per-sample unscaled bigwigs to condition-level means.
+        Aggregate per-sample (per-sample-scaled) bigwigs to condition-level means.
         For RNA-seq, handles stranded bigwigs (plus/minus).
         """
         input:
@@ -90,7 +90,7 @@ if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
 
     rule bigwigs_subtraction:
         """
-        Generate pairwise subtraction bigwigs from condition-level aggregates (unscaled source).
+        Generate pairwise subtraction bigwigs from condition-level aggregates (per-sample-scaled source).
         For RNA-seq, handles stranded bigwigs (plus/minus).
         """
         input:

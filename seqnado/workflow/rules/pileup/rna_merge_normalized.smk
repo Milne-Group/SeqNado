@@ -130,8 +130,8 @@ rule bigwigs_bamnado_rna_merged_spikein_minus:
         """
 
 
-# CSAW/bamnado library-scaling is genomics-only — not appropriate for RNA-seq's
-# compositional read-count bias — so merged RNA has no CSAW-technique bigwig rules.
+# Bamnado per-group library-scaling is genomics-only — not appropriate for RNA-seq's
+# compositional read-count bias — so merged RNA has no per-group-technique bigwig rules.
 
 ruleorder: bigwigs_deeptools_rna_merged_plus > bigwigs_deeptools_rna_merged_minus
 
