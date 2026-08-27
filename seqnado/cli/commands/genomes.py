@@ -19,17 +19,14 @@ from seqnado.cli.utils import (
     _pkg_traversable,
     cli_print,
     require_snakemake,
-    TOP_LEVEL_PASS_THROUGH,
     resolve_profile,
     validate_assay,
     verbose_option,
     preset_option,
     dry_run_option,
     cores_option,
-    execute_snakemake,
 )
 from seqnado.cli.autocomplete import _assay_names, assay_autocomplete
-from seqnado.utils import create_flag_filter
 
 
 # Create genomes app
@@ -251,19 +248,10 @@ def build_genomes(
             if dry_run:
                 builder.add_dry_run()
             
-            # Create flag filter for allowed pass-through flags
-            should_pass_to_snakemake = create_flag_filter(TOP_LEVEL_PASS_THROUGH)
-            
-            # Pass through validated extra args from ctx
+            # Pass through extra args from ctx unfiltered
             if ctx and ctx.args:
-                filtered_args = [
-                    arg for arg in ctx.args if should_pass_to_snakemake(arg)
-                ]
-                builder.add_pass_through_args(filtered_args)
+                builder.add_pass_through_args(list(ctx.args))
 
-            # Build command
-            cmd = builder.build()
-            
             genome_label = (
                 f"{genomes[0]}_{spikein}" if spikein else ",".join(genomes)
             )
@@ -272,7 +260,7 @@ def build_genomes(
             
             # Execute snakemake
             cwd = str(Path(".").resolve())
-            exit_code = execute_snakemake(cmd, cwd, verbose)
+            exit_code = builder.run(cwd, print_cmd=verbose)
             raise typer.Exit(code=exit_code)
 
     except typer.Exit:

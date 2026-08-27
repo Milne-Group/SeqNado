@@ -5,7 +5,6 @@ from __future__ import annotations
 import contextlib
 import json
 import os
-import subprocess
 import sys
 import tempfile
 from importlib import resources
@@ -40,17 +39,6 @@ class ExitCode:
     MISSING_DEPENDENCY = 4
     LAUNCH_FAILED = 5
     COMMAND_NOT_FOUND = 127
-
-
-TOP_LEVEL_PASS_THROUGH = (
-    "-n",
-    "--dry-run",
-    "--benchmark-extended",
-    "--printshellcmds",
-    "--unlock",
-    "--rerun-incomplete",
-    "--show-failed-logs",
-)
 
 
 def _pkg_traversable(pkg: str):
@@ -399,32 +387,6 @@ def _resolve_working_dir() -> None:
     cwd = str(Path(".").resolve())
     os.chdir(cwd)
     os.environ["PWD"] = cwd
-
-
-def execute_snakemake(
-    cmd: List[str],
-    cwd: str,
-    print_cmd: bool = False,
-) -> int:
-    """
-    Execute a snakemake command and return exit code.
-    
-    Args:
-        cmd: Command as list of strings
-        cwd: Working directory
-        print_cmd: Whether to log the command before execution
-    
-    Returns:
-        Exit code from subprocess.run()
-    """
-    os.chdir(cwd)
-    os.environ["PWD"] = cwd
-    
-    if print_cmd:
-        logger.info("Snakemake command:\n$ " + " ".join(map(str, cmd)))
-    
-    completed = subprocess.run(cmd, cwd=cwd)
-    return completed.returncode
 
 
 def print_logo(pkg_root_trav) -> None:

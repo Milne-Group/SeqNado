@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import contextlib
 import os
-import subprocess
 from importlib import resources
 from pathlib import Path
 from typing import List, Optional
@@ -18,8 +17,6 @@ from seqnado.cli.utils import (
     _configure_logging,
     _pkg_traversable,
     require_snakemake,
-    TOP_LEVEL_PASS_THROUGH,
-    execute_snakemake,
     resolve_profile,
     print_logo,
     verbose_option,
@@ -28,7 +25,6 @@ from seqnado.cli.utils import (
 from seqnado.utils import (
     resolve_profile_path,
     extract_cores_from_options,
-    create_flag_filter,
 )
 
 
@@ -80,7 +76,7 @@ def _run_multiomics_pipeline(
         print_cmd: Print the Snakemake command before running it
     
     Returns:
-        Exit code from subprocess.run()
+        Exit code from the Snakemake run
     """
     logger.info(f"Multiomic mode detected: found {len(config_files)} config files")
     logger.info(f"Assays: {', '.join([a.value for a in config_files])}")
@@ -123,17 +119,9 @@ def _run_multiomics_pipeline(
             
             # Add all cleaned options to the nested workflow args
             workflow_args.extend(cleaned_opts)
-            
-            # Policy: some flags must also be present on the top-level snakemake invocation.
-            # TOP_LEVEL_PASS_THROUGH can be adjusted if you want more/fewer flags forwarded.
-            should_pass_to_top_level = create_flag_filter(TOP_LEVEL_PASS_THROUGH)
-            
-            # Filter cleaned_opts into top-level opts (preserving order)
-            top_level_opts = [o for o in cleaned_opts if should_pass_to_top_level(o)]
-            
-            # Add top-level opts to builder
-            if top_level_opts:
-                builder.add_pass_through_args(top_level_opts)
+
+            # Add cleaned opts directly to the outer builder as well
+            builder.add_pass_through_args(cleaned_opts)
 
             # Add queue to outer builder so module-imported rules use the correct partition
             if queue and preset and preset.startswith("s"):
@@ -154,13 +142,10 @@ def _run_multiomics_pipeline(
             
             # Run in project directory for multiomics to avoid lock conflicts
             builder.add_directory(".")
-            
-            # Build command
-            cmd = builder.build()
-            
+
             # Final working directory setup and execution
             cwd = str(Path(".").resolve())
-            exit_code = execute_snakemake(cmd, cwd, print_cmd)
+            exit_code = builder.run(cwd, print_cmd=print_cmd)
             return exit_code
             
     except typer.Exit:
@@ -355,16 +340,13 @@ def pipeline(
             
             # Add pass-through args
             builder.add_pass_through_args(cleaned_opts)
-            
-            # Build command
-            cmd = builder.build()
-            
+
             # Optional: print nice ASCII logo if present
             print_logo(pkg_root_trav)
 
             # Final working directory setup and execution
             cwd = str(Path(".").resolve())
-            exit_code = execute_snakemake(cmd, cwd, print_cmd)
+            exit_code = builder.run(cwd, print_cmd=print_cmd)
             if exit_code == 0:
                 _run_benchmark_after_success(verbose)
             raise typer.Exit(code=exit_code)
