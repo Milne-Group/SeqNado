@@ -13,13 +13,23 @@ Need help choosing? See [Choosing a Method](#choosing-a-method) below.
 
 | Method | Assay | Input data | Per-sample formula | Merged formula | Signal Unit |
 |---|---|---|---|---|---|
-| **unscaled** | Any | BAM files | \(1\) | \(1\) |  As set in deeptools/bamnado/homer configuration |
+| **scaled-per-sample** | Any | BAM files | \(1\) | \(1\) |  As set in deeptools/bamnado/homer configuration |
 | **orlando** | ChIP-seq, CUT&TAG, CUT&RUN | Spike-in BAM read counts | \(10^6 / S_{\text{ip}}\) | \(10^6 / \sum_i S_{\text{ip},i}\) | RRPM (spike-in reference-adjusted RPM) |
 | **with_input** | ChIP-seq, CUT&TAG, CUT&RUN | Spike-in BAM read counts (IP + input) | \((S_{\text{ctrl}} \times 10^7) / (S_{\text{ip}} \times R_{\text{ctrl}})\) | \((\sum S_{\text{ctrl},i} \times 10^7) / (\sum S_{\text{ip},i} \times \sum R_{\text{ctrl},i})\) | RRPM (IP enrichment over spike-in-normalized input) |
 | **deseq2** | RNA-seq | Spike-in gene count matrix | DESeq2 median-ratio \(\hat{s}_j\) | Arithmetic mean \(\bar{\hat{s}}\) | Library-size normalized |
 | **edgeR** | RNA-seq | Spike-in gene count matrix | edgeR TMM \(\hat{f}_j^{\text{TMM}}\) | Arithmetic mean \(\bar{\hat{f}}^{\text{TMM}}\) | Library-size normalized |
-| **csaw** (`csaw_background`) | ChIP-seq, CUT&TAG, CUT&RUN, ATAC-seq — genomics only, not RNA-seq | Genomic bin read counts (via bamnado `bam-normalize`) | csaw-style trimmed-mean-of-M over background bins | \(1 / \sum_i (1/s_i)\) | Library-size normalized, within group |
-| **csaw** (`tmm` / `median_of_ratios` / `cpm`) | Same as above | Genomic bin read counts (via bamnado `bam-normalize`) | edgeR-style TMM / DESeq2-style median-of-ratios / naive CPM | \(1 / \sum_i (1/s_i)\) | Library-size normalized, within group |
+| **scaled-per-group** (`csaw-background`) | ChIP-seq, CUT&TAG, CUT&RUN, ATAC-seq — genomics only, not RNA-seq | Genomic bin read counts (via bamnado `bam-normalize`) | csaw-style trimmed-mean-of-M over background bins | \(1 / \sum_i (1/s_i)\) | Library-size normalized, within group |
+| **scaled-per-group** (`tmm` / `median-of-ratios` / `cpm`) | Same as above | Genomic bin read counts (via bamnado `bam-normalize`) | edgeR-style TMM / DESeq2-style median-of-ratios / naive CPM | \(1 / \sum_i (1/s_i)\) | Library-size normalized, within group |
+
+!!! warning "Renamed in a recent release"
+    The `bigwigs.scale_methods` values were renamed to say what they do:
+
+    | Old value | New value |
+    |---|---|
+    | `unscaled` | `scaled-per-sample` |
+    | `csaw` | `scaled-per-group` |
+
+    `bigwigs.scaling_methods` was also renamed to `bigwigs.group_scaling_methods` (to distinguish it from `scale_methods`), and its values are now hyphenated to match bamnado's `--method` flag: `csaw_background` → `csaw-background`, `median_of_ratios` → `median-of-ratios`. Output directories follow the new names, so existing projects will write to `bigwigs/{pileup_method}/scaled-per-sample/` and `bigwigs/{pileup_method}/scaled-per-group/` rather than `unscaled/` and `csaw/`.
 
 ---
 
@@ -88,7 +98,7 @@ $$
 \text{scale_factor} = \frac{S_{\text{ctrl}} \times 10^7}{S_{\text{ip}} \times R_{\text{ctrl}}}
 $$
 
-**Important:** This formula applies only to IP samples. Input control samples are treated separately — they receive a scale factor of 1 (unscaled), as they do not undergo the IP/input correction. When input samples are visualised as tracks (if configured to do so), they appear unscaled.
+**Important:** This formula applies only to IP samples. Input control samples are treated separately — they receive a scale factor of 1, as they do not undergo the IP/input correction. When input samples are visualised as tracks (if configured to do so), no scaling is applied.
 
 **Merged bigwig:** The per-sample normalisation table (`resources/with_input/normalisation_factors.tsv`) already contains the IP and paired-input read counts for each sample. SeqNado sums these across all samples in the group and applies the same formula as for a single sample — mathematically equivalent to running the calculation on the merged BAM directly:
 
@@ -180,16 +190,16 @@ $$
 !!! note "In plain terms"
     Sometimes you don't have a spike-in, but you still need to make samples comparable. This technique counts reads in many windows tiled across the genome and asks: "how many reads did each sample produce, once obviously-enriched regions are set aside?" Samples that were sequenced more deeply get scaled down and shallower ones get scaled up, so that all samples appear to have the same total read count. This corrects for sequencing depth differences but **not** for genuine biological differences in the amount of immunoprecipitated chromatin — it is most appropriate when you expect the global level of the mark to be similar across conditions.
 
-**Bamnado scaling methods:** the `scaled-per-group` technique is parametrised by a bamnado `bam-normalize` method, configurable per-project via `bigwigs.group_scaling_methods` (defaults to `csaw_background`, reproducing the historical SeqNado behaviour):
+**Bamnado scaling methods:** the `scaled-per-group` technique is parametrised by a bamnado `bam-normalize` method, configurable per-project via `bigwigs.group_scaling_methods` (defaults to `csaw-background`, reproducing the historical SeqNado behaviour):
 
 | `group_scaling_methods` value | Algorithm | Notes |
 |---|---|---|
-| `csaw_background` (default) | TMM restricted to large background bins, excluding the top 5% most-enriched bins | Closest match to the `csaw::normFactors` reference method above |
+| `csaw-background` (default) | TMM restricted to large background bins, excluding the top 5% most-enriched bins | Closest match to the `csaw::normFactors` reference method above |
 | `tmm` | Standard TMM (edgeR `calcNormFactors(method="TMM")`-style) over all bins | No enriched-bin exclusion |
-| `median_of_ratios` | DESeq2-style median-of-ratios estimator, computed on genomic bins rather than genes | |
+| `median-of-ratios` | DESeq2-style median-of-ratios estimator, computed on genomic bins rather than genes | |
 | `cpm` | Naive depth-only baseline (counts per million) | For comparison against the other methods |
 
-Multiple methods can be selected at once (e.g. `group_scaling_methods: [csaw_background, tmm]`) — each produces its own set of bigwigs under `bigwigs/{pileup_method}/scaled-per-group/{scaling_method}/`.
+Multiple methods can be selected at once (e.g. `group_scaling_methods: [csaw-background, tmm]`) — each produces its own set of bigwigs under `bigwigs/{pileup_method}/scaled-per-group/{scaling_method}/`.
 
 **Per-sample formula:** each configured `scaling_method` computes a per-sample scale factor from binned read counts across the samples in a scaling group (via `bamnado bam-normalize --bams ... --method {scaling_method}`); see the algorithm notes above for exactly how each method derives its factor from the bin count matrix.
 
@@ -209,13 +219,13 @@ The merged factor is the **harmonic mean** of the per-sample factors.
 Scaling factors are stored in `seqnado_output/{assay}/resources/{scaling_method}/{group}_scaling_factors.tsv`.
 
 !!! warning "Numeric values changed from earlier SeqNado versions"
-    Earlier SeqNado versions computed the CSAW factor as a naive library-size ratio (`mean_lib_size / lib_size`) via a hand-rolled script. The default `csaw_background` method now follows the real `csaw::normFactors` algorithm (trimmed-mean-of-M over background bins, excluding the top 5% most-enriched bins), computed by bamnado. This is a normalisation *quality* improvement, but re-running an existing project will produce numerically different (not just differently-named) scale factors and track heights.
+    Earlier SeqNado versions computed the per-group (then called `csaw`) factor as a naive library-size ratio (`mean_lib_size / lib_size`) via a hand-rolled script. The default `csaw-background` method now follows the real `csaw::normFactors` algorithm (trimmed-mean-of-M over background bins, excluding the top 5% most-enriched bins), computed by bamnado. This is a normalisation *quality* improvement, but re-running an existing project will produce numerically different (not just differently-named) scale factors and track heights.
 
 ---
 
-## Unscaled (No Normalisation)
+## Per-Sample Scaling (`scaled-per-sample`)
 
-When normalisation is not enabled, bigwigs are generated with no scaling factor applied. Signal represents raw read pileup, which is affected by sequencing depth. Use this only for exploratory analysis or when samples are known to have matched sequencing depth.
+Each sample is scaled independently of every other sample — SeqNado applies no cross-sample scale factor. Unless a deeptools/bamnado/homer `--normalizeUsing`-style option is configured, this means no scaling factor at all. Signal represents raw read pileup, which is affected by sequencing depth. Use this only for exploratory analysis or when samples are known to have matched sequencing depth.
 
 !!! note "In plain terms"
     No adjustment is made. A sample sequenced to twice the depth will appear twice as tall in the genome browser, regardless of whether there is a genuine biological difference. Only use this if your samples were sequenced to the same depth, or if you just want a quick look at the data without worrying about comparability.
@@ -228,13 +238,13 @@ When normalisation is not enabled, bigwigs are generated with no scaling factor 
 
 | Assay | Recommended methods | Notes |
 |---|---|---|
-| **ChIP-seq / CUT&TAG / CUT&RUN** | `orlando`, `with_input`, `csaw` | Prefer `orlando` or `with_input` when a chromatin spike-in was added — they are purpose-built and more direct than DESeq2/edgeR for this use case. Use `csaw` when no spike-in is available and you expect similar global levels across conditions. |
-| **ATAC-seq** | `csaw` | Library-size normalization is most appropriate for ATAC-seq. |
-| **RNA-seq** | `deseq2`, `edgeR` | These are the standard methods for RNA-seq — they correct for compositional bias. `orlando`/`with_input` require a chromatin-style spike-in split (see below). `csaw` is **not offered** for RNA-seq at all (see below). |
+| **ChIP-seq / CUT&TAG / CUT&RUN** | `orlando`, `with_input`, `scaled-per-group` | Prefer `orlando` or `with_input` when a chromatin spike-in was added — they are purpose-built and more direct than DESeq2/edgeR for this use case. Use `scaled-per-group` when no spike-in is available and you expect similar global levels across conditions. |
+| **ATAC-seq** | `scaled-per-group` | Library-size normalization is most appropriate for ATAC-seq. |
+| **RNA-seq** | `deseq2`, `edgeR` | These are the standard methods for RNA-seq — they correct for compositional bias. `orlando`/`with_input` require a chromatin-style spike-in split (see below). `scaled-per-group` is **not offered** for RNA-seq at all (see below). |
 
-### Why isn't CSAW offered for RNA-seq?
+### Why isn't per-group scaling offered for RNA-seq?
 
-In an RNA-seq library, a small number of very highly expressed genes can account for a large fraction of all reads. This means two libraries can appear to have different "total read counts" even if the underlying biology is the same, simply because a few dominant genes are present. DESeq2 and edgeR correct for this **compositional bias** by comparing each gene's count to a reference derived from across many genes, rather than relying on the raw library total. CSAW-family library-size scaling does not account for this and can produce misleading normalisations in RNA-seq data, so SeqNado does not offer it as an option for RNA-seq — any `csaw` entry in `scale_methods` is filtered out (with a warning) for the RNA assay.
+In an RNA-seq library, a small number of very highly expressed genes can account for a large fraction of all reads. This means two libraries can appear to have different "total read counts" even if the underlying biology is the same, simply because a few dominant genes are present. DESeq2 and edgeR correct for this **compositional bias** by comparing each gene's count to a reference derived from across many genes, rather than relying on the raw library total. csaw-family library-size scaling does not account for this and can produce misleading normalisations in RNA-seq data, so SeqNado does not offer it as an option for RNA-seq — any `scaled-per-group` entry in `scale_methods` is filtered out (with a warning) for the RNA assay.
 
 ### Can Orlando be used for RNA-seq?
 
@@ -253,7 +263,7 @@ It depends on your spike-in strategy:
 | With-input factors | `seqnado_output/{assay}/resources/with_input/normalisation_factors.json` |
 | DESeq2 factors | `seqnado_output/{assay}/resources/deseq2/normalisation_factors.json` |
 | edgeR factors | `seqnado_output/{assay}/resources/edger/normalisation_factors.json` |
-| CSAW factors | `seqnado_output/{assay}/resources/{scaling_method}/{group}_scaling_factors.tsv` |
+| Per-group scaling factors | `seqnado_output/{assay}/resources/{scaling_method}/{group}_scaling_factors.tsv` |
 
 ---
 

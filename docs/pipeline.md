@@ -209,13 +209,13 @@ The MCC pipeline follows a multi-phase workflow:
 **Phase 7: Signal Tracks** 
 
 - **Per-Replicate BigWigs**: BigWig tracks are generated for each sample and viewpoint, normalised by the number of cis contacts (n_cis CPM) to allow comparison between samples with different capture efficiencies.
-- **Group BigWigs**: Both normalised (n_cis-scaled) and raw (unscaled) BigWigs are generated for each consensus group.
+- **Group BigWigs**: Both normalised (n_cis-scaled, under `bigwigs/mcc/n_cis/`) and raw (unnormalised, under `bigwigs/mcc/`) BigWigs are generated for each consensus group. MCC tracks do not use the `scaled-per-sample`/`scaled-per-group` directory layout of the other assays.
 - **Aggregated BigWigs**: Replicate BigWigs are averaged within each condition to produce mean signal tracks.
 - **Comparison BigWigs**: Subtraction BigWigs are generated between conditions (e.g., treatment minus control) to highlight differential interactions.
 
 **Phase 8: Peak Calling** 
 
-- **LanceOtron-MCC**: A deep-learning peak caller identifies significant interaction peaks from the unscaled group BigWigs. This runs on GPU when available.
+- **LanceOtron-MCC**: A deep-learning peak caller identifies significant interaction peaks from the raw (unnormalised) group BigWigs. This runs on GPU when available.
 
 ### CRISPR Screens (CRISPR)
 Quantifies guide RNA representation across pooled CRISPR screen experiments.

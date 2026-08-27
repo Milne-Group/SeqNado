@@ -20,7 +20,7 @@ seqnado_output/{assay}/    # Assay-specific directory
 ├── peaks/                 # Peak calling results (ATAC, ChIP, CUT&Tag)
 ├── qc/                    # Quality control metrics
 ├── readcounts/            # Quantification files (RNA, CRISPR)
-├── resources/             # Normalisation factors (spike-in and CSAW)
+├── resources/             # Normalisation factors (spike-in and per-group scaling)
 ├── tag_dirs/              # HOMER tag directories
 ├── track_plots/           # PlotNado visualisations (if configured)
 ├── variant/               # VCF files (SNP only)
@@ -73,55 +73,59 @@ Genome-wide signal tracks for visualisation, organised by tool and scaling metho
 
 ```
 bigwigs/
-├── {method}/                              # deeptools, homer, or bamnado
-│   ├── {sample}.bigWig                    # Default unscaled tracks
-│   ├── csaw/                              # CSAW-normalised individual (if enabled)
-│   │   └── {sample}.bigWig
-│   ├── spikein/                           # Spike-in normalised (if applicable)
-│   │   └── {spikein_method}/
+├── {method}/                                  # deeptools, homer, or bamnado
+│   ├── scaled-per-sample/                     # Each sample scaled independently (default)
+│   │   ├── {sample}.bigWig
+│   │   ├── aggregated/                        # Condition means (if perform_comparisons enabled)
+│   │   │   └── {condition}.bigWig
+│   │   └── subtraction/                       # Condition pairwise subtractions
+│   │       └── {condition1}_vs_{condition2}.bigWig
+│   ├── scaled-per-group/                      # Samples scaled relative to their group (if enabled)
+│   │   └── {group_scaling_method}/            # csaw-background, tmm, median-of-ratios, cpm
 │   │       └── {sample}.bigWig
-│   ├── aggregated/                        # Condition-based aggregations (if perform_comparisons enabled)
-│   │   └── {condition}.bigWig             # Mean bigwig across samples in condition
-│   ├── subtraction/                       # Condition pairwise subtractions
-│   │   └── {condition1}_vs_{condition2}.bigWig
-│   ├── merged/                            # Consensus group merged tracks
-│   │   ├── {group}.bigWig                 # Unscaled merged
-│   │   ├── csaw/                          # CSAW-scaled merged (if enabled)
-│   │   │   └── {group}.bigWig
-│   │   └── spikein/                       # Spike-in scaled merged (if applicable)
-│   │       └── {spikein_method}/
-│   │           └── {group}.bigWig
-│   └── spikein/                           # Spike-in normalised paths
-│       └── {spikein_method}/
-│           ├── {sample}.bigWig            # Individual spike-in samples
-│           ├── aggregated/                # Condition-based aggregations (spike-in source)
-│           │   └── {condition}.bigWig
-│           └── subtraction/               # Condition subtractions (spike-in source)
-│               └── {condition1}_vs_{condition2}.bigWig
+│   ├── spikein/                               # Spike-in normalised (if applicable)
+│   │   └── {spikein_method}/                  # orlando, with_input, deseq2, edger
+│   │       ├── {sample}.bigWig
+│   │       ├── aggregated/                    # Condition means (spike-in source)
+│   │       │   └── {condition}.bigWig
+│   │       └── subtraction/                   # Condition subtractions (spike-in source)
+│   │           └── {condition1}_vs_{condition2}.bigWig
+│   └── merged/                                # Consensus group merged tracks
+│       ├── scaled-per-sample/
+│       │   └── {group}.bigWig
+│       ├── scaled-per-group/
+│       │   └── {group_scaling_method}/
+│       │       └── {group}.bigWig
+│       └── spikein/
+│           └── {spikein_method}/
+│               └── {group}.bigWig
 ```
 
 For **RNA-seq**, stranded bigwigs are produced with `_plus` and `_minus` suffixes:
 
 ```
-bigwigs/{method}/{sample}_plus.bigWig
-bigwigs/{method}/{sample}_minus.bigWig
+bigwigs/{method}/scaled-per-sample/{sample}_plus.bigWig
+bigwigs/{method}/scaled-per-sample/{sample}_minus.bigWig
 ```
 
 **Pileup Tools:**
 
 - **DeepTools**: `bamCoverage`-based tracks (supports all scaling methods, individual and merged)
-- **HOMER**: `makeBigWig.pl`-based tracks (unscaled individual and unscaled merged only)
-- **BamNado**: Custom pileup tool (unscaled and CSAW individual; unscaled and CSAW merged)
+- **HOMER**: `makeBigWig.pl`-based tracks (`scaled-per-sample` individual and merged only — no per-group or spike-in scaling)
+- **BamNado**: Custom pileup tool (`scaled-per-sample` and `scaled-per-group`, individual and merged)
 
-**Scaling Methods:**
+**Scaling techniques** (`bigwigs.scale_methods`):
 
-- **unscaled**: No normalisation applied
-- **csaw**: CSAW-based normalisation using binned read counts across samples
+- **scaled-per-sample**: Each sample is scaled independently — no cross-sample scale factor is applied
+- **scaled-per-group**: Samples within a scaling group are scaled relative to each other, using binned read counts computed by `bamnado bam-normalize`. Parametrised by `bigwigs.group_scaling_methods` (`csaw-background` default, `tmm`, `median-of-ratios`, `cpm`), each of which gets its own subdirectory
 - **spikein**: Spike-in normalisation using external control DNA (DeepTools only)
+
+!!! note "Renamed"
+    `unscaled` is now `scaled-per-sample` and `csaw` is now `scaled-per-group`; output directories use the new names. See [Normalisation Methods](normalisation.md).
 
 **Merged Tracks** (when `consensus_group` is set in the design file):
 
-Individual-sample bigwigs are complemented by merged tracks for each consensus group, supporting all of the same scaling methods as individual tracks (where applicable). CSAW and spike-in scaled merged bigwigs require the corresponding normalization to be enabled.
+Individual-sample bigwigs are complemented by merged tracks for each consensus group, supporting all of the same scaling techniques as individual tracks (where applicable). Per-group and spike-in scaled merged bigwigs require the corresponding normalisation to be enabled.
 
 #### Condition-Based Bigwig Comparisons
 
@@ -133,7 +137,7 @@ When `perform_comparisons: true` is set in the configuration **and** your design
 - **Subtraction bigwigs** (`subtraction/{cond1}_vs_{cond2}.bigWig`): Pairwise subtractions between condition-level aggregates, generated for all ordered condition pairs
 
 Both are generated for:
-- **Unscaled source** (default): `bigwigs/{method}/aggregated/` and `bigwigs/{method}/subtraction/`
+- **Per-sample source** (default): `bigwigs/{method}/scaled-per-sample/aggregated/` and `bigwigs/{method}/scaled-per-sample/subtraction/`
 - **Spike-in normalized source** (if applicable): `bigwigs/{method}/spikein/{spikein_method}/aggregated/` and `bigwigs/{method}/spikein/{spikein_method}/subtraction/`
 
 !!! note
@@ -146,21 +150,15 @@ Both are generated for:
 
 #### Normalisation factor calculation
 
-**Per-sample bigwigs** use a factor calculated individually for each sample. For CSAW, all samples within a scaling group are compared via binned read counts and each sample receives:
+**Per-sample bigwigs** use a factor calculated individually for each sample. For `scaled-per-group`, all samples within a scaling group are compared via binned read counts by `bamnado bam-normalize --method {group_scaling_method}`, and each sample receives a factor derived from that bin-count matrix (trimmed-mean-of-M over background bins for the default `csaw-background`; see [Normalisation Methods](normalisation.md) for the per-method algorithms). Samples with larger libraries are scaled down; samples with smaller libraries are scaled up. The results are written to `resources/{group_scaling_method}/{group}_scaling_factors.tsv`.
+
+**Merged bigwigs** are generated from a BAM produced by `samtools merge` (concatenating all reads in the consensus group). Because the merged BAM contains every read from the group, its factor is the **harmonic mean** of the per-sample factors, not the arithmetic mean:
 
 ```
-scale_factor = mean_library_size_of_group / sample_library_size
+merged_scale_factor = 1 / sum(1 / scale_factor_sample_i)
 ```
 
-Samples with larger libraries are scaled down; samples with smaller libraries are scaled up. The results are written to `resources/{group}_scaling_factors.tsv`.
-
-**Merged bigwigs** are generated from a BAM produced by `samtools merge` (concatenating all reads in the consensus group). The scale factor applied to the merged BAM is the **arithmetic mean of the per-sample factors** for all samples in that group:
-
-```
-merged_scale_factor = mean(scale_factor_sample_1, scale_factor_sample_2, ...)
-```
-
-This ensures the merged track is normalised to the average depth of the constituent samples.
+This puts the merged track on the same scale as an individual normalised sample rather than n times higher.
 
 For **spike-in normalised merged bigwigs**, a simple arithmetic mean of per-sample factors would give incorrect results when samples differ in sequencing depth (deeply-sequenced samples contribute far more reads to the merged BAM but their smaller factors would be under-weighted). Instead, SeqNado derives the merged factor from the pooled spike-in counts, equivalent to "merge-then-split":
 
@@ -268,26 +266,26 @@ The hub structure (genomes.txt, trackDb.txt, etc.) is generated by TracKNado and
 
 ### Heatmaps (`heatmap/`)
 
-DeepTools-generated heatmaps and metaplots (for assays with peak calling). One set of plots is produced per pileup method × scaling method combination, mirroring the bigwig structure:
+DeepTools-generated heatmaps and metaplots (for assays with peak calling). One set of plots is produced per pileup method × scaling technique combination, mirroring the bigwig structure:
 
 ```
 heatmap/
-├── {method}/                        # deeptools, homer, or bamnado
-│   ├── unscaled/
-│   │   ├── heatmap.pdf              # Signal heatmap over regions of interest
-│   │   └── metaplot.pdf             # Average signal profile
-│   ├── csaw/                        # If CSAW normalisation enabled
+├── {method}/                                    # deeptools, homer, or bamnado
+│   ├── scaled-per-sample/
+│   │   ├── heatmap.pdf                          # Signal heatmap over regions of interest
+│   │   └── metaplot.pdf                         # Average signal profile
+│   ├── scaled-per-group/{group_scaling_method}/ # If per-group scaling enabled
 │   │   ├── heatmap.pdf
 │   │   └── metaplot.pdf
-│   └── spikein/{spikein_method}/    # If spike-in normalisation enabled
+│   └── spikein/{spikein_method}/                # If spike-in normalisation enabled
 │       ├── heatmap.pdf
 │       └── metaplot.pdf
-└── merged/                          # If consensus groups defined
+└── merged/                                      # If consensus groups defined
     └── {method}/
-        ├── unscaled/
+        ├── scaled-per-sample/
         │   ├── heatmap.pdf
         │   └── metaplot.pdf
-        └── csaw/                    # If CSAW normalisation enabled
+        └── scaled-per-group/{group_scaling_method}/
             ├── heatmap.pdf
             └── metaplot.pdf
 ```
@@ -308,27 +306,27 @@ motifs/
 
 ### Genome Browser Plots (`track_plots/`)
 
-Publication-ready visualisations generated with PlotNado (if configured with plotting coordinates). One set of plots is produced per pileup method × scaling method combination:
+Publication-ready visualisations generated with PlotNado (if configured with plotting coordinates). One set of plots is produced per pileup method × scaling technique combination:
 
 ```
 track_plots/
-├── {method}/                              # deeptools, homer, or bamnado
-│   ├── unscaled/
-│   │   ├── {region_name}.{format}         # Named regions from BED file
-│   │   ├── {chr}-{start}-{end}.{format}   # Unnamed regions use coordinates
-│   │   └── template.toml                  # PlotNado configuration template
-│   ├── csaw/                              # If CSAW normalisation enabled
+├── {method}/                                    # deeptools, homer, or bamnado
+│   ├── scaled-per-sample/
+│   │   ├── {region_name}.{format}               # Named regions from BED file
+│   │   ├── {chr}-{start}-{end}.{format}         # Unnamed regions use coordinates
+│   │   └── template.toml                        # PlotNado configuration template
+│   ├── scaled-per-group/{group_scaling_method}/ # If per-group scaling enabled
 │   │   ├── {region_name}.{format}
 │   │   └── template.toml
-│   └── spikein/{spikein_method}/          # If spike-in normalisation enabled
+│   └── spikein/{spikein_method}/                # If spike-in normalisation enabled
 │       ├── {region_name}.{format}
 │       └── template.toml
-└── merged/                                # If consensus groups defined
+└── merged/                                      # If consensus groups defined
     └── {method}/
-        ├── unscaled/
+        ├── scaled-per-sample/
         │   ├── {region_name}.{format}
         │   └── template.toml
-        └── csaw/                          # If CSAW normalisation enabled
+        └── scaled-per-group/{group_scaling_method}/
             ├── {region_name}.{format}
             └── template.toml
 ```
@@ -465,10 +463,9 @@ Standard ChIP-seq with support for input controls:
 **Normalisation resources** (if applicable):
 
 - `resources/{spikein_method}/normalisation_factors.json` -- Spike-in scaling factors
-- `resources/binned_counts/read_counts.tsv` -- Genomic bin counts for CSAW
-- `resources/{group}_scaling_factors.tsv` -- CSAW scaling factors per consensus group
+- `resources/{group_scaling_method}/{group}_scaling_factors.tsv` -- Per-group scaling factors per consensus group
 - `bigwigs/deeptools/spikein/{spikein_method}/{sample}.bigWig` -- Spike-in normalised tracks
-- `bigwigs/deeptools/csaw/{sample}.bigWig` -- CSAW normalised tracks
+- `bigwigs/deeptools/scaled-per-group/{group_scaling_method}/{sample}.bigWig` -- Per-group normalised tracks
 
 ### CUT&Tag
 
