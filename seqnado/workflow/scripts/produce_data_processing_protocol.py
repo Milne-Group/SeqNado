@@ -6,6 +6,7 @@ and detecting which tools and processing steps were actually used.
 
 import logging
 import re
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, Optional
@@ -147,7 +148,9 @@ TOOL_VERSIONS = {
     "macs2": ("macs2 --version", r"(\d[\d\.]+)$", "2.2.9"),
     "methyldackel": ("MethylDackel --version", r"(\d+\.\d+\.\d+)", "0.6.1"),
     "bcftools": ("bcftools --version", r"bcftools (\d+\.\d+)", "1.17"),
-    "bamnado": ("bamnado --version", r"(\d+\.\d+\.\d+)", "0.1.0"),
+    # bamnado has no local binary in this container - see DEDICATED_CONTAINERS,
+    # its version is queried from its own dedicated container instead.
+    "bamnado": ("bamnado --version", r"(\d+\.\d+\.\d+)", "0.9.0"),
     "homer": (
         # Try multiple locations where HOMER config might be found
         "{ cat $(dirname $(which homer))/../share/homer/config.txt 2>/dev/null || "
@@ -164,10 +167,100 @@ TOOL_VERSIONS = {
     "salmon": ("salmon --version", r"salmon (\d+\.\d+\.\d+)", "1.10.0"),
     "mageck": ("mageck --version", r"(\d+\.\d+\.\d+)", "0.5.9"),
     "meme": ("meme-chip --version", r"(\d+\.\d+\.\d+)", "5.5.9"),
-    "mccnado": ("mccnado --version", r"(\d+\.\d+\.\d+)", "0.1.0"),
+    # mccnado also has no local binary here - see DEDICATED_CONTAINERS.
+    "mccnado": ("mccnado --version", r"(\d+\.\d+\.\d+)", "0.1.5"),
     "flash": ("flash --version", r"v(\d+\.\d+\.\d+)", "1.2.11"),
     "bedtools": ("bedtools --version", r"bedtools v(\d+\.\d+\.\d+)", "2.31.0"),
+    "quantnado": ("quantnado --version", r"(\d+\.\d+\.\d+)", "0.4.9"),
 }
+
+# Tools that ship their own independently-versioned container, which every
+# workflow rule using them already runs in via its own `container:` directive
+# (rather than the general pipeline container this script runs in). Their
+# version must be queried from that same container - anything installed
+# locally into the pipeline container (or hardcoded here) can silently drift
+# out of sync with what the rules actually ran.
+DEDICATED_CONTAINERS = {
+    "bamnado": "docker://ghcr.io/alsmith151/bamnado:latest",
+    "mccnado": "docker://ghcr.io/alsmith151/mccnado:latest",
+    "quantnado": "docker://ghcr.io/milne-group/quantnado:latest",
+}
+
+
+def get_apptainer_command() -> Optional[str]:
+    """Return 'apptainer' or 'singularity', whichever is on PATH, else None."""
+    for candidate in ("apptainer", "singularity"):
+        if shutil.which(candidate):
+            return candidate
+    return None
+
+
+def capture_version_in_container(
+    tool: str,
+    cmd: str,
+    pattern: str,
+    container_uri: str,
+    fallback: str,
+) -> str:
+    """Get a tool's version by running it inside its own dedicated container.
+
+    Used for tools (bamnado, mccnado, quantnado - see DEDICATED_CONTAINERS)
+    that aren't installed in the general pipeline container this script runs
+    in. Only falls back to a hardcoded version if apptainer/singularity isn't
+    available or the container can't be queried.
+    """
+    apptainer_cmd = get_apptainer_command()
+    if not apptainer_cmd:
+        logger.warning(
+            "Neither apptainer nor singularity is available; cannot query %s's "
+            "version from %s. Falling back to '%s'.",
+            tool,
+            container_uri,
+            fallback,
+        )
+        return fallback
+
+    full_cmd = f"{apptainer_cmd} exec {container_uri} {cmd}"
+    logger.debug("Running containerized version command: %s", full_cmd)
+    try:
+        output = (
+            subprocess.check_output(
+                full_cmd, shell=True, stderr=subprocess.STDOUT, timeout=120
+            )
+            .decode()
+            .strip()
+        )
+    except subprocess.CalledProcessError as exc:
+        output = exc.output.decode().strip() if exc.output else ""
+    except Exception as exc:
+        logger.warning(
+            "Failed to query %s version from container %s (%s). Falling back to '%s'.",
+            tool,
+            container_uri,
+            exc,
+            fallback,
+        )
+        return fallback
+
+    # Apptainer/Singularity prints "INFO:" banner lines before the real output.
+    lines = [
+        line
+        for line in output.split("\n")
+        if line.strip() and not line.lstrip().startswith("INFO:")
+    ]
+    clean_output = "\n".join(lines) if lines else output
+
+    match = re.search(pattern, clean_output)
+    if match:
+        return match.group(1)
+
+    logger.warning(
+        "Could not parse %s version from container output %r. Falling back to '%s'.",
+        tool,
+        clean_output,
+        fallback,
+    )
+    return fallback
 
 
 def capture_version(
@@ -255,6 +348,10 @@ def get_tool_version(tool: str) -> str:
             fallback,
         )
         return fallback
+    if tool in DEDICATED_CONTAINERS:
+        return capture_version_in_container(
+            tool, cmd, pattern, DEDICATED_CONTAINERS[tool], fallback
+        )
     return capture_version(cmd, pattern, group=1, fallback=fallback, description=tool)
 
 
