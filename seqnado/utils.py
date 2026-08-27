@@ -302,25 +302,6 @@ class FileSelector:
 # ----------------------- CLI Profile & Flag Helpers -----------------------
 
 
-def create_flag_filter(allowed_flags: Tuple[str, ...]):
-    """
-    Factory function to create a flag filtering function.
-    
-    Args:
-        allowed_flags: Tuple of allowed flag names (e.g., ("-n", "--dry-run", ...))
-    
-    Returns:
-        A function that checks if an option matches allowed flags.
-    """
-    def should_pass_flag(opt: str) -> bool:
-        """Check if option matches any of the allowed flags."""
-        for p in allowed_flags:
-            if opt == p or opt.startswith(p + "="):
-                return True
-        return False
-    return should_pass_flag
-
-
 def get_profile_name(fn: Path) -> Optional[str]:
     """
     Extract profile shortcode from profile directory name.
