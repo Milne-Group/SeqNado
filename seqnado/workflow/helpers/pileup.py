@@ -32,6 +32,6 @@ def get_condition_input_bigwigs(wildcards, pileup_method, spikein_method=None, o
             sample=samples,
         )
     return expand(
-        output_dir + f"/bigwigs/{pileup_method}/" + DataScalingTechnique.PER_SAMPLE.value + "/{{sample}}{suffix}.bigWig",
+        output_dir + f"/bigwigs/{pileup_method}/{DataScalingTechnique.PER_SAMPLE.value}/{{sample}}{suffix}.bigWig",
         sample=samples,
     )

@@ -75,11 +75,11 @@ Genome-wide signal tracks for visualisation, organised by tool and scaling metho
 bigwigs/
 ├── {method}/                                  # deeptools, homer, or bamnado
 │   ├── scaled-per-sample/                     # Each sample scaled independently (default)
-│   │   ├── {sample}.bigWig
-│   │   ├── aggregated/                        # Condition means (if perform_comparisons enabled)
-│   │   │   └── {condition}.bigWig
-│   │   └── subtraction/                       # Condition pairwise subtractions
-│   │       └── {condition1}_vs_{condition2}.bigWig
+│   │   └── {sample}.bigWig
+│   ├── aggregated/                            # Condition means (if perform_comparisons enabled)
+│   │   └── {condition}.bigWig                 # Built from the scaled-per-sample tracks
+│   ├── subtraction/                           # Condition pairwise subtractions
+│   │   └── {condition1}_vs_{condition2}.bigWig
 │   ├── scaled-per-group/                      # Samples scaled relative to their group (if enabled)
 │   │   └── {group_scaling_method}/            # csaw-background, tmm, median-of-ratios, cpm
 │   │       └── {sample}.bigWig
@@ -137,7 +137,7 @@ When `perform_comparisons: true` is set in the configuration **and** your design
 - **Subtraction bigwigs** (`subtraction/{cond1}_vs_{cond2}.bigWig`): Pairwise subtractions between condition-level aggregates, generated for all ordered condition pairs
 
 Both are generated for:
-- **Per-sample source** (default): `bigwigs/{method}/scaled-per-sample/aggregated/` and `bigwigs/{method}/scaled-per-sample/subtraction/`
+- **Per-sample source** (default): `bigwigs/{method}/aggregated/` and `bigwigs/{method}/subtraction/` — built from the `scaled-per-sample` tracks, but written alongside the scale directories rather than inside one
 - **Spike-in normalized source** (if applicable): `bigwigs/{method}/spikein/{spikein_method}/aggregated/` and `bigwigs/{method}/spikein/{spikein_method}/subtraction/`
 
 !!! note
