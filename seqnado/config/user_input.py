@@ -24,7 +24,7 @@ from seqnado import (
     PeakCallingMethod,
     PileupMethod,
     QuantificationMethod,
-    ScalingMethod,
+    GroupScalingMethod,
     SNPCallingMethod,
     SpikeInMethod,
 )
@@ -276,27 +276,33 @@ def get_bigwig_config(assay: Assay) -> Optional[BigwigConfig]:
 
     binsize = get_user_input("Binsize for bigwigs:", default="10", required=False)
 
-    # CSAW/bamnado library-scaling is genomics-only — not appropriate for RNA-seq's
+    # Per-group library-scaling is genomics-only — not appropriate for RNA-seq's
     # compositional read-count bias, so it's not offered for RNA.
-    scale_method_choices = [DataScalingTechnique.UNSCALED.value]
+    scale_method_choices = [DataScalingTechnique.PER_SAMPLE.value]
     if assay != Assay.RNA:
-        scale_method_choices.append(DataScalingTechnique.CSAW.value)
+        scale_method_choices.append(DataScalingTechnique.PER_GROUP.value)
+        print(
+            "\nBigwig scaling:\n"
+            f"  - {DataScalingTechnique.PER_SAMPLE.value}: each sample is scaled independently\n"
+            f"  - {DataScalingTechnique.PER_GROUP.value}: samples within the same group are scaled "
+            "relative to each other, so their signal is directly comparable\n"
+        )
     scale_methods = get_user_input(
         "Bigwig scaling method(s) (comma-separated for multiple):",
         choices=scale_method_choices,
-        default=DataScalingTechnique.UNSCALED.value,
+        default=DataScalingTechnique.PER_SAMPLE.value,
         multi_select=True,
     )
     if isinstance(scale_methods, str):
         scale_methods = [scale_methods]
 
     scaling_methods = None
-    if DataScalingTechnique.CSAW.value in scale_methods:
-        scaling_method_choices = [m.value for m in ScalingMethod]
+    if DataScalingTechnique.PER_GROUP.value in scale_methods:
+        scaling_method_choices = [m.value for m in GroupScalingMethod]
         scaling_methods = get_user_input(
-            "Bamnado scaling method(s) for CSAW technique (comma-separated for multiple):",
+            "Per-group scaling method(s) (comma-separated for multiple):",
             choices=scaling_method_choices,
-            default=ScalingMethod.CSAW_BACKGROUND.value,
+            default=GroupScalingMethod.CSAW_BACKGROUND.value,
             multi_select=True,
         )
         if isinstance(scaling_methods, str):
@@ -312,7 +318,7 @@ def get_bigwig_config(assay: Assay) -> Optional[BigwigConfig]:
         pileup_method=[PileupMethod(m) for m in pileup_methods],
         binsize=binsize,
         scale_methods=scale_methods,
-        scaling_methods=scaling_methods,
+        group_scaling_methods=scaling_methods,
         perform_comparisons=perform_comparisons,
     )
 
@@ -631,7 +637,7 @@ def build_assay_config(
         bigwigs = BigwigConfig(
             pileup_method=[PileupMethod.METHYLDACKEL],
             binsize=1,
-            scale_methods=[DataScalingTechnique.UNSCALED.value]
+            scale_methods=[DataScalingTechnique.PER_SAMPLE.value]
         ) if make_bigwigs else None
         plotting = get_plotting_config()
         create_heatmaps = get_user_input(

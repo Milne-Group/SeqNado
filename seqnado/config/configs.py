@@ -329,10 +329,10 @@ class BigwigConfig(BaseModel):
 
     pileup_method: list[PileupMethod] | None = None
     binsize: int | None = None
-    scale_methods: list[str] | None = None  # e.g., ["unscaled", "spikein"]
-    # Bamnado `bam-normalize` method(s) used when "csaw" is in scale_methods,
-    # e.g. ["csaw_background"] (default), ["tmm"], ["median_of_ratios"], ["cpm"].
-    scaling_methods: list[str] | None = None
+    scale_methods: list[str] | None = None  # e.g., ["scaled-per-sample", "spikein"]
+    # Bamnado `bam-normalize` method(s) used when "scaled-per-group" is in scale_methods,
+    # e.g. ["csaw-background"] (default), ["tmm"], ["median-of-ratios"], ["cpm"].
+    group_scaling_methods: list[str] | None = None
     perform_comparisons: bool = False
 
 

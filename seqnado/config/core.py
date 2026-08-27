@@ -107,21 +107,21 @@ class RNAAssayConfig(BaseAssayConfig):
     @field_validator("bigwigs")
     @classmethod
     def validate_scale_methods(cls, v):
-        """Filter out the CSAW scaling technique for RNA-seq.
+        """Filter out the per-group scaling technique for RNA-seq.
 
-        CSAW/bamnado library-scaling assumes roughly-equal signal across bins and
+        Bamnado library-scaling assumes roughly-equal signal across bins and
         is inappropriate for RNA-seq's compositional read-count bias (a handful of
         highly-expressed genes dominate). RNA-seq should use spike-in (orlando/
         deseq2/edger) normalisation instead.
         """
-        if v is not None and v.scale_methods and DataScalingTechnique.CSAW.value in v.scale_methods:
+        if v is not None and v.scale_methods and DataScalingTechnique.PER_GROUP.value in v.scale_methods:
             from seqnado.utils import warn_once
             warn_once(
-                "The 'csaw' scaling technique is not appropriate for RNA-seq (compositional "
-                "read-count bias) and will be skipped. Use spike-in normalisation "
+                f"The '{DataScalingTechnique.PER_GROUP.value}' scaling technique is not appropriate for "
+                "RNA-seq (compositional read-count bias) and will be skipped. Use spike-in normalisation "
                 "('orlando', 'deseq2', 'edger') instead."
             )
-            v.scale_methods = [m for m in v.scale_methods if m != DataScalingTechnique.CSAW.value]
+            v.scale_methods = [m for m in v.scale_methods if m != DataScalingTechnique.PER_GROUP.value]
         return v
 
 
@@ -280,21 +280,21 @@ class SeqnadoConfig(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def require_bamnado_for_csaw_scaling(self) -> "SeqnadoConfig":
-        """Bamnado computes all CSAW-technique scale factors (csaw_background/tmm/
-        median_of_ratios/cpm) via `bam-normalize` — there is no hand-rolled fallback.
+    def require_bamnado_for_per_group_scaling(self) -> "SeqnadoConfig":
+        """Bamnado computes all per-group-technique scale factors (csaw-background/tmm/
+        median-of-ratios/cpm) via `bam-normalize` — there is no hand-rolled fallback.
         """
         bigwigs = getattr(self.assay_config, "bigwigs", None)
         scale_methods = getattr(bigwigs, "scale_methods", None) or []
 
-        if DataScalingTechnique.CSAW.value in scale_methods:
+        if DataScalingTechnique.PER_GROUP.value in scale_methods:
             bamnado = getattr(self.third_party_tools, "bamnado", None)
             if bamnado is None:
                 raise UserFriendlyError(
-                    "bigwigs.scale_methods includes 'csaw', which requires bamnado to "
-                    "compute scale factors. Configure third_party_tools.bamnado (e.g. "
-                    "via `seqnado tools install bamnado`) or remove 'csaw' from "
-                    "scale_methods."
+                    f"bigwigs.scale_methods includes '{DataScalingTechnique.PER_GROUP.value}', which requires "
+                    "bamnado to compute scale factors. Configure third_party_tools.bamnado (e.g. "
+                    f"via `seqnado tools install bamnado`) or remove '{DataScalingTechnique.PER_GROUP.value}' "
+                    "from scale_methods."
                 )
 
         return self
