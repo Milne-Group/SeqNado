@@ -56,9 +56,32 @@ class BaseAssayConfig(CommonComputedFieldsMixin):
 class ATACAssayConfig(BaseAssayConfig, PeakCallingMixin):
     """Configuration specific to ATAC-seq assays."""
 
+    spikein: Annotated[SpikeInConfig | None, BeforeValidator(none_str_to_none)] = None
     tn5_shift: bool = False
     peak_calling: PeakCallingConfig | None = None
     create_heatmaps: bool = False
+
+    @field_validator("spikein")
+    @classmethod
+    def validate_spikein_methods(cls, v):
+        """Filter out incompatible spike-in methods for ATAC-seq.
+
+        ATAC-seq spike-in normalisation only supports ORLANDO (per-sample spike-in
+        read count normalisation). WITH_INPUT requires paired input/control samples
+        (a ChIP-seq concept ATAC-seq doesn't have), and DESEQ2/EDGER are gene-count
+        based methods intended for RNA-seq.
+        """
+        if v is not None:
+            disallowed = [m for m in v.method if m != SpikeInMethod.ORLANDO]
+            if disallowed:
+                from seqnado.utils import warn_once
+                warn_once(
+                    f"The following spike-in method(s) are not compatible with ATAC-seq "
+                    f"and will be skipped: {[m.value for m in disallowed]}. "
+                    "ATAC-seq spike-in normalisation supports only 'orlando'."
+                )
+                v.method = [m for m in v.method if m == SpikeInMethod.ORLANDO]
+        return v
 
 
 class ChIPAssayConfig(BaseAssayConfig, PeakCallingMixin):

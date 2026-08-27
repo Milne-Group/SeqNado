@@ -400,6 +400,26 @@ class TestBigWigFiles:
             PileupMethod.DEEPTOOLS, DataScalingTechnique.PER_SAMPLE, assay=Assay.MCC
         )
 
+    def test_atac_spikein_orlando_generates_paths(self):
+        """Test ATAC bigwigs generate spikein/orlando paths (orlando is allowed for ATAC).
+
+        Note: BigWigFiles no longer blocks SPIKEIN scaling outright for ATAC (that
+        used to make even 'orlando' unreachable). Restriction of which spike-in
+        *method* ATAC may use is enforced upstream by ATACAssayConfig's Pydantic
+        validator (see tests/unit/config/test_core.py::TestSpikeinConfig), which
+        strips anything but 'orlando' before it ever reaches BigWigFiles.
+        """
+        bw = BigWigFiles(
+            assay=Assay.ATAC,
+            names=["sample1"],
+            pileup_methods=[PileupMethod.DEEPTOOLS],
+            scale_methods=[DataScalingTechnique.SPIKEIN],
+            spikein_methods=[SpikeInMethod.ORLANDO],
+        )
+
+        files = bw.files
+        assert any("spikein/orlando/sample1.bigWig" in f for f in files)
+
 
 class TestPeakCallingFiles:
     """Tests for PeakCallingFiles class."""

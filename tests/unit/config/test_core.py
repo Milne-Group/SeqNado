@@ -5,13 +5,14 @@ from datetime import date
 
 import pytest
 
-from seqnado import Assay, PCRDuplicateHandling, PCRDuplicateTool
+from seqnado import Assay, PCRDuplicateHandling, PCRDuplicateTool, SpikeInMethod
 from seqnado.config.configs import (
     PeakCallingConfig,
     PeakCallingMethod,
     PCRDuplicatesConfig,
     ProjectConfig,
     QCConfig,
+    SpikeInConfig,
 )
 from seqnado.config.core import (
     ATACAssayConfig,
@@ -470,3 +471,31 @@ class TestSpikeinConfig:
         )
 
         assert config.assay_config.has_spikein is False
+
+    def test_atac_spikein_allows_orlando(self):
+        """Test ATAC spike-in keeps 'orlando' unmodified."""
+        atac_config = ATACAssayConfig(
+            spikein=SpikeInConfig(method=[SpikeInMethod.ORLANDO])
+        )
+
+        assert atac_config.spikein.method == [SpikeInMethod.ORLANDO]
+
+    @pytest.mark.parametrize(
+        "disallowed_method",
+        [SpikeInMethod.WITH_INPUT, SpikeInMethod.DESEQ2, SpikeInMethod.EDGER],
+    )
+    def test_atac_spikein_strips_disallowed_methods(self, disallowed_method):
+        """Test ATAC spike-in validator strips with_input/deseq2/edger, keeping only orlando."""
+        atac_config = ATACAssayConfig(
+            spikein=SpikeInConfig(method=[SpikeInMethod.ORLANDO, disallowed_method])
+        )
+
+        assert atac_config.spikein.method == [SpikeInMethod.ORLANDO]
+
+    def test_atac_spikein_strips_all_when_only_disallowed_method(self):
+        """Test ATAC spike-in validator drops a disallowed method entirely if it's the only one given."""
+        atac_config = ATACAssayConfig(
+            spikein=SpikeInConfig(method=[SpikeInMethod.WITH_INPUT])
+        )
+
+        assert atac_config.spikein.method == []

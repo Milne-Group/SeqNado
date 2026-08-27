@@ -174,7 +174,8 @@ class BigWigFiles(BaseModel):
         - Keys that are Assay: map to incompatible PileupMethod values
 
         Spike-in method restrictions per docs/normalisation.md summary table:
-        - ORLANDO, WITH_INPUT: ChIP-seq, CUT&TAG, CUT&RUN only
+        - ORLANDO: ChIP-seq, CUT&TAG, CUT&RUN, ATAC-seq
+        - WITH_INPUT: ChIP-seq, CUT&TAG, CUT&RUN only (requires paired input/control samples)
         - DESEQ2, EDGER: RNA-seq only
         - PER_GROUP: genomics-only (bamnado bam-normalize library scaling) — not appropriate
           for RNA-seq's compositional read-count bias, so excluded for RNA entirely.
@@ -187,7 +188,7 @@ class BigWigFiles(BaseModel):
                 DataScalingTechnique.PER_GROUP,
                 DataScalingTechnique.SPIKEIN,
             ],
-            Assay.ATAC: [DataScalingTechnique.SPIKEIN],
+            Assay.ATAC: [SpikeInMethod.WITH_INPUT, SpikeInMethod.DESEQ2, SpikeInMethod.EDGER],
             Assay.CAT: [SpikeInMethod.DESEQ2, SpikeInMethod.EDGER],
             Assay.CHIP: [SpikeInMethod.DESEQ2, SpikeInMethod.EDGER],
             Assay.MCC: [PileupMethod.HOMER, PileupMethod.DEEPTOOLS],

@@ -415,8 +415,13 @@ def get_spikein_config(assay: Assay) -> Optional[SpikeInConfig]:
     if not spikein:
         return None
 
-    # RNA-seq does not support with_input method (requires input/control samples)
-    available_methods = [m.value for m in SpikeInMethod if not (assay == Assay.RNA and m == SpikeInMethod.WITH_INPUT)]
+    if assay == Assay.ATAC:
+        # ATAC-seq spike-in normalisation only supports orlando (per-sample spike-in
+        # read count normalisation) — no IP/input pairing or gene-count matrix available.
+        available_methods = [SpikeInMethod.ORLANDO.value]
+    else:
+        # RNA-seq does not support with_input method (requires input/control samples)
+        available_methods = [m.value for m in SpikeInMethod if not (assay == Assay.RNA and m == SpikeInMethod.WITH_INPUT)]
     
     normalisation_method = get_user_input(
         "Normalisation method(s) (comma-separated for multiple)?",
@@ -655,11 +660,13 @@ def build_assay_config(
             tn5_shift = get_user_input(
                 "Shift ATAC reads?", default="yes", is_boolean=True
             )
+            spikein = get_spikein_config(assay)
             peak_calling = get_peak_calling_config(assay)
 
             return ATACAssayConfig(
                 **base_config,
                 tn5_shift=tn5_shift,
+                spikein=spikein,
                 peak_calling=peak_calling,
             )
 
@@ -784,6 +791,7 @@ def build_default_assay_config(
     match assay:
         case Assay.ATAC:
             tn5_shift = True
+            spikein = None
             peak_calling = PeakCallingConfig(
                 method=[PeakCallingMethod.LANCEOTRON], consensus_counts=False
             )
@@ -791,6 +799,7 @@ def build_default_assay_config(
             return ATACAssayConfig(
                 **base_config,
                 tn5_shift=tn5_shift,
+                spikein=spikein,
                 peak_calling=peak_calling,
             )
 
@@ -1065,7 +1074,7 @@ _DERIVED_PRESENCE_FLAGS: Dict[str, str] = {
 # Some sections are only offered for a subset of assays in build_assay_config()'s
 # match-case, even though the field itself isn't type-locked to None for the
 # others (e.g. SpikeInConfig is a plain field on BaseAssayConfig, but only
-# CHIP/CAT/RNA ever call get_spikein_config()). Fields not listed here are
+# ATAC/CHIP/CAT/RNA ever call get_spikein_config()). Fields not listed here are
 # already exactly gated by field presence (e.g. peak_calling only exists on
 # assay classes that support it, and get_peak_calling_config() itself no-ops
 # for unsupported assays before prompting).
@@ -1073,7 +1082,7 @@ _SECTION_SUPPORTED_ASSAYS: Dict[str, set] = {
     "bigwigs": {Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.RNA, Assay.MCC},
     "plotting": {Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.RNA, Assay.MCC, Assay.METH},
     "ucsc_hub": {Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.RNA, Assay.MCC},
-    "spikein": {Assay.CHIP, Assay.CAT, Assay.RNA},
+    "spikein": {Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.RNA},
 }
 
 
