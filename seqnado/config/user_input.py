@@ -5,9 +5,10 @@ User input module for SeqNado configuration using the new Pydantic models.
 import json
 import os
 import sys
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 import jinja2
 from loguru import logger
@@ -147,8 +148,39 @@ def get_user_input(
         return user_input
 
 
-def load_genome_configs(assay: Assay) -> Dict[str, GenomeConfig]:
-    """Load genome configurations from the config file."""
+@dataclass
+class GenomeConfigError:
+    """Details about a genome config entry that failed to load."""
+
+    genome_name: str
+    config_path: Path
+    issues: List[Tuple[Optional[str], str]]
+
+
+def _genome_config_issues(exc: Exception) -> List[Tuple[Optional[str], str]]:
+    """Extract (field, message) pairs from a genome config validation error."""
+    if isinstance(exc, ValidationError):
+        issues = []
+        for err in exc.errors():
+            field_name = ".".join(str(p) for p in err.get("loc", ())) or None
+            msg = err.get("msg", str(exc))
+            if msg.startswith("Value error, "):
+                msg = msg[len("Value error, ") :]
+            issues.append((field_name, msg))
+        return issues
+    return [(None, str(exc))]
+
+
+def load_genome_configs(
+    assay: Assay, errors: Optional[List[GenomeConfigError]] = None
+) -> Dict[str, GenomeConfig]:
+    """Load genome configurations from the config file.
+
+    Args:
+        assay: Assay type determining which index (STAR vs Bowtie2) to select.
+        errors: Optional list to collect a `GenomeConfigError` for each genome
+            entry that fails to load, in addition to the logged warning.
+    """
     config_path = (
         Path(os.getenv("SEQNADO_CONFIG", Path.home()))
         / ".config/seqnado/genome_config.json"
@@ -176,7 +208,21 @@ def load_genome_configs(assay: Assay) -> Dict[str, GenomeConfig]:
             genome_configs[genome_name] = GenomeConfig(**config_data)
         except Exception as e:
             # Skip invalid genome configs (e.g., from user's personal config with placeholder paths)
-            logger.warning(f"Skipping invalid genome config '{genome_name}': {e}")
+            issues = _genome_config_issues(e)
+            if errors is not None:
+                # Caller (e.g. `genomes list`) renders these issues itself — avoid double reporting.
+                errors.append(
+                    GenomeConfigError(
+                        genome_name=genome_name,
+                        config_path=config_path,
+                        issues=issues,
+                    )
+                )
+            else:
+                for field, msg in issues:
+                    logger.warning(
+                        f"Skipping invalid genome config '{genome_name}' ({field or 'config'}): {msg}"
+                    )
             continue
 
     return genome_configs

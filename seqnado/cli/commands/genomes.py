@@ -17,8 +17,10 @@ from seqnado.cli.snakemake_builder import SnakemakeCommandBuilder
 from seqnado.cli.utils import (
     _configure_logging,
     _pkg_traversable,
+    cli_print,
     require_snakemake,
     resolve_profile,
+    validate_assay,
     verbose_option,
     preset_option,
     dry_run_option,
@@ -46,29 +48,57 @@ def list_genomes(
 ) -> None:
     """Show packaged and user genome presets."""
     _configure_logging(verbose)
-    
+
+    validate_assay(assay)
+
     # Import locally for snappy startup
     from seqnado.config import load_genome_configs  # local import
+    from seqnado.core import Assay
 
+    assay_obj = Assay.from_clean_name(assay)
+
+    errors: list = []
     try:
-        cfg = load_genome_configs(assay=assay)
+        cfg = load_genome_configs(assay=assay_obj, errors=errors)
     except Exception as e:
         logger.error(f"Failed to load genome config: {e}")
         raise typer.Exit(code=1)
 
-    if not cfg:
+    if not cfg and not errors:
         logger.warning("No genome config found.")
         raise typer.Exit(code=0)
 
+    index_field, index_kind = (
+        ("star_index", "STAR") if assay_obj == Assay.RNA else ("bt2_index", "Bowtie2")
+    )
+
     for genome_name, details in cfg.items():
-        typer.echo(f"[bold]{genome_name}[/bold]")
+        is_partial = getattr(details.index, "prefix", None) in (None, "")
+        color = "yellow" if is_partial else "green"
+        cli_print(genome_name, style=f"bold {color}")
         try:
-            items = details.dict()
+            items = details.model_dump()
         except Exception:
             items = dict(details)
         for k, v in items.items():
             typer.echo(f"  {k}: {v or '[not set]'}")
+        if is_partial:
+            cli_print(
+                f"  No {index_kind} index configured for assay '{assay_obj.clean_name}' "
+                f"— add '{index_field}' to this entry or run 'seqnado genomes edit'.",
+                style="yellow",
+            )
         typer.echo("")
+
+    for err in errors:
+        cli_print(f"{err.genome_name} (failed to load)", style="bold red")
+        for field, msg in err.issues:
+            cli_print(f"  {field or 'config'}: {msg}", style="red")
+        typer.echo(
+            f"  Fix in {err.config_path} or run 'seqnado genomes edit'"
+        )
+        typer.echo("")
+
     raise typer.Exit(code=0)
 
 
