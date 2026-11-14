@@ -49,10 +49,7 @@ QUANTNADO: Final[str] = (
     "@sha256:b07a8d5d26d49fbe4baa4072735aae9bf30884b854f7735d2b15a8531e39c7f9"
 )
 
-# TODO: pin plotnado. It is hosted on the Sylabs library, which only publishes
-# `latest`; replace with `library://asmith151/plotnado/plotnado:sha256.<hash>`
-# (hash from `apptainer inspect` / the Sylabs web UI) or move it to GHCR.
-PLOTNADO: Final[str] = "library://asmith151/plotnado/plotnado:latest"
+PLOTNADO: Final[str] = "docker://ghcr.io/alsmith151/plotnado:0.3.3"
 
 # TODO: pin lanceotron-mcc (GPU MCC peak calling, run via `apptainer exec --nv`
 # in the call_mcc_peaks rule). Also Sylabs-hosted with only `latest`.
@@ -75,4 +72,4 @@ ALL_CONTAINERS: Final[dict[str, str]] = {
 }
 
 #: Images still on a floating tag. Must stay empty apart from known exceptions.
-UNPINNED_ALLOWLIST: Final[frozenset[str]] = frozenset({PLOTNADO, LANCEOTRON_MCC})
+UNPINNED_ALLOWLIST: Final[frozenset[str]] = frozenset({LANCEOTRON_MCC})

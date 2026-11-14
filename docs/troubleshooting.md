@@ -422,7 +422,7 @@ If jobs are queued but not starting, your cluster partition may be busy. Conside
 
 **Symptoms:** After upgrading SeqNado, rules that previously worked fail with unknown command-line options, missing scripts, `ModuleNotFoundError`, or tool version mismatches.
 
-**Cause:** Older SeqNado releases referenced containers by the floating `:latest` tag. Snakemake caches each image under `.snakemake/singularity/` keyed on its URL, so when a new `:latest` image was published the old cached copy kept being used. Current releases pin images to a fixed version or digest, so upgrading pulls the matching containers automatically. You can still hit this when running an older release, or with the genome-browser plot (`plotnado`) and MCC peak-calling (`lanceotron-mcc`) images, which are not pinned yet.
+**Cause:** Older SeqNado releases referenced containers by the floating `:latest` tag. Snakemake caches each image under `.snakemake/singularity/` keyed on its URL, so when a new `:latest` image was published the old cached copy kept being used. Current releases pin images to a fixed version or digest, so upgrading pulls the matching containers automatically. You can still hit this when running an older release, or with the MCC peak-calling (`lanceotron-mcc`) image, which is not pinned yet.
 
 **Fix:** Delete the cached images so they are pulled fresh on the next run:
 
