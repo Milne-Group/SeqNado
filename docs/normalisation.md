@@ -38,6 +38,30 @@ Need help choosing? See [Choosing a Method](#choosing-a-method) below.
 
 Spike-in normalisation uses a known amount of exogenous material (chromatin or RNA from a different species) added to each library before sequencing. Because the amount added is constant, the number of reads mapping to the spike-in reflects sequencing depth and can be used to normalise samples to a comparable scale. SeqNado implements three spike-in strategies — two based on total spike-in read counts (orlando, with_input) and two based on gene-level counting from a spike-in-aware count matrix (deseq2, edgeR).
 
+### How reads are assigned to the reference or spike-in genome
+
+Reads are aligned to a combined reference + spike-in genome and then split by **contig (chromosome) name**:
+
+1. **Spike-in** — the contig name equals `exogenous_genome` or starts with `<exogenous_genome>_` (e.g. `dm6_chr2L`). `seqnado genomes build --spikein` names spike-in contigs this way automatically.
+2. **Reference** — the contig name starts with `chr` (UCSC style, e.g. `chr1`, `chr1_KI270706v1_random`) or is a standard chromosome name (`1`–`99`, `X`, `Y`, `Z`, `W`, `M`, `MT`; Ensembl/NCBI style).
+3. Anything else (e.g. unplaced Ensembl scaffolds such as `GL000220.1`) is dropped from both.
+
+For standard genomes no extra configuration is needed. If your combined genome uses other names, set either or both optional keys in the `spikein` section of the config:
+
+```yaml
+assay_config:
+  spikein:
+    method: [orlando]
+    exogenous_genome: plasmid
+    endogenous_genome: hg38
+    # Optional: contig names/prefixes of the spike-in genome (default: exogenous_genome)
+    exogenous_contig_prefix: [AmpR, Cas9_3p, Cas9_5p]
+    # Optional: contig prefixes of the reference genome (default: chr*, 1-99, X, Y, MT, ...)
+    endogenous_contig_prefix: [NC_]
+```
+
+Both keys accept a single value or a list. The split log (`logs/bam_split/<sample>.log`) lists which contigs were assigned to each genome. If no spike-in (or no reference) contigs are found, the run stops with an error that lists the contigs present in the BAM, so you can set the right prefix.
+
 ### Orlando (Reads-Per-Million Spike-in)
 
 **Reference:** Orlando DA, Chen MW, Brown VE, Solanki S, Choi YJ, Olson ER, Fritz CC, Bradner JE, Guenther MG. *Quantitative ChIP-Seq Normalization Reveals Global Modulation of the Epigenome.* Cell Reports. 2014;9(3):1163–1170. doi:[10.1016/j.celrep.2014.10.018](https://doi.org/10.1016/j.celrep.2014.10.018)
