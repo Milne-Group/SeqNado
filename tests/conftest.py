@@ -6,7 +6,22 @@ import pytest
 
 _REPO_ROOT = Path(__file__).parent.parent
 _DOCKER_IMAGE = "seqnado-devcontainer:test"
-_VENV_PATH = "/tmp/seqnado_venv"
+# Python for the in-container seqnado venv. Pinned because the image's system
+# Python can be newer than some dependencies publish wheels for (e.g.
+# `immutables` has none for 3.14, and the image has no Python headers to build it).
+_VENV_PYTHON = "3.12"
+# The venv volume holds one venv per Python version plus the uv-managed Python
+# it links to, so both survive between container runs.
+_VENV_ROOT = "/tmp/seqnado_venv"
+_VENV_PATH = f"{_VENV_ROOT}/py{_VENV_PYTHON}"
+_UV_PYTHON_DIR = f"{_VENV_ROOT}/python"
+_APPTAINER_CACHE_PATH = "/apptainer-cache"
+# Named Docker volumes persisting the Apptainer image cache and the seqnado
+# venv between runs, mapped to their mount points inside the container.
+_DOCKER_VOLUMES = {
+    "seqnado-apptainer-cache": _APPTAINER_CACHE_PATH,
+    "seqnado-test-venv": _VENV_ROOT,
+}
 _DOCKER_FALLBACK_PRESET = "ld"
 
 
@@ -227,11 +242,33 @@ def docker_image(pytestconfig):
     )
     if result.returncode != 0:
         pytest.fail(f"Failed to build Docker image:\n{result.stderr}")
+
+    # Docker creates new named volumes owned by root, but the image runs as an
+    # unprivileged user, so hand the volume mount points over to that user.
+    volume_args = [arg for name, path in _DOCKER_VOLUMES.items() for arg in ("-v", f"{name}:{path}")]
+    result = subprocess.run(
+        [
+            "docker", "run", "--rm",
+            "--platform", "linux/amd64",
+            *volume_args,
+            "--entrypoint", "bash",
+            "--user", "root",
+            _DOCKER_IMAGE,
+            "-c",
+            f'owner="$(id -u seqnado_user):$(id -g seqnado_user)" '
+            f"&& mkdir -p {_APPTAINER_CACHE_PATH}/tmp "
+            f'&& chown "$owner" {" ".join(_DOCKER_VOLUMES.values())} {_APPTAINER_CACHE_PATH}/tmp',
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        pytest.fail(f"Failed to prepare Docker volumes:\n{result.stderr}")
     return _DOCKER_IMAGE
 
 
 @pytest.fixture
-def seqnado_runner(pytestconfig, docker_image):
+def seqnado_runner(pytestconfig, docker_image, tmp_path_factory):
     """Return a function that runs a seqnado command.
 
     With --preset=ld and no local Apptainer, each call is routed through
@@ -243,6 +280,10 @@ def seqnado_runner(pytestconfig, docker_image):
     apptainer_available = _has_apptainer_runtime()
     use_docker = preset == "ld" and not apptainer_available and docker_image is not None
 
+    # Test data (genome, FASTQs) lives in pytest's base temp dir beside each
+    # run directory, so mount the whole base temp dir, not just ``cwd``.
+    base_temp = tmp_path_factory.getbasetemp().resolve()
+
     def run(cmd, cwd, **kwargs):
         cwd = Path(cwd).resolve()
         if not use_docker:
@@ -251,11 +292,19 @@ def seqnado_runner(pytestconfig, docker_image):
         # Install seqnado into a persistent venv volume on first call;
         # subsequent calls skip the install (uv detects nothing changed).
         install = (
-            f"(test -f {_VENV_PATH}/bin/activate || uv venv {_VENV_PATH}) "
+            f"export UV_PYTHON_INSTALL_DIR={_UV_PYTHON_DIR} "
+            f"&& ({_VENV_PATH}/bin/python -V >/dev/null 2>&1 "
+            f"|| uv venv --clear --python {_VENV_PYTHON} {_VENV_PATH}) "
             f"&& . {_VENV_PATH}/bin/activate "
             f"&& uv pip install -q -e {_REPO_ROOT}"
         )
-        seqnado_cmd = " ".join(str(a) for a in cmd)
+        # The container has real Apptainer, so run the test profile there: the
+        # pipeline helpers add the test-data bind mounts to `profile_test` only.
+        cmd = [str(a) for a in cmd]
+        for i, arg in enumerate(cmd[:-1]):
+            if arg == "--preset" and cmd[i + 1] == _DOCKER_FALLBACK_PRESET:
+                cmd[i + 1] = "t"
+        seqnado_cmd = " ".join(cmd)
 
         docker_cmd = [
             "docker", "run", "--rm",
@@ -263,15 +312,15 @@ def seqnado_runner(pytestconfig, docker_image):
             "--platform", "linux/amd64",
             # Mount cwd and repo at identical paths — keeps all absolute
             # references in config files and Apptainer bind-args valid
-            "-v", f"{cwd}:{cwd}",
+            "-v", f"{base_temp}:{base_temp}",
+            *([] if cwd.is_relative_to(base_temp) else ["-v", f"{cwd}:{cwd}"]),
             "-v", f"{_REPO_ROOT}:{_REPO_ROOT}",
             # Persist the Apptainer image cache and seqnado venv between runs
-            "-v", "seqnado-apptainer-cache:/apptainer-cache",
-            "-v", f"seqnado-test-venv:{_VENV_PATH}",
-            "-e", "APPTAINER_CACHEDIR=/apptainer-cache",
-            "-e", "APPTAINER_TMPDIR=/apptainer-cache/tmp",
-            "-e", "SINGULARITY_CACHEDIR=/apptainer-cache",
-            "-e", "SINGULARITY_TMPDIR=/apptainer-cache/tmp",
+            *[arg for name, path in _DOCKER_VOLUMES.items() for arg in ("-v", f"{name}:{path}")],
+            "-e", f"APPTAINER_CACHEDIR={_APPTAINER_CACHE_PATH}",
+            "-e", f"APPTAINER_TMPDIR={_APPTAINER_CACHE_PATH}/tmp",
+            "-e", f"SINGULARITY_CACHEDIR={_APPTAINER_CACHE_PATH}",
+            "-e", f"SINGULARITY_TMPDIR={_APPTAINER_CACHE_PATH}/tmp",
             "-w", str(cwd),
             docker_image,
             "bash", "-c", f"{install} && {seqnado_cmd}",
