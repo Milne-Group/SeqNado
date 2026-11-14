@@ -17,7 +17,12 @@ from seqnado import (
     SpikeInMethod,
 )
 from seqnado.config.configs import QCConfig
-from seqnado.core import AssaysWithHeatmaps, AssaysWithPeakCalling, AssaysWithSpikein
+from seqnado.core import (
+    AssaysWithHeatmaps,
+    AssaysWithLibraryComplexity,
+    AssaysWithPeakCalling,
+    AssaysWithSpikein,
+)
 from seqnado.inputs import (
     BamCollection,
     BigWigCollection,
@@ -119,10 +124,33 @@ class QCFiles(BaseModel):
                     )
         return []
 
+    @property
+    def library_complexity_files(self) -> list[str]:
+        """Picard duplicate metrics computed from the unfiltered aligned BAM.
+
+        Requires FASTQ input (the metrics come from the pre-filtering alignment,
+        which does not exist when starting from BAMs/bigWigs).
+        """
+        if (
+            self.config.calculate_library_complexity
+            and self.assay in AssaysWithLibraryComplexity
+            and isinstance(self.samples, (FastqCollection, FastqCollectionForIP))
+        ):
+            return expand(
+                f"{self.output_dir}/qc/library_complexity/{{sample}}.metrics",
+                sample=self.samples.sample_names,
+            )
+        return []
+
     @computed_field
     @property
     def files(self) -> List[str]:
-        return [*self.fastqc_files, *self.fastqscreen_files, *self.qualimap_files]
+        return [
+            *self.fastqc_files,
+            *self.fastqscreen_files,
+            *self.qualimap_files,
+            *self.library_complexity_files,
+        ]
 
 
 class SeqNadoReportFile(BaseModel):

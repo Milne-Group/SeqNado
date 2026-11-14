@@ -270,7 +270,7 @@ proj.load_alignment_stats()
 proj.load_frip()
 # → columns: sample, peak_method, ...
 
-# Library complexity (Picard MarkDuplicates or samtools markdup)
+# Library complexity (Picard MarkDuplicates on the unfiltered alignment)
 proj.load_library_complexity()
 
 # Snakemake benchmark runtimes / memory

@@ -81,6 +81,9 @@ class Assay(Enum):
 AssaysWithPeakCalling = (Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.MCC)
 AssaysWithHeatmaps = (Assay.ATAC, Assay.CHIP, Assay.RNA, Assay.CAT, Assay.METH)
 AssaysWithSpikein = (Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.RNA)
+# Assays whose reads align as whole fragments to the genome, so PCR-duplicate
+# based library complexity is meaningful (MCC reads are split; CRISPR is guide counting).
+AssaysWithLibraryComplexity = (Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.RNA, Assay.SNP, Assay.METH)
 
 
 class FileType(Enum):

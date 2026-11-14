@@ -21,7 +21,7 @@ from seqnado.config.core import ATACAssayConfig, ChIPAssayConfig, SeqnadoConfig
 from seqnado.inputs.bam import BamCollection, BamFile
 from seqnado.inputs.bigwigs import BigWigCollection, BigWigFile
 from seqnado.inputs.core import Metadata
-from seqnado.inputs.fastq import FastqCollection, FastqFile, FastqSet
+from seqnado.inputs.fastq import FastqCollection, FastqCollectionForIP, FastqFile, FastqSet
 from seqnado.inputs.grouping import SampleGroup, SampleGroupings, SampleGroups
 from seqnado.outputs.core import (
     SeqnadoOutputBuilder,
@@ -241,6 +241,65 @@ class TestQCFiles:
 
         files = qc.files
         assert any("fastq_screen" in f for f in files)
+
+    def test_qc_files_no_library_complexity_by_default(self, tmp_path):
+        """Library complexity metrics are not requested unless enabled."""
+        samples = _create_fastq_collection(tmp_path, ["sample1"], Assay.ATAC)
+        qc = QCFiles(assay=Assay.ATAC, samples=samples)
+
+        assert qc.library_complexity_files == []
+        assert all("library_complexity" not in f for f in qc.files)
+
+    @pytest.mark.parametrize(
+        "assay_type", [Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.RNA, Assay.SNP, Assay.METH]
+    )
+    def test_qc_files_library_complexity_enabled(self, tmp_path, assay_type):
+        """Enabling the flag requests one metrics file per sample (incl. IP controls)."""
+        if assay_type in (Assay.CHIP, Assay.CAT):
+            files = []
+            for name in ["sample1_H3K4me3_R1", "sample1_IGG_R1"]:
+                f = tmp_path / f"{name}.fastq.gz"
+                f.write_text("@r\nN\n+\n#\n")
+                files.append(f)
+            samples = FastqCollectionForIP.from_fastq_files(assay=assay_type, files=files)
+        else:
+            samples = _create_fastq_collection(tmp_path, ["sample1", "sample2"], assay_type)
+        qc = QCFiles(
+            assay=assay_type,
+            samples=samples,
+            config=QCConfig(calculate_library_complexity=True),
+            output_dir="out",
+        )
+
+        expected = sorted(
+            f"out/qc/library_complexity/{s}.metrics" for s in samples.sample_names
+        )
+        assert len(expected) == 2
+        assert sorted(qc.library_complexity_files) == expected
+        assert set(expected) <= set(qc.files)
+
+    @pytest.mark.parametrize("assay_type", [Assay.MCC, Assay.CRISPR])
+    def test_qc_files_library_complexity_unsupported_assay(self, tmp_path, assay_type):
+        """MCC/CRISPR reads are not whole genomic fragments; skip complexity."""
+        samples = _create_fastq_collection(tmp_path, ["sample1"], assay_type)
+        qc = QCFiles(
+            assay=assay_type,
+            samples=samples,
+            config=QCConfig(calculate_library_complexity=True),
+        )
+
+        assert qc.library_complexity_files == []
+
+    def test_qc_files_library_complexity_needs_fastq_input(self, tmp_path):
+        """No unfiltered alignment exists when starting from BAMs."""
+        samples = _create_bam_collection(tmp_path, ["sample1"], Assay.ATAC)
+        qc = QCFiles(
+            assay=Assay.ATAC,
+            samples=samples,
+            config=QCConfig(calculate_library_complexity=True),
+        )
+
+        assert qc.library_complexity_files == []
 
 class SeqNadoReportFileTest:
     """Tests for SeqNadoReportFiles class."""

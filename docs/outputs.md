@@ -230,7 +230,7 @@ qc/
 │   └── {sample}/
 │       └── qualimapReport.html
 ├── alignment_stats.tsv             # Aggregated alignment statistics
-├── library_complexity/             # Picard duplicate metrics
+├── library_complexity/             # Picard duplicate metrics on unfiltered alignment (if qc.calculate_library_complexity)
 │   └── {sample}.metrics
 └── frip_enrichment/                # FRiP scores (if enabled, peak-calling assays)
     └── {method}/
