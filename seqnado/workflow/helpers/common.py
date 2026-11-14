@@ -183,14 +183,16 @@ BAMNADO_NORMALISATION_FLAGS = {"-n", "--normalize", "--norm-method", "-f", "--sc
 def format_bamnado_options(options, raw_counts: bool = False) -> str:
     """Format ``bamnado bam-coverage`` options.
 
-    With ``raw_counts=True`` any normalisation (``-n/--normalize/--norm-method``) and
-    ``-f/--scale-factor`` flags are stripped, so the rule produces raw coverage or can
-    apply its own ``--scale-factor`` (per-group, spike-in, MCC n_cis) without
-    double-normalising.
+    With ``raw_counts=True`` any user normalisation (``-n/--normalize/--norm-method``)
+    and ``-f/--scale-factor`` flags are stripped and ``--norm-method raw`` is set
+    explicitly, so the rule produces raw coverage (or applies its own
+    ``--scale-factor`` for per-group, spike-in or MCC n_cis scaling) regardless of
+    the user's options or bamnado's default.
 
     Args:
         options: CommandLineArguments or string with options
-        raw_counts: Strip normalisation/scale-factor flags
+        raw_counts: Force raw coverage: strip normalisation/scale-factor flags and
+            add ``--norm-method raw``
 
     Returns:
         Formatted options string
@@ -198,9 +200,10 @@ def format_bamnado_options(options, raw_counts: bool = False) -> str:
     from seqnado.config.third_party_tools import CommandLineArguments
 
     if raw_counts:
-        options = CommandLineArguments(
+        stripped = CommandLineArguments(
             value=str(options), exclude=set(BAMNADO_NORMALISATION_FLAGS)
         )
+        return f"{str(stripped).strip()} --norm-method raw".strip()
     return str(options)
 
 

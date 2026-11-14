@@ -110,11 +110,15 @@ class TestFormatBamnadoOptions:
             "--bin-size 10 -f 2.5 -n rpkm --ignore-scaffold",
         ],
     )
-    def test_raw_counts_strips_normalisation(self, options):
+    def test_raw_counts_forces_explicit_raw(self, options):
         result = format_bamnado_options(options, raw_counts=True)
-        for flag in ("-n", "--normalize", "--norm-method", "-f", "--scale-factor"):
-            assert flag not in result.split()
-        assert not any(tok.startswith("--norm-method=") for tok in result.split())
+        tokens = result.split()
+        for flag in ("-n", "--normalize", "-f", "--scale-factor"):
+            assert flag not in tokens
+        assert not any(tok.startswith("--norm-method=") for tok in tokens)
+        # Exactly one normalisation flag, and it is the explicit raw one.
+        assert tokens.count("--norm-method") == 1
+        assert "--norm-method raw" in result
         assert "rpkm" not in result and "cpm" not in result and "2.5" not in result
         assert "--bin-size 10" in result
         assert "--ignore-scaffold" in result
@@ -127,4 +131,9 @@ class TestFormatBamnadoOptions:
         from seqnado.config.third_party_tools import CommandLineArguments
 
         cla = CommandLineArguments(value="--bin-size 5 --norm-method rpkm")
-        assert format_bamnado_options(cla, raw_counts=True).split() == ["--bin-size", "5"]
+        assert format_bamnado_options(cla, raw_counts=True).split() == [
+            "--bin-size", "5", "--norm-method", "raw",
+        ]
+
+    def test_raw_counts_with_empty_options(self):
+        assert format_bamnado_options("", raw_counts=True) == "--norm-method raw"
