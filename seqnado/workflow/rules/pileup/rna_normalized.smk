@@ -77,7 +77,7 @@ rule bigwigs_bamnado_rna_spikein_plus:
     message: "Making plus strand spike-in normalized bigWig with bamnado for sample {wildcards.sample} using {wildcards.spikein_method}"
     shell: """
     export RAYON_NUM_THREADS={threads}
-    bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} --strand forward --scale-factor {params.scale} > {log} 2>&1
+    bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} --strand forward --scale-factor={params.scale} > {log} 2>&1
     """
 
 
@@ -101,7 +101,7 @@ rule bigwigs_bamnado_rna_spikein_minus:
     message: "Making minus strand spike-in normalized bigWig with bamnado for sample {wildcards.sample} using {wildcards.spikein_method}"
     shell: """
     export RAYON_NUM_THREADS={threads}
-    bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} --strand reverse --scale-factor {params.scale} > {log} 2>&1
+    bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} --strand reverse --scale-factor={params.scale} > {log} 2>&1
     """
 
 

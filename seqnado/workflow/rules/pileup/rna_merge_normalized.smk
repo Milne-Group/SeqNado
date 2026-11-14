@@ -95,7 +95,7 @@ rule bigwigs_bamnado_rna_merged_spikein_plus:
     shell:
         """
         export RAYON_NUM_THREADS={threads}
-        bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} --strand forward --scale-factor {params.scale} > {log} 2>&1
+        bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} --strand forward --scale-factor={params.scale} > {log} 2>&1
         """
 
 
@@ -123,7 +123,7 @@ rule bigwigs_bamnado_rna_merged_spikein_minus:
     shell:
         """
         export RAYON_NUM_THREADS={threads}
-        bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} --strand reverse --scale-factor {params.scale} > {log} 2>&1
+        bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} --strand reverse --scale-factor={params.scale} > {log} 2>&1
         """
 
 

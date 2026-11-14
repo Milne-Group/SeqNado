@@ -77,7 +77,7 @@ if CONFIG.third_party_tools.bamnado is not None:
         shell:
             """
             export RAYON_NUM_THREADS={threads}
-            bamnado bam-coverage {params.options} --scale-factor {params.scale} -b {input.bam} -o {output.bigwig} > {log} 2>&1
+            bamnado bam-coverage {params.options} --scale-factor={params.scale} -b {input.bam} -o {output.bigwig} > {log} 2>&1
             """
 
     rule bigwigs_bamnado_spikein:
@@ -101,7 +101,7 @@ if CONFIG.third_party_tools.bamnado is not None:
         shell:
             """
             export RAYON_NUM_THREADS={threads}
-            bamnado bam-coverage {params.options} --scale-factor {params.scale} -b {input.bam} -o {output.bigwig} > {log} 2>&1
+            bamnado bam-coverage {params.options} --scale-factor={params.scale} -b {input.bam} -o {output.bigwig} > {log} 2>&1
             """
 
 
