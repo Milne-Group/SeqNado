@@ -94,7 +94,8 @@ jobs:
 
   test-build:
     name: Genome Build (Full)
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-26.04 lacks libfuse3-3, required by the Apptainer 1.3.4 .deb (matches HPC)
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
