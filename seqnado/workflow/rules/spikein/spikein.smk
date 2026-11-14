@@ -16,7 +16,7 @@ use rule bam_index as bam_index_spikein with:
         bam=rules.bam_sort_spikein.output.bam,
     output:
         bai=temp(OUTPUT_DIR + "/aligned/spikein/sorted/{sample}.bam.bai"),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/aligned_spikein/{sample}_index.log",
     benchmark: OUTPUT_DIR + "/.benchmark/aligned_spikein/{sample}_index.tsv",
     message: "Indexing spike-in aligned BAM for sample {wildcards.sample} using samtools"
@@ -30,7 +30,7 @@ rule filter_bam_spikein:
     params:
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         count_flags=lambda wildcards: get_read_count_flags(wildcards, INPUT_FILES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/aligned_spikein/{sample}_filter.log",
     benchmark: OUTPUT_DIR + "/.benchmark/aligned_spikein/{sample}_filter.tsv",
     message: "Filtering spike-in aligned BAM for sample {wildcards.sample} using samtools",
@@ -47,7 +47,7 @@ use rule bam_index as bam_index_spikein_filtered with:
         bam=rules.filter_bam_spikein.output.bam,
     output:
         bai=temp(OUTPUT_DIR + "/aligned/spikein/filtered/{sample}.bam.bai"),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/aligned_spikein/{sample}_filter_index.log",
     benchmark: OUTPUT_DIR + "/.benchmark/aligned_spikein/{sample}_filter_index.tsv",
     message: "Indexing filtered spike-in aligned BAM for sample {wildcards.sample} using samtools"
@@ -71,7 +71,7 @@ rule bam_split:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/bam_split/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bam_split/{sample}.tsv",
     message: "Splitting BAM into reference and spike-in for sample {wildcards.sample} using samtools",
@@ -94,7 +94,7 @@ rule bam_move_ref:
     params:
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         count_flags=lambda wildcards: get_read_count_flags(wildcards, INPUT_FILES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/bam_move_ref/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bam_move_ref/{sample}.tsv",
     message: "Moving reference BAM for sample {wildcards.sample} to raw aligned directory",

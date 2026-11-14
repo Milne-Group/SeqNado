@@ -16,7 +16,7 @@ rule crispr_trimming_paired:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/trimming/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/trimming/{sample}.tsv",
     message: "Trimming adapters from CRISPR sample {wildcards.sample} using cutadapt (paired-end)",
@@ -38,7 +38,7 @@ rule crispr_trimming_single:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/trimming/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/trimming/{sample}.tsv",
     message: "Trimming adapters from CRISPR sample {wildcards.sample} using cutadapt (single-end)",

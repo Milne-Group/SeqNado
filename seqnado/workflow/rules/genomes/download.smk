@@ -13,7 +13,7 @@ rule download_fasta:
         url=lambda wc: f"{PATH}{wc.genome}/bigZips/{wc.genome}.fa.gz",
         gz=lambda wc: OUTPUT_DIR + f"/{wc.genome}/sequence/{wc.genome}.fa.gz",
         custom=lambda wc: CUSTOM_FASTA.get(wc.genome, ""),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
@@ -58,7 +58,7 @@ rule download_chrom_sizes:
     params:
         url=lambda wc: f"{PATH}{wc.genome}/bigZips/{wc.genome}.chrom.sizes",
         is_custom=lambda wc: wc.genome in CUSTOM_FASTA,
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
@@ -94,7 +94,7 @@ rule download_gtf:
         url=lambda wc: f"{PATH}{wc.genome}/bigZips/genes/{wc.genome}.ncbiRefSeq.gtf.gz",
         gz=lambda wc: OUTPUT_DIR + f"/{wc.genome}/genes/{wc.genome}.ncbiRefSeq.gtf.gz",
         custom=lambda wc: CUSTOM_GTF.get(wc.genome, ""),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
@@ -132,7 +132,7 @@ rule download_blacklist:
         blacklist=OUTPUT_DIR + "/{genome}/{genome}-blacklist.bed.gz",
     params:
         url=lambda wc: f"{BLACKLIST_BASE_URL}/{wc.genome}-blacklist.v2.bed.gz",
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),

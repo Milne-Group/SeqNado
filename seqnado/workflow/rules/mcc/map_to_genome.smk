@@ -10,7 +10,7 @@ rule split_reads_aligned_to_viewpoints:
     threads: 1
     resources:
         mem="1GB",
-    container: "docker://ghcr.io/alsmith151/mccnado:latest"
+    container: CONTAINERS.MCCNADO
     log: OUTPUT_DIR + "/logs/split_reads/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/split_reads/{sample}.tsv",
     message: "Splitting reads aligned to viewpoints for sample {wildcards.sample}",
@@ -33,7 +33,7 @@ rule align_mcc_reads_to_genome:
     resources:
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/aligned/to_genome/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/aligned/to_genome/{sample}.tsv",
     message: "Aligning MCC reads to genome for sample {wildcards.sample}",

@@ -86,7 +86,7 @@ if CONFIG.third_party_tools.bamnado is not None:
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         log: OUTPUT_DIR + "/logs/bigwigs/bamnado/merged/" + DataScalingTechnique.PER_GROUP.value + "/{scaling_method}/{group}.log",
         benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/bamnado/merged/" + DataScalingTechnique.PER_GROUP.value + "/{scaling_method}/{group}.tsv",
         message: "Making {wildcards.scaling_method}-scaled merged bigWig with bamnado for group {wildcards.group}"
@@ -112,7 +112,7 @@ if CONFIG.third_party_tools.bamnado is not None:
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         log: OUTPUT_DIR + "/logs/bigwigs/bamnado/merged/spikein/{spikein_method}/{group}.log",
         benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/bamnado/merged/spikein/{spikein_method}/{group}.tsv",
         message: "Making spike-in normalized merged bigWig with bamnado for group {wildcards.group} using {wildcards.spikein_method}"

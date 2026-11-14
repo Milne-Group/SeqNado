@@ -166,13 +166,14 @@ rule my_rule:
     resources:
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log:    OUTPUT_DIR + "/logs/my_rule/{sample}.log"
     benchmark: OUTPUT_DIR + "/.benchmark/my_rule/{sample}.tsv"
     message: "Running my_rule for {wildcards.sample}"
     shell: "mytool {params.options} {input} > {output} 2> {log}"
 ```
 
+- Reference container images via `CONTAINERS.<NAME>` (from `seqnado/containers.py`), never a literal URI. Every image there must be pinned to a version tag or `@sha256:` digest — no `:latest` (Snakemake caches images by URI, so floating tags silently run stale containers). Enforced by `tests/unit/test_containers.py`. A `.smk` run standalone (e.g. `rules/geo/download.smk`) must import `from seqnado import containers as CONTAINERS` itself
 - Place the rule file in the appropriate `rules/<category>/` directory
 - Use `temp()` on intermediate outputs to save disk space
 - Use `ruleorder:` when paired/single-end variants of a rule exist

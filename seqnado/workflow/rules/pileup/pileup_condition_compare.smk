@@ -67,7 +67,7 @@ if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
         benchmark:
             OUTPUT_DIR + "/.benchmark/bigwig/{pileup_method}_aggregated_{condition}{strand}.tsv",
         container:
-            "docker://ghcr.io/alsmith151/bamnado:latest",
+            CONTAINERS.BAMNADO,
         message:
             "Aggregating bigwigs for condition {wildcards.condition} using {wildcards.pileup_method}",
         wildcard_constraints:
@@ -107,7 +107,7 @@ if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
         benchmark:
             OUTPUT_DIR + "/.benchmark/bigwig/{pileup_method}_subtraction_{condition1}_vs_{condition2}{strand}.tsv",
         container:
-            "docker://ghcr.io/alsmith151/bamnado:latest",
+            CONTAINERS.BAMNADO,
         message:
             "Subtracting {wildcards.condition2} from {wildcards.condition1} bigwigs using {wildcards.pileup_method}",
         wildcard_constraints:
@@ -165,7 +165,7 @@ if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
             benchmark:
                 OUTPUT_DIR + "/.benchmark/bigwig/{pileup_method}_spikein_{spikein_method}_aggregated_{condition}{strand}.tsv",
             container:
-                "docker://ghcr.io/alsmith151/bamnado:latest",
+                CONTAINERS.BAMNADO,
             message:
                 "Aggregating spike-in normalized bigwigs for condition {wildcards.condition} ({wildcards.spikein_method}) using {wildcards.pileup_method}",
             wildcard_constraints:
@@ -206,7 +206,7 @@ if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
             benchmark:
                 OUTPUT_DIR + "/.benchmark/bigwig/{pileup_method}_spikein_{spikein_method}_subtraction_{condition1}_vs_{condition2}{strand}.tsv",
             container:
-                "docker://ghcr.io/alsmith151/bamnado:latest",
+                CONTAINERS.BAMNADO,
             message:
                 "Subtracting spike-in normalized {wildcards.condition2} from {wildcards.condition1} bigwigs ({wildcards.spikein_method}) using {wildcards.pileup_method}",
             wildcard_constraints:

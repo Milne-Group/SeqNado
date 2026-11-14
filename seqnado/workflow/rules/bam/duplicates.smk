@@ -24,7 +24,7 @@ if (
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=5, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_remove_duplicates.log",
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_remove_duplicates.tsv",
         message: "Removing duplicates from aligned BAM for sample {wildcards.sample} using samtools",
@@ -54,7 +54,7 @@ elif CONFIG.pcr_duplicates.strategy == PCRDuplicateHandling.REMOVE and picard_ma
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=5, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_remove_duplicates.log",
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_remove_duplicates.tsv",
         message: "Removing duplicates from aligned BAM for sample {wildcards.sample} using Picard",
@@ -81,7 +81,7 @@ else:
         threads: 8
         resources:
             mem="500MB",
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_remove_duplicates.log",
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_remove_duplicates.tsv",
         message: "Skipping duplicate removal for sample {wildcards.sample}",

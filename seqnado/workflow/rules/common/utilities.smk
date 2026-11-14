@@ -19,7 +19,7 @@ rule genomic_bins:
     output:
         bed=OUTPUT_DIR + "/resources/genomic_bins.bed",
     container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        CONTAINERS.SEQNADO_PIPELINE
     resources:
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
@@ -37,7 +37,7 @@ rule validate_peaks:
     output:
         sentinel=OUTPUT_DIR + "/peaks/.validated",
     container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        CONTAINERS.SEQNADO_PIPELINE
     log:
         OUTPUT_DIR + "/logs/validate_peaks.log",
     benchmark: OUTPUT_DIR + "/.benchmark/validate_peaks.tsv",
@@ -67,7 +67,7 @@ rule bed_to_bigbed:
         chrom_sizes=CONFIG.genome.chromosome_sizes,
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/bed_to_bigbed/{directory}/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bed_to_bigbed/{directory}/{sample}.tsv",
     message: "Converting BED to BigBed for sample {wildcards.sample} in directory {wildcards.directory}",
