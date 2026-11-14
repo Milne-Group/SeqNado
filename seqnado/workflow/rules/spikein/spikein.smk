@@ -1,5 +1,8 @@
 
 from seqnado.workflow.helpers.common import get_read_count_flags
+from seqnado.workflow.helpers.spikein import spikein_regexes_from_config
+
+SPIKEIN_REF_REGEX, SPIKEIN_EXO_REGEX = spikein_regexes_from_config(CONFIG.assay_config.spikein)
 
 use rule bam_sort as bam_sort_spikein with:
     input:
@@ -62,26 +65,25 @@ rule bam_split:
         exo_bam=temp(OUTPUT_DIR + "/aligned/spikein/{sample}_exo.bam"),
         stats=OUTPUT_DIR + "/aligned/spikein/{sample}_stats.tsv",
     params:
-        genome_prefix=CONFIG.assay_config.spikein.endogenous_genome,
-        exo_prefix=CONFIG.assay_config.spikein.exogenous_genome,
-        prefix=OUTPUT_DIR + "/aligned/spikein/{sample}",
-        map_qual=30,
+        script=workflow.source_path("../../scripts/split_bam_by_contig.sh"),
+        ref_regex=SPIKEIN_REF_REGEX,
+        exo_regex=SPIKEIN_EXO_REGEX,
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         count_flags=lambda wildcards: get_read_count_flags(wildcards, INPUT_FILES),
+    threads: 4
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
     container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
     log: OUTPUT_DIR + "/logs/bam_split/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bam_split/{sample}.tsv",
-    message: "Splitting BAM into reference and spike-in for sample {wildcards.sample} using samtools",
+    message: "Splitting BAM into reference and spike-in for sample {wildcards.sample} by contig name",
     shell: f"""
+        bash {{params.script}} --bam {{input.bam}} --ref-regex {{params.ref_regex:q}} --exo-regex {{params.exo_regex:q}} --ref-out {{output.ref_bam}} --exo-out {{output.exo_bam}} --threads {{threads}} --label {{wildcards.sample}} --log {{log}} &&
         before=$(samtools view -c {{params.count_flags}} {{input.bam}}) &&
-        samtools view -h {{input.bam}} | awk '{{{{if($0 ~ /^@/ || $3 ~ /^chr/) print}}}}' | samtools view -b -o {{output.ref_bam}} &&
-        samtools view -h {{input.bam}} | awk '{{{{if($0 ~ /^@/ || $3 ~ /^{{params.exo_prefix}}/) print}}}}' | samtools view -b -o {{output.exo_bam}} &&
-        echo -e "sample\treference_reads\tspikein_reads" > {{output.stats}} &&
-        echo -e "{{wildcards.sample}}\t$(samtools view -c {{params.count_flags}} {{output.ref_bam}})\t$(samtools view -c {{params.count_flags}} {{output.exo_bam}})" >> {{output.stats}} &&
         after=$(samtools view -c {{params.count_flags}} {{output.ref_bam}}) &&
+        spikein=$(samtools view -c {{params.count_flags}} {{output.exo_bam}}) &&
+        printf 'sample\\treference_reads\\tspikein_reads\\n%s\\t%s\\t%s\\n' {{wildcards.sample}} "$after" "$spikein" > {{output.stats}} &&
         {emit_read_logs("Spike-in Split", "{wildcards.sample}", "{params.read_log}")}
         """
 

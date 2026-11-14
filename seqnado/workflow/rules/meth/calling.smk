@@ -1,18 +1,31 @@
 from seqnado.workflow.helpers.common import define_memory_requested, define_time_requested
 from seqnado.workflow.helpers.bam import get_bam_split
+from seqnado.workflow.helpers.spikein import reference_contig_regex, spikein_contig_regex
 
 REF_GENOME=CONFIG.assay_config.methylation.reference_genome if CONFIG.assay_config.methylation and CONFIG.assay_config.methylation.reference_genome else CONFIG.genome.name
 SPIKEIN_GENOMES=CONFIG.assay_config.methylation.spikein_genomes if CONFIG.assay_config.methylation and CONFIG.assay_config.methylation.spikein_genomes else []
 GENOMES=[REF_GENOME]+SPIKEIN_GENOMES
+METH_REF_CONTIG_REGEX=reference_contig_regex(
+    CONFIG.assay_config.methylation.endogenous_contig_prefix
+    if CONFIG.assay_config.methylation
+    else None
+)
+# All spike-in contigs; excluded from the reference split.
+METH_ALL_SPIKEIN_REGEX=spikein_contig_regex(SPIKEIN_GENOMES) if SPIKEIN_GENOMES else ""
+
 
 checkpoint methylation_bam_splits:
     input:
-        OUTPUT_DIR + "/aligned/{sample}.bam"
+        bam=OUTPUT_DIR + "/aligned/{sample}.bam",
     output:
         bam=temp(OUTPUT_DIR + "/aligned/spikein/{sample}_{genome}.bam"),
         bai=temp(OUTPUT_DIR + "/aligned/spikein/{sample}_{genome}.bam.bai")
     params:
-        ref_genome=REF_GENOME
+        script=workflow.source_path("../../scripts/split_bam_by_contig.sh"),
+        ref_regex=METH_REF_CONTIG_REGEX,
+        # Reference: exclude every spike-in. Spike-in: select just this genome.
+        exo_regex=lambda wc: METH_ALL_SPIKEIN_REGEX if wc.genome == REF_GENOME else spikein_contig_regex([wc.genome]),
+        out_flag=lambda wc: "--ref-out" if wc.genome == REF_GENOME else "--exo-out",
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
@@ -20,13 +33,8 @@ checkpoint methylation_bam_splits:
     benchmark: OUTPUT_DIR + "/.benchmark/methylation_bam_splits/{sample}_{genome}.tsv"
     message: "Splitting BAM for sample {wildcards.sample} into genome {wildcards.genome}"
     shell: """
-    if [[ "{wildcards.genome}" == "{params.ref_genome}" ]]; then
-        samtools view -h {input} | awk '{{if($0 ~ /^@/ || $3 ~ /^chr/) print}}' | samtools view -b -o {output.bam} 2> {log}
-    else
-        samtools view -h {input} | awk '{{if($0 ~ /^@/ || $3 ~ /^{wildcards.genome}/) print}}' | samtools view -b -o {output.bam} 2> {log}
-    fi
-    samtools index {output.bam}
-    """
+        bash {params.script} --bam {input.bam} --ref-regex {params.ref_regex:q} --exo-regex {params.exo_regex:q} {params.out_flag} {output.bam} --on-empty-ref error --on-empty-exo warn --index --label {wildcards.sample}_{wildcards.genome} --log {log}
+        """
 
 
 rule methyldackel_bias:
