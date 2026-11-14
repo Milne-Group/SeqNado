@@ -66,6 +66,23 @@ def none_str_to_none(v):
     return v
 
 
+def coerce_contig_prefixes(v):
+    """Normalise a contig-prefix option to a list of non-empty strings or None.
+
+    Accepts a single string, a comma-separated string, or a list. YAML
+    ``"none"``-like strings and empty values become ``None``.
+    """
+    v = none_str_to_none(v)
+    if v is None:
+        return None
+    if isinstance(v, str):
+        v = v.split(",")
+    if not isinstance(v, (list, tuple)):
+        raise ValueError("Contig prefixes must be a string or a list of strings.")
+    cleaned = [str(p).strip() for p in v if p is not None and str(p).strip()]
+    return cleaned or None
+
+
 class UserFriendlyError(Exception):
     """Custom exception for user-friendly error messages that should be displayed without traceback."""
 
@@ -515,6 +532,25 @@ class SpikeInConfig(BaseModel):
     exogenous_genome: str | None = None
     endogenous_genome: str | None = None
     control_genes: list[str] | None = None
+    endogenous_contig_prefix: Annotated[
+        list[str] | None, BeforeValidator(coerce_contig_prefixes)
+    ] = Field(
+        default=None,
+        description=(
+            "Contig name prefix(es) identifying the reference (endogenous) genome. "
+            "If unset, contigs starting with 'chr' or named 1-99/X/Y/Z/W/M/MT are used."
+        ),
+    )
+    exogenous_contig_prefix: Annotated[
+        list[str] | None, BeforeValidator(coerce_contig_prefixes)
+    ] = Field(
+        default=None,
+        description=(
+            "Contig name(s)/prefix(es) identifying the spike-in (exogenous) genome. "
+            "A contig matches if it equals a prefix or starts with '<prefix>_'. "
+            "Defaults to exogenous_genome."
+        ),
+    )
 
 
 class UCSCHubConfig(BaseModel):
@@ -677,6 +713,15 @@ class MethylationConfig(BaseModel, PathValidatorMixin):
     spikein_genomes: list[str] = Field(
         default_factory=lambda: ["Lambda", "250bp-v1", "2kb-unmod"],
         description="List of spike-in genomes",
+    )
+    endogenous_contig_prefix: Annotated[
+        list[str] | None, BeforeValidator(coerce_contig_prefixes)
+    ] = Field(
+        default=None,
+        description=(
+            "Contig name prefix(es) identifying the reference genome. If unset, "
+            "contigs starting with 'chr' or named 1-99/X/Y/Z/W/M/MT are used."
+        ),
     )
 
     @field_validator("spikein_genomes")
