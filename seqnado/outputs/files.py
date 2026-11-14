@@ -467,6 +467,34 @@ class SpikeInFiles(BaseModel):
         return self.norm_factors
 
 
+def region_plot_paths(coordinates: Path, outdir: Path, file_format: str) -> list[Path]:
+    """Plot file paths for each region in a plotting-coordinates BED file.
+
+    Each region is named by its BED ``name`` column, falling back to
+    ``chrom-start-end``. ``run_plotnado.py`` uses the same rule, so the paths
+    returned here are exactly the files that script writes.
+    """
+    import pandas as pd
+
+    bed_columns = ["Chromosome", "Start", "End", "Name", "Score", "Strand"]
+    try:
+        coords_df = pd.read_csv(str(coordinates), sep="\t", header=None, comment="#")
+    except FileNotFoundError:
+        logger.warning(f"Could not find plotting coordinates file: {coordinates}")
+        return []
+    coords_df.columns = bed_columns[: len(coords_df.columns)]
+
+    plots = []
+    for region in coords_df.itertuples():
+        fig_name = (
+            f"{region.Chromosome}-{region.Start}-{region.End}"
+            if not hasattr(region, "Name") or not region.Name
+            else region.Name
+        )
+        plots.append(Path(outdir) / f"{fig_name}.{file_format}")
+    return plots
+
+
 class PlotFiles(BaseModel):
     coordinates: Path
     file_format: Literal["svg", "png", "pdf"] = "svg"
@@ -479,42 +507,17 @@ class PlotFiles(BaseModel):
 
     @property
     def plot_names(self):
-        import pandas as pd
-
-        plots = []
-
-        try:
-            # Read BED file using pandas (pyranges replacement)
-            bed_columns = ["Chromosome", "Start", "End", "Name", "Score", "Strand"]
-            coords_df = pd.read_csv(
-                str(self.coordinates), sep="\t", header=None, comment="#"
-            )
-            coords_df.columns = bed_columns[: len(coords_df.columns)]
-
-            prefix = "merged/" if self.is_merged else ""
-            if self.scale == DataScalingTechnique.SPIKEIN and self.spikein_method:
-                scale_dir = f"spikein/{self.spikein_method.value}"
-            elif self.scale == DataScalingTechnique.PER_GROUP and self.scaling_method:
-                scale_dir = f"{self.scale.value}/{self.scaling_method.value}"
-            else:
-                scale_dir = self.scale.value
-            outdir = Path(
-                f"{self.output_dir}/track_plots/{prefix}{self.method.value}/{scale_dir}/"
-            )
-            for region in coords_df.itertuples():
-                fig_name = (
-                    f"{region.Chromosome}-{region.Start}-{region.End}"
-                    if not hasattr(region, "Name") or not region.Name
-                    else region.Name
-                )
-                plots.append(outdir / f"{fig_name}.{self.file_format}")
-
-        except FileNotFoundError:
-            logger.warning(
-                f"Could not find plotting coordinates file: {self.coordinates}"
-            )
-
-        return plots
+        prefix = "merged/" if self.is_merged else ""
+        if self.scale == DataScalingTechnique.SPIKEIN and self.spikein_method:
+            scale_dir = f"spikein/{self.spikein_method.value}"
+        elif self.scale == DataScalingTechnique.PER_GROUP and self.scaling_method:
+            scale_dir = f"{self.scale.value}/{self.scaling_method.value}"
+        else:
+            scale_dir = self.scale.value
+        outdir = Path(
+            f"{self.output_dir}/track_plots/{prefix}{self.method.value}/{scale_dir}/"
+        )
+        return region_plot_paths(self.coordinates, outdir, self.file_format)
 
     @computed_field
     @property

@@ -24,9 +24,13 @@ def snakemake_setup():
     logger.remove()
     logger.add(snakemake.log[0], level="DEBUG")
     params = snakemake.params
+    input_data = list(snakemake.input.data)
+    # Multiomics passes one assay per input file; single-assay rules pass one
+    # assay for everything.
+    track_assays = getattr(params, "track_assays", None) or [params.assay] * len(input_data)
     return (
-        params.assay,
-        list(snakemake.input.data),
+        track_assays,
+        input_data,
         snakemake.output.plots,
         params.regions,
         params.outdir,
@@ -55,11 +59,18 @@ def _track_stem(path: Path) -> str:
     return path.stem
 
 
-def load_tracks(input_paths: list, assay: str) -> pd.DataFrame:
-    """Load track files into a DataFrame with metadata parsed from their paths."""
+def load_tracks(input_paths: list, assays: list[str]) -> pd.DataFrame:
+    """Load track files into a DataFrame with metadata parsed from their paths.
+
+    ``assays`` gives the assay of each input path, in the same order.
+    """
     logger.info("Loading input tracks...")
 
-    df = pd.DataFrame({"path": [Path(p) for p in input_paths]})
+    if len(assays) != len(input_paths):
+        raise ValueError(
+            f"Got {len(assays)} track assays for {len(input_paths)} input files"
+        )
+    df = pd.DataFrame({"path": [Path(p) for p in input_paths], "assay": assays})
     df["name"] = df["path"].apply(_track_stem)
     df["type"] = pd.Categorical(
         df["path"].apply(_track_type), categories=TRACK_TYPES, ordered=True
@@ -73,13 +84,14 @@ def load_tracks(input_paths: list, assay: str) -> pd.DataFrame:
         df["path"].apply(lambda x: x.parts[-3]),
     )
 
-    df = df.sort_values(by=["name", "type", "method", "normalisation"])
+    df = df.sort_values(by=["assay", "name", "type", "method", "normalisation"])
     df["track_name"] = (
         df["name"] + "-" + df["method"] + "-" + df["normalisation"] + df["type"].astype(str)
     ).str.replace("-.", ".", regex=False)
 
-    if assay == "ChIP":
-        df["antibody"] = df["name"].str.split("_").str[-1]
+    df["antibody"] = np.where(
+        df["assay"] == "ChIP", df["name"].str.split("_").str[-1], ""
+    )
 
     return df
 
@@ -90,7 +102,7 @@ def create_color_palette(names) -> dict:
     return {name: mcolors.to_hex(cmap(i % cmap.N)) for i, name in enumerate(names)}
 
 
-def track_kwargs(track, assay: str, color: str) -> tuple[str, dict]:
+def track_kwargs(track, color: str) -> tuple[str, dict]:
     """Return the PlotNado track alias and options for one input file."""
     common = dict(
         data=str(track.path),
@@ -102,14 +114,16 @@ def track_kwargs(track, assay: str, color: str) -> tuple[str, dict]:
     if track.type == ".bed":
         return "bed", common
 
-    if assay == "ChIP":
-        group = f"{track.antibody}-{track.method}-{track.normalisation}"
-    else:
-        group = f"{track.method}-{track.normalisation}"
+    # Tracks share a y-axis only within an assay (and, for ChIP, an antibody).
+    group = "-".join(
+        part
+        for part in (track.assay, track.antibody, track.method, track.normalisation)
+        if part
+    )
 
     return "bigwig", dict(
         common,
-        style="scatter" if assay == "METH" else "fill",
+        style="scatter" if track.assay == "METH" else "fill",
         autoscale_group=group,
         data_range_style="text",
         scale_location="right",
@@ -121,7 +135,7 @@ def _usable(path: str | None) -> bool:
     return bool(path) and Path(path).exists() and Path(path).stat().st_size > 0
 
 
-def build_figure(df: pd.DataFrame, assay: str, genes_file: str | None = None) -> pn.GenomicFigure:
+def build_figure(df: pd.DataFrame, genes_file: str | None = None) -> pn.GenomicFigure:
     """Build a PlotNado figure containing a scale bar, genes and all data tracks."""
     logger.info("Creating PlotNado figure...")
 
@@ -135,8 +149,8 @@ def build_figure(df: pd.DataFrame, assay: str, genes_file: str | None = None) ->
 
     colors = create_color_palette(df["name"].unique())
     for track in df.itertuples():
-        alias, kwargs = track_kwargs(track, assay, colors[track.name])
-        logger.info("ASSAY: {} TRACK: {} TYPE: {} OPTIONS: {}", assay, track.track_name, alias, kwargs)
+        alias, kwargs = track_kwargs(track, colors[track.name])
+        logger.info("ASSAY: {} TRACK: {} TYPE: {} OPTIONS: {}", track.assay, track.track_name, alias, kwargs)
         fig.add_track(alias, **kwargs)
 
     return fig
@@ -171,7 +185,7 @@ def save_plots(fig: pn.GenomicFigure, coords: pd.DataFrame, outdir: Path, plotti
 
 def main():
     (
-        assay,
+        track_assays,
         input_data,
         output_plots,
         regions,
@@ -182,16 +196,18 @@ def main():
     ) = snakemake_setup()
     configure_matplotlib()
 
-    logger.info(f"Starting PlotNado {pn.__version__} visualisation for {assay}")
+    logger.info(
+        f"Starting PlotNado {pn.__version__} visualisation for {sorted(set(track_assays))}"
+    )
     logger.debug(f"Input files: {input_data}")
     logger.debug(f"Output plots: {output_plots}")
     logger.debug(f"Plotting regions: {regions}")
 
-    df = load_tracks(input_data, assay)
+    df = load_tracks(input_data, track_assays)
     coords = read_regions(regions)
     logger.info(f"Found {len(coords)} regions to plot")
 
-    fig = build_figure(df, assay, genes)
+    fig = build_figure(df, genes)
     save_plots(fig, coords, Path(outdir), plotting_format)
 
     logger.info("Saving PlotNado template...")

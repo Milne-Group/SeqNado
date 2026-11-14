@@ -351,6 +351,16 @@ geo_submission/
 └── {assay}/                          # Upload directory
 ```
 
+#### Multiomics browser plots
+
+In multiomics runs the per-assay plots above are replaced by one combined figure per region, stacking the tracks from every assay (one per-sample-scaled bigWig per IP sample, using deepTools pileups where available). Regions and file format come from the first assay config with a `plotting` section; set `create_browser_plots: false` in `config_multiomics.yaml` to turn them off.
+
+```
+multiomics/track_plots/
+├── {region_name}.{format}       # All assays' tracks, one figure per region
+└── template.toml                # PlotNado configuration template
+```
+
 ### QuantNado Dataset (`dataset`)
 
 When `create_dataset: true` is set in the config, SeqNado runs [QuantNado](https://milne-group.github.io/QuantNado/) to produce a multi-sample signal store from all aligned BAM files:

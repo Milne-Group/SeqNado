@@ -1320,6 +1320,12 @@ def build_multiomics_config(
             "Generate summary report?", default="yes", is_boolean=True
         )
 
+        create_browser_plots = get_user_input(
+            "Generate combined genome browser plots (uses the first assay's plotting coordinates)?",
+            default="yes",
+            is_boolean=True,
+        )
+
     else:
         # Non-interactive mode: still prompt for assay selection, but use defaults for everything else
         logger.info("Non-interactive mode: prompting for assays, using defaults for other settings")
@@ -1361,6 +1367,7 @@ def build_multiomics_config(
         create_heatmaps = True
         create_dataset = True
         create_summary = True
+        create_browser_plots = True
 
     # Build individual assay configs
     assay_configs = {}
@@ -1390,6 +1397,7 @@ def build_multiomics_config(
         create_heatmaps=create_heatmaps,
         create_dataset=create_dataset,
         create_summary=create_summary,
+        create_browser_plots=create_browser_plots,
     )
 
     return multiomics_config, assay_configs
