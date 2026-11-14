@@ -185,3 +185,48 @@ def viewpoint_to_grouped_viewpoint(viewpoints: List[str]) -> Dict[str, str]:
             viewpoint_to_grouped_mapping[viewpoint] = viewpoint_name
 
     return viewpoint_to_grouped_mapping
+
+MCC_PEAK_METHODS = ("lanceotron-mcc", "mcc-peaks")
+
+
+def get_mcc_peak_methods(config) -> List[str]:
+    """
+    Return the selected MCC peak calling methods, in configured order.
+
+    ``lanceotron-mcc`` runs ``mcc-peaks call-legacy-peaks`` (GPU heuristic) and
+    ``mcc-peaks`` runs ``mcc-peaks call-bigwig-peaks`` (distance-aware, replicate-aware).
+    Defaults to ``lanceotron-mcc`` when no MCC method is configured.
+    """
+    peak_calling = getattr(config.assay_config, "peak_calling", None)
+    configured = getattr(peak_calling, "method", None) or []
+    methods = [getattr(m, "value", m) for m in configured]
+    selected = [m for m in methods if m in MCC_PEAK_METHODS]
+    return selected or ["lanceotron-mcc"]
+
+
+def get_mcc_bigwigs_for_peak_calling(wildcards, SAMPLE_GROUPINGS, OUTPUT_DIR, use_replicates: bool) -> List[str]:
+    """
+    BigWigs for ``mcc-peaks call-bigwig-peaks``.
+
+    With replicate bigWigs enabled, returns one track per biological replicate in the
+    consensus group so the caller can require majority support. Otherwise falls back
+    to the single grouped (raw) track.
+    """
+    if use_replicates:
+        group = SAMPLE_GROUPINGS.get_grouping("consensus").get_group(wildcards.group)
+        return [
+            f"{OUTPUT_DIR}/bigwigs/mcc/replicates/{sample}_{wildcards.viewpoint_group}.bigWig"
+            for sample in group.samples
+        ]
+    return [f"{OUTPUT_DIR}/bigwigs/mcc/{wildcards.group}_{wildcards.viewpoint_group}.bigWig"]
+
+
+def get_mcc_footprint_peaks(wildcards, config, OUTPUT_DIR) -> List[str]:
+    """
+    Reporter regions for ``mcc-peaks footprint``: peaks from the first configured MCC
+    peak calling method, or nothing (the capture oligos are profiled) without peak calling.
+    """
+    if not getattr(config.assay_config, "call_peaks", False):
+        return []
+    method = get_mcc_peak_methods(config)[0]
+    return [f"{OUTPUT_DIR}/peaks/{method}/{wildcards.group}_{wildcards.viewpoint_group}.bed"]

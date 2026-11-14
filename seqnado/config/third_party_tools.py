@@ -278,9 +278,33 @@ class LanceotronMCC(ToolConfig):
         data.setdefault(
             "command_line_arguments",
             CommandLineArguments(
-                value="--max-peak-size 2000 --no-mcc-filter-enriched-regions --no-mcc-filter-background"
+                value="--max-peak-size 2000 --no-filter-outliers --no-filter-background"
             ),
         )
+        return data
+
+
+class MccPeaks(ToolConfig):
+    """mcc-peaks call-bigwig-peaks (distance-aware MCC peak calling) configuration."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def set_defaults(cls, data: dict) -> dict:
+        data = dict(data)
+        data.setdefault("threads", 4)
+        data.setdefault("command_line_arguments", CommandLineArguments(value=""))
+        return data
+
+
+class MccFootprint(ToolConfig):
+    """mcc-peaks footprint (ligation-junction footprinting) configuration."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def set_defaults(cls, data: dict) -> dict:
+        data = dict(data)
+        data.setdefault("threads", 1)
+        data.setdefault("command_line_arguments", CommandLineArguments(value=""))
         return data
 
 
@@ -738,7 +762,7 @@ def get_assay_specific_tools(assay: Assay) -> list[type[BaseModel]]:
         Assay.SNP: qc_tools + [Bowtie2, Trimgalore, Samtools, BcfTools],
         Assay.METH: qc_tools + [Bowtie2, Trimgalore, Methyldackel, Samtools, Picard, Deeptools],
         Assay.CRISPR: qc_tools + [Qualimap, Cutadapt, Bowtie2, Subread, Samtools, Mageck],
-        Assay.MCC: qc_tools + [Trimgalore, Bowtie2, Samtools, Deeptools, LanceotronMCC, Bamnado],
+        Assay.MCC: qc_tools + [Trimgalore, Bowtie2, Samtools, Deeptools, LanceotronMCC, MccPeaks, MccFootprint, Bamnado],
     }
     return tools.get(assay, [])
 
@@ -781,6 +805,8 @@ class ThirdPartyToolsConfig(BaseModel):
     macs: Annotated[Optional[Macs], BeforeValidator(none_str_to_none)] = Field(default=None, description="MACS peak caller configuration")
     lanceotron: Annotated[Optional[Lanceotron], BeforeValidator(none_str_to_none)] = Field(default=None, description="Lanceotron peak caller configuration")
     lanceotron_mcc: Annotated[Optional[LanceotronMCC], BeforeValidator(none_str_to_none)] = Field(default=None, description="Lanceotron MCC configuration")
+    mcc_peaks: Annotated[Optional[MccPeaks], BeforeValidator(none_str_to_none)] = Field(default=None, description="mcc-peaks distance-aware MCC peak calling configuration")
+    mcc_footprint: Annotated[Optional[MccFootprint], BeforeValidator(none_str_to_none)] = Field(default=None, description="mcc-peaks ligation-junction footprinting configuration")
     seacr: Annotated[Optional[Seacr], BeforeValidator(none_str_to_none)] = Field(default=None, description="SEACR peak caller configuration")
     
     # Analysis tools

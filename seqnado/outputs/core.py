@@ -815,6 +815,15 @@ class SeqnadoOutputBuilder:
         sentinel_files = BasicFileCollection(files=[str(pk) for pk in peaks])
         self.file_collections.append(sentinel_files)
     
+    def add_mcc_sentinel_footprint_files(self) -> None:
+        """Add the MCC junction footprint sentinel (per viewpoint group, like peaks)."""
+        footprints = [
+            Path(self.output_dir) / "mcc/footprints/.mcc_footprints_generated.txt",
+        ]
+        self.file_collections.append(
+            BasicFileCollection(files=[str(fp) for fp in footprints])
+        )
+
     def add_mcc_sentinel_contact_files(self) -> None:
         """Add MCC sentinel files to the output collection.
 
@@ -1646,6 +1655,9 @@ class SeqnadoOutputFactory:
                     builder.add_plot_files()
             case Assay.MCC:
                 builder.add_mcc_sentinel_contact_files()
+                mcc_config = getattr(self.assay_config, "mcc", None)
+                if mcc_config is not None and mcc_config.footprint:
+                    builder.add_mcc_sentinel_footprint_files()
             case _:
                 logger.debug(f"No additional files to add for assay {self.assay}")
 

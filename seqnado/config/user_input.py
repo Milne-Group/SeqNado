@@ -416,6 +416,7 @@ def get_peak_calling_config(assay: Assay) -> Optional[PeakCallingConfig]:
         Assay.CHIP: "lanceotron",
         Assay.ATAC: "lanceotron",
         Assay.CAT: "seacr",
+        Assay.MCC: "lanceotron-mcc",
     }.get(assay, "lanceotron")
 
     # Multi-select for peak calling methods
@@ -624,10 +625,16 @@ def get_mcc_config() -> Optional[MCCConfig]:
 
     resolutions = [int(r.strip()) for r in resolutions_str.split(",")]
 
+    footprint = get_user_input(
+        "Profile base-pair ligation-junction footprints (mcc-peaks footprint)?",
+        default="no",
+        is_boolean=True,
+    )
+
     # Skip path validation for placeholder paths during interactive config
     is_placeholder = viewpoints.startswith("path/to/")
     return MCCConfig.model_validate(
-        {"viewpoints": Path(viewpoints), "resolutions": resolutions},
+        {"viewpoints": Path(viewpoints), "resolutions": resolutions, "footprint": footprint},
         context={"skip_path_validation": is_placeholder}
     )
 

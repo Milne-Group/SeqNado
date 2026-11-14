@@ -51,9 +51,10 @@ QUANTNADO: Final[str] = (
 
 PLOTNADO: Final[str] = "docker://ghcr.io/alsmith151/plotnado:0.3.3"
 
-# TODO: pin lanceotron-mcc (GPU MCC peak calling, run via `apptainer exec --nv`
-# in the call_mcc_peaks rule). Also Sylabs-hosted with only `latest`.
-LANCEOTRON_MCC: Final[str] = "library://asmith151/lanceotron/lanceotron-mcc:latest"
+# mcc-peaks, formerly lanceotron-mcc (GPU MCC peak calling via `apptainer exec --nv` in the
+# call_mcc_peaks rule; CUDA torch on amd64). Uses the `call-legacy-peaks` CLI.
+# TODO: pin by digest once v0.1.0 is pushed to ghcr, then drop from the allowlist.
+LANCEOTRON_MCC: Final[str] = "docker://ghcr.io/alsmith151/mcc-peaks:0.1.0"
 
 # Third-party biocontainers (already immutable build tags).
 MAGECK: Final[str] = "docker://quay.io/biocontainers/mageck:0.5.9.5--py310h184ae93_8"

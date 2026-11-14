@@ -215,7 +215,12 @@ The MCC pipeline follows a multi-phase workflow:
 
 **Phase 8: Peak Calling** 
 
-- **LanceOtron-MCC**: A deep-learning peak caller identifies significant interaction peaks from the raw (unnormalised) group BigWigs. This runs on GPU when available.
+- **lanceotron-mcc** (default): the original LanceOtron-derived heuristic (`mcc-peaks call-legacy-peaks`) calls interaction peaks from the raw (unnormalised) group BigWigs. Uses a GPU when available.
+- **mcc-peaks**: the distance-aware caller (`mcc-peaks call-bigwig-peaks`) models enrichment against distance from the viewpoint and, with `create_replicate_bigwigs: true`, requires support from a majority of replicates. CPU only. Either or both may be listed in `peak_calling.method`.
+
+**Phase 9: Junction footprinting (optional)**
+
+- With `mcc.footprint: true`, `mcc-peaks footprint` profiles base-pair ligation junctions from the grouped pairs files at the called peaks (first MCC method) or at the capture oligos, writing per-base profiles, a capture × reporter contact map and a PDF to `mcc/footprints/{group}/`.
 
 ### CRISPR Screens (CRISPR)
 Quantifies guide RNA representation across pooled CRISPR screen experiments.

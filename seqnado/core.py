@@ -139,7 +139,8 @@ class PeakCallingMethod(Enum):
     HOMER = "homer"
     LANCEOTRON = "lanceotron"
     SEACR = "seacr"
-    LANCEOTRON_MCC = "lanceotron-mcc"
+    LANCEOTRON_MCC = "lanceotron-mcc"  # mcc-peaks call-legacy-peaks (GPU heuristic)
+    MCC_PEAKS = "mcc-peaks"  # mcc-peaks call-bigwig-peaks (distance-aware, replicate-aware)
 
 
 class MotifMethod(Enum):

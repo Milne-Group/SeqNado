@@ -753,6 +753,14 @@ class MCCConfig(BaseModel, PathValidatorMixin):
         default=False,
         description="Whether to create contact files for individual replicates",
     )
+    footprint: bool = Field(
+        default=False,
+        description=(
+            "Profile base-pair ligation-junction footprints with mcc-peaks footprint. "
+            "Reporter regions are the peaks from the first MCC peak calling method, "
+            "or the capture oligos when peaks are not called."
+        ),
+    )
 
     @field_validator("viewpoints")
     def validate_viewpoints(cls, v: Path, info: ValidationInfo) -> Path:

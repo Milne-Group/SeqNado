@@ -138,7 +138,7 @@ Run DESeq2? (default: no)
 
 ```
 Call peaks? (default: yes)
-  ├─ Peak calling method(s) — comma-separated (default: lanceotronmcc; options: macs, seacr, lanceotron, lanceotronmcc)
+  ├─ Peak calling method(s) — comma-separated (default: lanceotron-mcc; MCC options: lanceotron-mcc, mcc-peaks)
   ├─ Generate consensus counts from Design merge column? (default: no)
   └─ Run motif analysis on called peaks? (default: no)
       └─ Motif analysis method(s) — if yes (default: homer)
@@ -281,7 +281,20 @@ Below is a comprehensive list of tools integrated into SeqNado, organized by fun
   - No hyper-parameter tuning needed; model is pre-trained
   - Can be slow on large files; consider testing on a sample first
 
-- **lanceotronmcc** — Specialized Lanceotron variant for MCC interaction peaks
+- **lanceotron-mcc** — Original LanceOtron-derived multi-window heuristic for MCC
+  (`mcc-peaks call-legacy-peaks`). Calls on the raw group bigWig; uses a GPU when available.
+- **mcc-peaks** — Distance-aware MCC caller (`mcc-peaks call-bigwig-peaks`). Models
+  signal decay from the viewpoint, excludes the bait ± `exclusion_zone`, and requires
+  majority replicate support when `mcc.create_replicate_bigwigs: true` (otherwise it
+  calls on the raw group bigWig). CPU only.
+  - Both can be listed together; outputs go to `peaks/lanceotron-mcc/` and `peaks/mcc-peaks/`.
+  - Options are set under `third_party_tools.lanceotron_mcc` and `third_party_tools.mcc_peaks`.
+- **MCC junction footprints** — set `assay_config.mcc.footprint: true` to run
+  `mcc-peaks footprint` per group and viewpoint group on the grouped ligation-junction
+  pairs. Reporter regions are the peaks of the first MCC method listed (the capture
+  oligos when `call_peaks` is off). Outputs are in `mcc/footprints/{group}/` (base-pair
+  profiles, capture × reporter contact map, metrics, PDF). Options:
+  `third_party_tools.mcc_footprint`.
 
 #### Quantification (RNA-seq)
 
