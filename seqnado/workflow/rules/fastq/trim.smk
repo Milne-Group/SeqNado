@@ -13,7 +13,7 @@ rule trimgalore_paired:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     params:
         options=str(CONFIG.third_party_tools.trim_galore.trim.command_line_arguments),
         trim_dir=OUTPUT_DIR + "/trimmed",
@@ -38,7 +38,7 @@ rule trimgalore_single:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     params:
         options=str(CONFIG.third_party_tools.trim_galore.trim.command_line_arguments),
         trim_dir=OUTPUT_DIR + "/trimmed",

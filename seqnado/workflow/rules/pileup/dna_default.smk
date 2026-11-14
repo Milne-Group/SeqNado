@@ -18,7 +18,7 @@ if CONFIG.third_party_tools.homer is not None:
                 ".bigWig", ".ucsc.bigWig"
             ),
         container:
-            "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+            CONTAINERS.SEQNADO_PIPELINE
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(
                 initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
@@ -61,7 +61,7 @@ if CONFIG.third_party_tools.deeptools is not None:
             ),
         threads: CONFIG.third_party_tools.deeptools.bam_coverage.threads
         container:
-            "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+            CONTAINERS.SEQNADO_PIPELINE
         log:
             OUTPUT_DIR + "/logs/pileups/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}.log",
         benchmark:
@@ -93,7 +93,7 @@ if CONFIG.third_party_tools.bamnado is not None:
             ),
         threads: CONFIG.third_party_tools.bamnado.bam_coverage.threads
         container:
-            "docker://ghcr.io/alsmith151/bamnado:latest"
+            CONTAINERS.BAMNADO
         log:
             OUTPUT_DIR + "/logs/pileups/bamnado/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}.log",
         benchmark:
@@ -129,7 +129,7 @@ rule fragment_bedgraph:
             initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
         ),
     container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        CONTAINERS.SEQNADO_PIPELINE
     log:
         OUTPUT_DIR + "/logs/bedgraphs/{sample}.log",
     benchmark:

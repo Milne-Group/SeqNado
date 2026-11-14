@@ -22,7 +22,7 @@ rule align_paired:
     resources:
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/align/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/align/{sample}.tsv",
     message: "Aligning reads for sample {wildcards.sample} using Bowtie2",
@@ -58,7 +58,7 @@ rule align_single:
     resources:
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/align/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/align/{sample}.tsv",
     message: "Aligning reads for sample {wildcards.sample} using Bowtie2",

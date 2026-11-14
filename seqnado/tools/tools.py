@@ -473,35 +473,15 @@ def check_tool_available(tool_name: str, subcommand: Optional[str] = None) -> bo
 
 def get_seqnado_container_uri() -> Optional[str]:
     """
-    Extract the container URI from the SeqNado Snakefile.
+    Return the pinned URI of the main SeqNado pipeline container.
 
     Returns:
-        Container URI string (e.g., "oras://ghcr.io/alsmith151/seqnado_pipeline:latest")
-        or None if not found
+        Container URI string (e.g.
+        "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:...")
     """
-    try:
-        from importlib import resources
+    from seqnado.containers import SEQNADO_PIPELINE
 
-        snakefile_trav = (
-            resources.files("seqnado").joinpath("workflow").joinpath("Snakefile")
-        )
-
-        with resources.as_file(snakefile_trav) as snakefile_path:
-            content = Path(snakefile_path).read_text()
-
-            # Look for: container: "URI"
-            for line in content.split("\n"):
-                line = line.strip()
-                if line.startswith("container:"):
-                    # Extract the URI from quotes
-                    # Format: container: "oras://ghcr.io/..."
-                    if '"' in line:
-                        uri = line.split('"')[1]
-                        return uri
-    except Exception as e:
-        logger.debug(f"Could not extract container URI: {e}")
-
-    return None
+    return SEQNADO_PIPELINE
 
 
 def is_apptainer_available() -> bool:

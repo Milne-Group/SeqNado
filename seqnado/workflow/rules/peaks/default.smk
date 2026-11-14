@@ -33,7 +33,7 @@ rule call_peaks_macs2_with_input:
             initial_value=6, attempts=attempt, scale=SCALE_RESOURCES
         ),
     container:
-        "docker://quay.io/biocontainers/macs2:2.1.1.20160309--py27r3.3.1_1"
+        CONTAINERS.MACS2
     log:
         OUTPUT_DIR + "/logs/macs2/{sample_id}.log",
     benchmark:
@@ -76,7 +76,7 @@ rule call_peaks_macs2_no_input:
             initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
         ),
     container:
-        "docker://quay.io/biocontainers/macs2:2.1.1.20160309--py27r3.3.1_1"
+        CONTAINERS.MACS2
     log:
         OUTPUT_DIR + "/logs/macs2/{sample_id}.log",
     benchmark:
@@ -126,7 +126,7 @@ rule call_peaks_macs3_with_input:
             initial_value=6, attempts=attempt, scale=SCALE_RESOURCES
         ),
     container:
-        "docker://quay.io/biocontainers/macs3:3.0.3--py39h0699b22_0"
+        CONTAINERS.MACS3
     log:
         OUTPUT_DIR + "/logs/macs3/{sample_id}.log",
     benchmark:
@@ -180,7 +180,7 @@ rule call_peaks_macs3_no_input:
             initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
         ),
     container:
-        "docker://quay.io/biocontainers/macs3:3.0.3--py39h0699b22_0"
+        CONTAINERS.MACS3
     log:
         OUTPUT_DIR + "/logs/macs3/{sample_id}.log",
     benchmark:
@@ -229,7 +229,7 @@ rule call_peaks_homer_with_input:
             initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
         ),
     container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        CONTAINERS.SEQNADO_PIPELINE
     log:
         OUTPUT_DIR + "/logs/homer/{sample_id}.log",
     benchmark:
@@ -262,7 +262,7 @@ rule call_peaks_homer_no_input:
             initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
         ),
     container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        CONTAINERS.SEQNADO_PIPELINE
     log:
         OUTPUT_DIR + "/logs/homer/{sample_id}.log",
     benchmark:
@@ -297,7 +297,7 @@ rule call_peaks_lanceotron_with_input:
         outdir=lambda wc, output: os.path.dirname(output.peaks),
         basename=lambda wc, output: output.peaks.replace(".bed", ""),
     container:
-        "oras://ghcr.io/alsmith151/seqnado_ml_cpu:latest"
+        CONTAINERS.SEQNADO_ML_CPU
     threads: 
         CONFIG.third_party_tools.lanceotron.call_peaks.threads
     resources:
@@ -337,7 +337,7 @@ rule call_peaks_lanceotron_no_input:
     threads: 
         CONFIG.third_party_tools.lanceotron.call_peaks.threads
     container:
-        "oras://ghcr.io/alsmith151/seqnado_ml_cpu:latest"
+        CONTAINERS.SEQNADO_ML_CPU
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(
             initial_value=16, attempts=attempt, scale=SCALE_RESOURCES
@@ -385,7 +385,7 @@ rule call_peaks_seacr:
             initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
         ),
     container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        CONTAINERS.SEQNADO_PIPELINE
     log:
         OUTPUT_DIR + "/logs/seacr/{sample_id}.log",
     benchmark:

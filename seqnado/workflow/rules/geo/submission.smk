@@ -9,7 +9,7 @@ rule geo_samples_table:
         OUTPUT_DIR + "/geo_submission/samples_table.txt",
     params: 
         output=OUTPUT,
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/geo/samples_table.log",
     benchmark: OUTPUT_DIR + "/.benchmark/geo/samples_table.tsv",
     message: "Generating samples table for GEO submission",
@@ -33,7 +33,7 @@ rule geo_upload_instructions:
         OUTPUT_DIR + "/geo_submission/samples_table.txt",
     output:
         instructions=OUTPUT_DIR + "/geo_submission/upload_instructions.txt",
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/geo/geo_upload_instructions.log",
     benchmark: OUTPUT_DIR + "/.benchmark/geo/geo_upload_instructions.tsv",
     message: "Creating GEO upload instructions",
@@ -54,7 +54,7 @@ rule geo_symlink:
         flag=temp(OUTPUT_DIR + "/geo_submission/.symlinks_created"),
     params:
         output=OUTPUT,
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/geo/geo_symlink.log",
     benchmark: OUTPUT_DIR + "/.benchmark/geo/geo_symlink.tsv",
     message: "Creating symlinks for GEO submission files",
@@ -108,7 +108,7 @@ rule geo_md5sum:
         geo_dir=OUTPUT_DIR + "/geo_submission",
         output_obj=OUTPUT,
         output_dir=OUTPUT_DIR,
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/geo/md5sum.log",
     benchmark: OUTPUT_DIR + "/.benchmark/geo/md5sum.tsv",
     message: "Generating MD5 checksums for GEO submission files",
@@ -142,7 +142,7 @@ rule geo_md5_table:
     output:
         raw=OUTPUT_DIR + "/geo_submission/raw_data_checksums.txt",
         processed=OUTPUT_DIR + "/geo_submission/processed_data_checksums.txt",
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/geo/geo_md5_table.log",
     benchmark: OUTPUT_DIR + "/.benchmark/geo/geo_md5_table.tsv",
     message: "Creating separate MD5 checksum tables for raw and processed data",
@@ -168,7 +168,7 @@ rule geo_move_to_upload:
     params:
         output_obj=OUTPUT,
         output_dir=OUTPUT_DIR,
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/geo/move_to_upload.log",
     benchmark: OUTPUT_DIR + "/.benchmark/geo/move_to_upload.tsv",
     message: "Moving files to final GEO upload directory",
@@ -195,7 +195,7 @@ rule geo_remove_headers_for_security:
     params:
         output_obj=OUTPUT,
         output_dir=OUTPUT_DIR,
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/geo/remove_headers.log",
     benchmark: OUTPUT_DIR + "/.benchmark/geo/remove_headers.tsv",
     message: "Removing headers from TSV files for GEO submission",

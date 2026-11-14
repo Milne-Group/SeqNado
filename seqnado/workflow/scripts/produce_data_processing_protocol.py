@@ -11,6 +11,8 @@ import subprocess
 from pathlib import Path
 from typing import Any, Optional
 
+from seqnado import containers
+
 # Try to import version from installed package, fallback to reading _version.py
 try:
     from seqnado._version import __version__ as seqnado_version
@@ -181,9 +183,9 @@ TOOL_VERSIONS = {
 # locally into the pipeline container (or hardcoded here) can silently drift
 # out of sync with what the rules actually ran.
 DEDICATED_CONTAINERS = {
-    "bamnado": "docker://ghcr.io/alsmith151/bamnado:latest",
-    "mccnado": "docker://ghcr.io/alsmith151/mccnado:latest",
-    "quantnado": "docker://ghcr.io/milne-group/quantnado:latest",
+    "bamnado": containers.BAMNADO,
+    "mccnado": containers.MCCNADO,
+    "quantnado": containers.QUANTNADO,
 }
 
 

@@ -14,12 +14,13 @@ from seqnado.inputs import (
 from seqnado.outputs import SeqnadoOutputFactory, SeqnadoOutputFiles
 from seqnado.utils import remove_unwanted_run_files
 from seqnado.workflow.helpers.read_logs import emit_read_logs, read_log_shared_path
+from seqnado import containers as CONTAINERS
 
 
 ################################
 # Hardcoded Config
 ################################
-container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+container: CONTAINERS.SEQNADO_PIPELINE
 SCALE_RESOURCES = float(os.environ.get("SCALE_RESOURCES", "1"))
 
 

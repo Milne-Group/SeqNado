@@ -9,7 +9,7 @@ rule bam_sort:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=16, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     threads: CONFIG.third_party_tools.samtools.sort.threads
     log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_sort.log",
     benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_sort.tsv",
@@ -27,7 +27,7 @@ rule bam_sort_by_qname:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
     threads: CONFIG.third_party_tools.samtools.sort.threads
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_filter_qname.log",
     benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_filter_qname.tsv",
     message: "Sorting aligned BAM by QNAME for sample {wildcards.sample} using samtools",
@@ -45,7 +45,7 @@ rule bam_index:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_index.log",
     benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_index.tsv",
     message: "Indexing aligned BAM for sample {wildcards.sample} using samtools",
@@ -67,7 +67,7 @@ rule bam_move_to_final_location:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_final.log",
     benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_final.tsv",
     message: "Moving final BAM for sample {wildcards.sample} to final location",

@@ -40,7 +40,7 @@ rule deseq2_report_rnaseq:
     benchmark:
         OUTPUT_DIR + "/.benchmark/deseq2/deseq2.tsv"
     container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        CONTAINERS.SEQNADO_PIPELINE
     resources:
         runtime=lambda wildcards, attempt: define_time_requested(
             initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
@@ -67,7 +67,7 @@ rule deseq2_params:
     benchmark:
         OUTPUT_DIR + "/.benchmark/deseq2/deseq2_params.tsv"
     container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        CONTAINERS.SEQNADO_PIPELINE
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(
             initial_value=1, attempts=attempt, scale=SCALE_RESOURCES

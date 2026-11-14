@@ -14,7 +14,7 @@ rule bcftools_annotate:
         mem=lambda wildcards, attempt: f"{10 * 2 ** (attempt -1)}GB",
         runtime=lambda wildcards, attempt: f"{5 * 2 ** (attempt - 1)}h",
     threads: 16
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/variant/{sample}_anno.log",
     benchmark: OUTPUT_DIR + "/.benchmark/variant/{sample}_anno.tsv",
     message: "Annotating VCF for sample {wildcards.sample}"

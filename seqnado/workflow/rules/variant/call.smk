@@ -12,7 +12,7 @@ rule bcftools_call_snp:
         mem=lambda wildcards, attempt: f"{10 * 2 ** (attempt -1)}GB",
         runtime=lambda wildcards, attempt: f"{5 * 2 ** (attempt - 1)}h",
     threads: CONFIG.third_party_tools.bcftools.call.threads
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/variant/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/variant/{sample}.tsv",
     message: "Calling variants for sample {wildcards.sample} using bcftools"
@@ -36,7 +36,7 @@ rule split_multiallelic:
         mem=lambda wildcards, attempt: f"{10 * 2 ** (attempt -1)}GB",
         runtime=lambda wildcards, attempt: f"{5 * 2 ** (attempt - 1)}h",
     threads: 16
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/variant/{sample}_split.log",
     benchmark: OUTPUT_DIR + "/.benchmark/variant/{sample}_split.tsv",
     message: "Splitting multiallelic variants for sample {wildcards.sample}"

@@ -19,7 +19,7 @@ rule protocol:
         OUTPUT_DIR + "/protocol.txt",
     params:
         assay=assay_for_protocol,
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/protocol.log",
     benchmark: OUTPUT_DIR + "/.benchmark/protocol.tsv",
     message: "Producing data processing protocol",

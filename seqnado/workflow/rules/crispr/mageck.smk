@@ -52,7 +52,7 @@ rule mageck_count:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "docker://quay.io/biocontainers/mageck:0.5.9.5--py310h184ae93_8"
+    container: CONTAINERS.MAGECK
     log: OUTPUT_DIR + "/logs/readcounts/mageck/mageck_count.log",
     benchmark: OUTPUT_DIR + "/.benchmark/readcounts/mageck/mageck_count.tsv",
     message: "Counting guide RNAs using MAGeCK",
@@ -101,7 +101,7 @@ rule mageck_test:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "docker://quay.io/biocontainers/mageck:0.5.9.5--py310h184ae93_8"
+    container: CONTAINERS.MAGECK
     log: OUTPUT_DIR + "/logs/readcounts/mageck/mageck_test.log",
     benchmark: OUTPUT_DIR + "/.benchmark/readcounts/mageck/mageck_test.tsv",
     message: "Running MAGeCK test (RRA) analysis",
@@ -138,7 +138,7 @@ rule mageck_mle:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "docker://quay.io/biocontainers/mageck:0.5.9.5--py310h184ae93_8"
+    container: CONTAINERS.MAGECK
     log: OUTPUT_DIR + "/logs/readcounts/mageck/mageck_mle.log",
     benchmark: OUTPUT_DIR + "/.benchmark/readcounts/mageck/mageck_mle.tsv",
     message: "Running MAGeCK MLE analysis",

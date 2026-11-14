@@ -20,7 +20,7 @@ rule call_peaks_lanceotron_no_input_consensus:
         outdir=OUTPUT_DIR + "/peaks/lanceotron/merged",
         options=str(CONFIG.third_party_tools.lanceotron.call_peaks.command_line_arguments)
     container:
-        "oras://ghcr.io/alsmith151/seqnado_ml_cpu:latest"
+        CONTAINERS.SEQNADO_ML_CPU
     log: OUTPUT_DIR + "/logs/lanceotron/merged/{group}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/lanceotron/merged/{group}.tsv",
     wildcard_constraints:
@@ -87,7 +87,7 @@ rule call_peaks_seacr_consensus:
             initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
         ),
     container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        CONTAINERS.SEQNADO_PIPELINE
     log:
         OUTPUT_DIR + "/logs/seacr/merged/{group}.log",
     benchmark:
