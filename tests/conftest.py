@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -267,6 +268,14 @@ def docker_image(pytestconfig):
     return _DOCKER_IMAGE
 
 
+def _home_env_args(mounted_root: Path) -> list[str]:
+    """Forward HOME into the container when it lives under a mounted path."""
+    home = os.environ.get("HOME")
+    if home and Path(home).resolve().is_relative_to(mounted_root):
+        return ["-e", f"HOME={Path(home).resolve()}"]
+    return []
+
+
 @pytest.fixture
 def seqnado_runner(pytestconfig, docker_image, tmp_path_factory):
     """Return a function that runs a seqnado command.
@@ -289,13 +298,13 @@ def seqnado_runner(pytestconfig, docker_image, tmp_path_factory):
         if not use_docker:
             return subprocess.run(cmd, cwd=cwd, **kwargs)
 
-        # Install seqnado into a persistent venv volume on first call;
-        # subsequent calls skip the install (uv detects nothing changed).
+        # Install seqnado into a persistent venv volume (created on first call).
         install = (
             f"export UV_PYTHON_INSTALL_DIR={_UV_PYTHON_DIR} "
             f"&& ({_VENV_PATH}/bin/python -V >/dev/null 2>&1 "
             f"|| uv venv --clear --python {_VENV_PYTHON} {_VENV_PATH}) "
             f"&& . {_VENV_PATH}/bin/activate "
+            # Editable, matching how developers run the pipeline.
             f"&& uv pip install -q -e {_REPO_ROOT}"
         )
         # The container has real Apptainer, so run the test profile there: the
@@ -321,6 +330,9 @@ def seqnado_runner(pytestconfig, docker_image, tmp_path_factory):
             "-e", f"APPTAINER_TMPDIR={_APPTAINER_CACHE_PATH}/tmp",
             "-e", f"SINGULARITY_CACHEDIR={_APPTAINER_CACHE_PATH}",
             "-e", f"SINGULARITY_TMPDIR={_APPTAINER_CACHE_PATH}/tmp",
+            # Pipeline fixtures point HOME at the run directory, where `seqnado
+            # init` installs the profiles (incl. the bind-patched profile_test).
+            *_home_env_args(base_temp),
             "-w", str(cwd),
             docker_image,
             "bash", "-c", f"{install} && {seqnado_cmd}",
