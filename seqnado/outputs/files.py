@@ -183,10 +183,11 @@ class BigWigFiles(BaseModel):
         These are further enforced at config validation time (e.g., RNAAssayConfig validator).
         """
         return {
-            # HOMER doesn't support scaled outputs
+            # HOMER doesn't support scaled or raw outputs
             PileupMethod.HOMER: [
                 DataScalingTechnique.PER_GROUP,
                 DataScalingTechnique.SPIKEIN,
+                DataScalingTechnique.RAW,
             ],
             Assay.ATAC: [SpikeInMethod.WITH_INPUT, SpikeInMethod.DESEQ2, SpikeInMethod.EDGER],
             Assay.CAT: [SpikeInMethod.DESEQ2, SpikeInMethod.EDGER],

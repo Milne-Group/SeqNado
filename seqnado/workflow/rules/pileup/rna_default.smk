@@ -1,3 +1,5 @@
+from seqnado.workflow.helpers.common import format_bamnado_options, format_deeptools_options
+
 rule bigwigs_deeptools_rna_plus:
     input:
         bam=OUTPUT_DIR + "/aligned/{sample}.bam",
@@ -124,3 +126,46 @@ rule bigwigs_bamnado_rna_minus:
 
 ruleorder: bigwigs_deeptools_rna_plus > bigwigs_deeptools_rna_minus
 ruleorder: bigwigs_bamnado_rna_plus > bigwigs_bamnado_rna_minus
+
+
+# Raw (unnormalised) stranded coverage: same rules with tool normalisation flags stripped.
+
+use rule bigwigs_deeptools_rna_plus as bigwigs_deeptools_rna_raw_plus with:
+    output:
+        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/" + DataScalingTechnique.RAW.value + "/{sample}_plus.bigWig",
+    params:
+        options=lambda wildcards: format_deeptools_options(wildcards, str(CONFIG.third_party_tools.deeptools.bam_coverage.command_line_arguments), INPUT_FILES, raw_counts=True),
+    log: OUTPUT_DIR + "/logs/pileups/deeptools/" + DataScalingTechnique.RAW.value + "/{sample}_plus.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/deeptools/makebigwigs_raw_{sample}_plus.tsv",
+    message: "Making plus strand raw (unnormalised) bigWig with deeptools for sample {wildcards.sample}"
+
+use rule bigwigs_deeptools_rna_minus as bigwigs_deeptools_rna_raw_minus with:
+    output:
+        bigwig=OUTPUT_DIR + "/bigwigs/deeptools/" + DataScalingTechnique.RAW.value + "/{sample}_minus.bigWig",
+    params:
+        options=lambda wildcards: format_deeptools_options(wildcards, str(CONFIG.third_party_tools.deeptools.bam_coverage.command_line_arguments), INPUT_FILES, raw_counts=True),
+    log: OUTPUT_DIR + "/logs/pileups/deeptools/" + DataScalingTechnique.RAW.value + "/{sample}_minus.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/deeptools/makebigwigs_raw_{sample}_minus.tsv",
+    message: "Making minus strand raw (unnormalised) bigWig with deeptools for sample {wildcards.sample}"
+
+use rule bigwigs_bamnado_rna_plus as bigwigs_bamnado_rna_raw_plus with:
+    output:
+        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/" + DataScalingTechnique.RAW.value + "/{sample}_plus.bigWig",
+    params:
+        options=format_bamnado_options(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments, raw_counts=True),
+    log: OUTPUT_DIR + "/logs/pileups/bamnado/" + DataScalingTechnique.RAW.value + "/{sample}_plus.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/bamnado/makebigwigs_raw_{sample}_plus.tsv",
+    message: "Making plus strand raw (unnormalised) bigWig with bamnado for sample {wildcards.sample}"
+
+use rule bigwigs_bamnado_rna_minus as bigwigs_bamnado_rna_raw_minus with:
+    output:
+        bigwig=OUTPUT_DIR + "/bigwigs/bamnado/" + DataScalingTechnique.RAW.value + "/{sample}_minus.bigWig",
+    params:
+        options=format_bamnado_options(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments, raw_counts=True),
+    log: OUTPUT_DIR + "/logs/pileups/bamnado/" + DataScalingTechnique.RAW.value + "/{sample}_minus.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/bamnado/makebigwigs_raw_{sample}_minus.tsv",
+    message: "Making minus strand raw (unnormalised) bigWig with bamnado for sample {wildcards.sample}"
+
+
+ruleorder: bigwigs_deeptools_rna_raw_plus > bigwigs_deeptools_rna_raw_minus
+ruleorder: bigwigs_bamnado_rna_raw_plus > bigwigs_bamnado_rna_raw_minus

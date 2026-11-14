@@ -16,7 +16,7 @@ from seqnado import (
     SNPCallingMethod,
     SpikeInMethod,
 )
-from seqnado.config.configs import BigwigConfig, GenomeConfig, STARIndex, QCConfig, UserFriendlyError
+from seqnado.config.configs import BigwigConfig, GenomeConfig, PlottingConfig, STARIndex, QCConfig, UserFriendlyError
 from seqnado.config.core import ATACAssayConfig, ChIPAssayConfig, SeqnadoConfig
 from seqnado.inputs.bam import BamCollection, BamFile
 from seqnado.inputs.bigwigs import BigWigCollection, BigWigFile
@@ -2310,3 +2310,78 @@ class TestBamnadoGroupScalingMethodBuilderIntegration:
             assert any(f"scaled-per-group/{method}/" in f for f in files), (
                 f"Missing bigwig output for scaling method '{method}': {files}"
             )
+
+
+class TestRawBigwigs:
+    """`raw` scale method: unnormalised per-sample bigwigs for downstream/ML use."""
+
+    @pytest.mark.parametrize(
+        "assay_type, expected_suffixes",
+        [
+            (Assay.CHIP, ["s1.bigWig"]),
+            (Assay.ATAC, ["s1.bigWig"]),
+            (Assay.RNA, ["s1_plus.bigWig", "s1_minus.bigWig"]),
+        ],
+    )
+    @pytest.mark.parametrize("method", [PileupMethod.DEEPTOOLS, PileupMethod.BAMNADO])
+    def test_raw_paths(self, assay_type, expected_suffixes, method):
+        bw = BigWigFiles(
+            assay=assay_type,
+            names=["s1"],
+            pileup_methods=[method],
+            scale_methods=[DataScalingTechnique.RAW],
+        )
+        assert sorted(bw.files) == sorted(
+            f"seqnado_output/bigwigs/{method.value}/raw/{s}" for s in expected_suffixes
+        )
+
+    def test_homer_does_not_produce_raw(self):
+        bw = BigWigFiles(
+            assay=Assay.CHIP,
+            names=["s1"],
+            pileup_methods=[PileupMethod.HOMER],
+            scale_methods=[DataScalingTechnique.RAW],
+        )
+        assert bw.files == []
+
+    def _cfg(self, tmp_path: Path) -> SeqnadoConfig:
+        star = tmp_path / "star"
+        star.mkdir()
+        genome = GenomeConfig(name="hg38", index=STARIndex(prefix=star))
+        coords = tmp_path / "coords.bed"
+        coords.write_text("chr1\t1\t100\n")
+        assay_cfg = ATACAssayConfig(
+            bigwigs=BigwigConfig(
+                pileup_method=[PileupMethod.DEEPTOOLS, PileupMethod.BAMNADO],
+                scale_methods=["scaled-per-sample", "raw"],
+            ),
+            plotting=PlottingConfig(coordinates=str(coords)),
+        )
+        return SeqnadoConfig(
+            assay=Assay.ATAC,
+            project=dict(name="p"),
+            genome=genome,
+            metadata=tmp_path / "m.csv",
+            assay_config=assay_cfg,
+        )
+
+    def test_builder_emits_raw_alongside_per_sample(self, tmp_path):
+        builder = SeqnadoOutputBuilder(
+            Assay.ATAC, _two_sample_collection(tmp_path), self._cfg(tmp_path)
+        )
+        builder.add_individual_bigwig_files()
+        files = builder.build().files
+        for method in ("deeptools", "bamnado"):
+            for scale in ("scaled-per-sample", "raw"):
+                for sample in ("s1", "s2"):
+                    assert f"seqnado_output/bigwigs/{method}/{scale}/{sample}.bigWig" in files
+
+    def test_raw_excluded_from_heatmaps_and_track_plots(self, tmp_path):
+        builder = SeqnadoOutputBuilder(
+            Assay.ATAC, _two_sample_collection(tmp_path), self._cfg(tmp_path)
+        )
+        builder.add_heatmap_files()
+        builder.add_plot_files()
+        files = builder.build().files
+        assert files, "expected heatmap/plot outputs for scaled-per-sample"
+        assert not any("/raw/" in f for f in files)

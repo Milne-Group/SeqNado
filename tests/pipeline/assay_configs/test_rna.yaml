@@ -12,5 +12,7 @@ assay_config:
     pileup_method:
       - deeptools
     binsize: 10
-    scale_methods: null
+    scale_methods:
+      - scaled-per-sample
+      - raw
     perform_comparisons: True
