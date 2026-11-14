@@ -1,4 +1,5 @@
 from seqnado.workflow.helpers.common import (
+    format_bamnado_options,
     define_time_requested,
     define_memory_requested,
     format_deeptools_options,
@@ -79,9 +80,7 @@ rule bigwigs_bamnado_rna_merged_spikein_plus:
         bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/spikein/{spikein_method}/{group}_plus.bigWig",
     params:
         scale=lambda wc: get_norm_factor_spikein_for_merged_group(wc, SAMPLE_GROUPINGS, OUTPUT_DIR, negative=False),
-        options=str(
-            CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments
-        ),
+        options=format_bamnado_options(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments, raw_counts=True),
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=6, attempts=attempt, scale=SCALE_RESOURCES),
@@ -109,9 +108,7 @@ rule bigwigs_bamnado_rna_merged_spikein_minus:
         bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/spikein/{spikein_method}/{group}_minus.bigWig",
     params:
         scale=lambda wc: get_norm_factor_spikein_for_merged_group(wc, SAMPLE_GROUPINGS, OUTPUT_DIR, negative=True),
-        options=str(
-            CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments
-        ),
+        options=format_bamnado_options(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments, raw_counts=True),
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=6, attempts=attempt, scale=SCALE_RESOURCES),
@@ -126,7 +123,7 @@ rule bigwigs_bamnado_rna_merged_spikein_minus:
     shell:
         """
         export RAYON_NUM_THREADS={threads}
-        bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} --strand reverse > {log} 2>&1
+        bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} --strand reverse --scale-factor {params.scale} > {log} 2>&1
         """
 
 

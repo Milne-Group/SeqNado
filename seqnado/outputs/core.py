@@ -596,10 +596,12 @@ class SeqnadoOutputBuilder:
         if self.config.assay_config.bigwigs is None:
             return
 
-        per_sample_scales = [m for m in self.scale_methods if m == DataScalingTechnique.PER_SAMPLE]
-        normalized_scales = [m for m in self.scale_methods if m != DataScalingTechnique.PER_SAMPLE]
+        # Per-sample and raw bigwigs need no cross-sample factor, so they are made for
+        # every sample (including controls); normalised ones only for IP samples.
+        _all_sample_scales = {DataScalingTechnique.PER_SAMPLE, DataScalingTechnique.RAW}
+        per_sample_scales = [m for m in self.scale_methods if m in _all_sample_scales]
+        normalized_scales = [m for m in self.scale_methods if m not in _all_sample_scales]
 
-        # Unscaled bigwigs are generated for all samples (including controls)
         if per_sample_scales:
             bigwig_files = BigWigFiles(
                 assay=self.assay,
@@ -974,7 +976,8 @@ class SeqnadoOutputBuilder:
                         continue
                     scales = [DataScalingTechnique.PER_SAMPLE]
                 else:
-                    scales = list(self.scale_methods)
+                    # Raw bigwigs are for downstream/ML use, not visualisation.
+                    scales = [s for s in self.scale_methods if s != DataScalingTechnique.RAW]
                     if has_spikein and DataScalingTechnique.SPIKEIN not in scales:
                         scales.append(DataScalingTechnique.SPIKEIN)
 
@@ -1067,7 +1070,8 @@ class SeqnadoOutputBuilder:
                         continue
                     method_scales = [DataScalingTechnique.PER_SAMPLE]
                 else:
-                    method_scales = list(self.scale_methods)
+                    # Raw bigwigs are for downstream/ML use, not visualisation.
+                    method_scales = [s for s in self.scale_methods if s != DataScalingTechnique.RAW]
                     if has_spikein and DataScalingTechnique.SPIKEIN not in method_scales:
                         method_scales.append(DataScalingTechnique.SPIKEIN)
 

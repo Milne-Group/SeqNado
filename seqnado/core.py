@@ -112,6 +112,9 @@ class DataScalingTechnique(Enum):
     PER_SAMPLE = "scaled-per-sample"
     PER_GROUP = "scaled-per-group"
     SPIKEIN = "spikein"
+    # Unnormalised read coverage (tool normalisation flags stripped). Reads are still
+    # MAPQ/blacklist/dedup filtered. Intended for ML / downstream quantitative use.
+    RAW = "raw"
     MERGED = "merged"
 
 

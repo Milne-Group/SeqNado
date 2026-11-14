@@ -324,15 +324,29 @@ def get_bigwig_config(assay: Assay) -> Optional[BigwigConfig]:
 
     # Per-group library-scaling is genomics-only — not appropriate for RNA-seq's
     # compositional read-count bias, so it's not offered for RNA.
+    # Raw is meaningless for MCC, whose bigwigs are always n_cis-scaled.
     scale_method_choices = [DataScalingTechnique.PER_SAMPLE.value]
+    if assay != Assay.MCC:
+        scale_method_choices.append(DataScalingTechnique.RAW.value)
     if assay != Assay.RNA:
         scale_method_choices.append(DataScalingTechnique.PER_GROUP.value)
-        print(
-            "\nBigwig scaling:\n"
-            f"  - {DataScalingTechnique.PER_SAMPLE.value}: each sample is scaled independently\n"
-            f"  - {DataScalingTechnique.PER_GROUP.value}: samples within the same group are scaled "
-            "relative to each other, so their signal is directly comparable\n"
-        )
+    if len(scale_method_choices) > 1:
+        lines = [
+            "\nBigwig scaling:",
+            f"  - {DataScalingTechnique.PER_SAMPLE.value}: each sample normalised independently "
+            "(e.g. RPKM/CPM, as set in the deeptools/bamnado options)",
+        ]
+        if DataScalingTechnique.RAW.value in scale_method_choices:
+            lines.append(
+                f"  - {DataScalingTechnique.RAW.value}: unnormalised read coverage "
+                "(e.g. for machine-learning or custom downstream normalisation)"
+            )
+        if DataScalingTechnique.PER_GROUP.value in scale_method_choices:
+            lines.append(
+                f"  - {DataScalingTechnique.PER_GROUP.value}: samples within the same group are scaled "
+                "relative to each other, so their signal is directly comparable"
+            )
+        print("\n".join(lines) + "\n")
     scale_methods = get_user_input(
         "Bigwig scaling method(s) (comma-separated for multiple):",
         choices=scale_method_choices,

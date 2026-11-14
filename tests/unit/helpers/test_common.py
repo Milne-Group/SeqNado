@@ -6,6 +6,7 @@ from seqnado import DataScalingTechnique
 from seqnado.workflow.helpers.common import (
     define_memory_requested,
     define_time_requested,
+    format_bamnado_options,
     get_scale_method,
 )
 
@@ -93,3 +94,37 @@ class TestGetScaleMethod:
         result = get_scale_method(config)
         assert "spikein" in result
         assert "scaled-per-group" not in result
+
+
+class TestFormatBamnadoOptions:
+    """format_bamnado_options strips normalisation flags for raw/scaled rules."""
+
+    @pytest.mark.parametrize(
+        "options",
+        [
+            "--bin-size 10 --norm-method rpkm --ignore-scaffold",
+            "--bin-size 10 -n cpm --ignore-scaffold",
+            "--bin-size 10 --normalize rpkm --ignore-scaffold",
+            "--bin-size 10 --norm-method=cpm --ignore-scaffold",
+            "--bin-size 10 --scale-factor 2.5 --ignore-scaffold",
+            "--bin-size 10 -f 2.5 -n rpkm --ignore-scaffold",
+        ],
+    )
+    def test_raw_counts_strips_normalisation(self, options):
+        result = format_bamnado_options(options, raw_counts=True)
+        for flag in ("-n", "--normalize", "--norm-method", "-f", "--scale-factor"):
+            assert flag not in result.split()
+        assert not any(tok.startswith("--norm-method=") for tok in result.split())
+        assert "rpkm" not in result and "cpm" not in result and "2.5" not in result
+        assert "--bin-size 10" in result
+        assert "--ignore-scaffold" in result
+
+    def test_without_raw_counts_is_passthrough(self):
+        options = "--bin-size 10 --norm-method rpkm --ignore-scaffold"
+        assert format_bamnado_options(options).strip() == options
+
+    def test_accepts_command_line_arguments(self):
+        from seqnado.config.third_party_tools import CommandLineArguments
+
+        cla = CommandLineArguments(value="--bin-size 5 --norm-method rpkm")
+        assert format_bamnado_options(cla, raw_counts=True).split() == ["--bin-size", "5"]

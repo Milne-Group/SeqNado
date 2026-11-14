@@ -1,4 +1,5 @@
 from seqnado.workflow.helpers.common import (
+    format_bamnado_options,
     define_time_requested,
     define_memory_requested,
 )
@@ -65,7 +66,7 @@ rule bigwigs_bamnado_rna_spikein_plus:
         bigwig=OUTPUT_DIR + "/bigwigs/bamnado/spikein/{spikein_method}/{sample}_plus.bigWig",
     params:
         scale=lambda wc: get_norm_factor_spikein(wc, OUTPUT_DIR, CONFIG, negative=False),
-        options=str(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments),
+        options=format_bamnado_options(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments, raw_counts=True),
     threads: CONFIG.third_party_tools.bamnado.bam_coverage.threads,
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
@@ -89,7 +90,7 @@ rule bigwigs_bamnado_rna_spikein_minus:
         bigwig=OUTPUT_DIR + "/bigwigs/bamnado/spikein/{spikein_method}/{sample}_minus.bigWig",
     params:
         scale=lambda wc: get_norm_factor_spikein(wc, OUTPUT_DIR, CONFIG, negative=True),
-        options=str(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments),
+        options=format_bamnado_options(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments, raw_counts=True),
     threads: CONFIG.third_party_tools.bamnado.bam_coverage.threads,
     resources: 
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
@@ -100,7 +101,7 @@ rule bigwigs_bamnado_rna_spikein_minus:
     message: "Making minus strand spike-in normalized bigWig with bamnado for sample {wildcards.sample} using {wildcards.spikein_method}"
     shell: """
     export RAYON_NUM_THREADS={threads}
-    bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} --strand reverse > {log} 2>&1
+    bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} --strand reverse --scale-factor {params.scale} > {log} 2>&1
     """
 
 

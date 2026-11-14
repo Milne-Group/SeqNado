@@ -1,3 +1,4 @@
+from seqnado.workflow.helpers.common import format_bamnado_options
 import itertools
 from seqnado.workflow.helpers.mcc import (
     get_n_cis_scaling_factor,
@@ -15,9 +16,7 @@ rule bigwigs_mcc_replicates:
     output:
         bigwig=OUTPUT_DIR + "/bigwigs/mcc/replicates/{sample}_{viewpoint_group}.bigWig",
     params:
-        options=str(
-            CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments
-        ),
+        options=format_bamnado_options(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments, raw_counts=True),
         scale_factor=lambda wc: get_n_cis_scaling_factor(wc, OUTPUT_DIR=OUTPUT_DIR),
     log:
         OUTPUT_DIR + "/logs/bigwig/{sample}_{viewpoint_group}.log",
@@ -57,9 +56,7 @@ use rule bigwigs_mcc_replicates as bigwigs_mcc_grouped_norm with:
         viewpoint_group="|".join(VIEWPOINT_TO_GROUPED_VIEWPOINT.values()),
     params:
         scale_factor=lambda wc: get_n_cis_scaling_factor(wc, OUTPUT_DIR=OUTPUT_DIR),
-        options=str(
-            CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments
-        ),
+        options=format_bamnado_options(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments, raw_counts=True),
     log:
         OUTPUT_DIR + "/logs/bigwig/{group}_{viewpoint_group}_n_cis.log",
     benchmark:
@@ -79,9 +76,7 @@ use rule bigwigs_mcc_replicates as bigwigs_mcc_grouped_raw with:
         bigwig=OUTPUT_DIR + "/bigwigs/mcc/{group}_{viewpoint_group}.bigWig",
     params:
         scale_factor=1,
-        options=str(
-            CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments
-        ),
+        options=format_bamnado_options(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments, raw_counts=True),
     wildcard_constraints:
         group="|".join(SAMPLE_GROUPINGS.get_grouping("consensus").group_names),
         viewpoint_group="|".join(VIEWPOINT_TO_GROUPED_VIEWPOINT.values()),

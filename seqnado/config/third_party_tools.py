@@ -465,7 +465,7 @@ class Bamnado(BaseModel):
     
     bam_coverage: ToolConfig = Field(
         default_factory=lambda: ToolConfig(
-            threads=8, command_line_arguments=CommandLineArguments(value="--bin-size 10 --norm-method raw --ignore-scaffold")
+            threads=8, command_line_arguments=CommandLineArguments(value="--bin-size 10 --norm-method rpkm --ignore-scaffold")
         ),
         description="BAM coverage analysis configuration"
     )
@@ -854,13 +854,13 @@ class ThirdPartyToolsConfig(BaseModel):
                 tool_config.command_line_arguments.add_exclude(*sorted(exclude_patterns))
 
     @staticmethod
-    def _set_bin_size_flag(command_line_arguments: "CommandLineArguments", flag: str, binsize: int) -> None:
-        """Replace (or append) `flag <value>` in a CLI options string with `flag {binsize}`."""
+    def _set_flag_value(command_line_arguments: "CommandLineArguments", flag: str, value: int | str) -> None:
+        """Replace (or append) `flag <old>` in a CLI options string with `flag {value}`."""
         pattern = re.compile(rf"({re.escape(flag)})(\s+)(\S+)")
         if pattern.search(command_line_arguments.value):
-            command_line_arguments.value = pattern.sub(rf"\g<1>\g<2>{binsize}", command_line_arguments.value)
+            command_line_arguments.value = pattern.sub(rf"\g<1>\g<2>{value}", command_line_arguments.value)
         else:
-            command_line_arguments.value = f"{command_line_arguments.value} {flag} {binsize}".strip()
+            command_line_arguments.value = f"{command_line_arguments.value} {flag} {value}".strip()
 
     @classmethod
     def _apply_binsize(cls, defaults: dict[str, BaseModel], binsize: int) -> None:
@@ -872,11 +872,11 @@ class ThirdPartyToolsConfig(BaseModel):
         """
         deeptools = defaults.get("deeptools")
         if deeptools is not None:
-            cls._set_bin_size_flag(deeptools.bam_coverage.command_line_arguments, "--binSize", binsize)
+            cls._set_flag_value(deeptools.bam_coverage.command_line_arguments, "--binSize", binsize)
 
         bamnado = defaults.get("bamnado")
         if bamnado is not None:
-            cls._set_bin_size_flag(bamnado.bam_coverage.command_line_arguments, "--bin-size", binsize)
+            cls._set_flag_value(bamnado.bam_coverage.command_line_arguments, "--bin-size", binsize)
 
     @classmethod
     def for_assay(cls, assay: Assay, binsize: int | None = None, **overrides) -> "ThirdPartyToolsConfig":
@@ -903,6 +903,10 @@ class ThirdPartyToolsConfig(BaseModel):
             defaults[field_name] = tool_class()
 
         cls._apply_assay_tool_option_rules(assay, defaults)
+
+        # MCC bigwigs are n_cis-scaled from raw coverage; keep bamnado unnormalised.
+        if assay == Assay.MCC and defaults.get("bamnado") is not None:
+            cls._set_flag_value(defaults["bamnado"].bam_coverage.command_line_arguments, "--norm-method", "raw")
 
         if binsize is not None:
             cls._apply_binsize(defaults, binsize)

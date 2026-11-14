@@ -74,6 +74,8 @@ Genome-wide signal tracks for visualisation, organised by tool and scaling metho
 ```
 bigwigs/
 ├── {method}/                                  # deeptools, homer, or bamnado
+│   ├── raw/                                   # Unnormalised coverage (if enabled; deeptools/bamnado)
+│   │   └── {sample}.bigWig
 │   ├── scaled-per-sample/                     # Each sample scaled independently (default)
 │   │   └── {sample}.bigWig
 │   ├── aggregated/                            # Condition means (if perform_comparisons enabled)
@@ -110,13 +112,14 @@ bigwigs/{method}/scaled-per-sample/{sample}_minus.bigWig
 
 **Pileup Tools:**
 
-- **DeepTools**: `bamCoverage`-based tracks (supports all scaling methods, individual and merged)
+- **DeepTools**: `bamCoverage`-based tracks (`raw` individual only; all other scaling methods individual and merged)
 - **HOMER**: `makeBigWig.pl`-based tracks (`scaled-per-sample` individual and merged only — no per-group or spike-in scaling)
-- **BamNado**: Custom pileup tool (`scaled-per-sample` and `scaled-per-group`, individual and merged)
+- **BamNado**: Custom pileup tool (`raw` individual only; `scaled-per-sample`, `scaled-per-group` and spike-in, individual and merged)
 
 **Scaling techniques** (`bigwigs.scale_methods`):
 
-- **scaled-per-sample**: Each sample is scaled independently — no cross-sample scale factor is applied
+- **raw**: Unnormalised read coverage for downstream/ML use (deeptools and bamnado, individual samples only; not used for heatmaps or track plots)
+- **scaled-per-sample**: Each sample is normalised independently by the pileup tool (RPKM by default) — no cross-sample scale factor is applied
 - **scaled-per-group**: Samples within a scaling group are scaled relative to each other, using binned read counts computed by `bamnado bam-normalize`. Parametrised by `bigwigs.group_scaling_methods` (`csaw-background` default, `tmm`, `median-of-ratios`, `cpm`), each of which gets its own subdirectory
 - **spikein**: Spike-in normalisation using external control DNA (DeepTools only)
 

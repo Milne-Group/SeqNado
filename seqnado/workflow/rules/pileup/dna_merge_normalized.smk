@@ -1,4 +1,5 @@
 from seqnado.workflow.helpers.common import (
+    format_bamnado_options,
     define_memory_requested,
     define_time_requested,
     format_deeptools_options,
@@ -81,7 +82,7 @@ if CONFIG.third_party_tools.bamnado is not None:
             bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/" + DataScalingTechnique.PER_GROUP.value + "/{scaling_method}/{group}.bigWig",
         params:
             scale=lambda wc: get_scaling_factor_for_merged_group(wc, SAMPLE_GROUPINGS, OUTPUT_DIR),
-            options=str(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments),
+            options=format_bamnado_options(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments, raw_counts=True),
         threads: CONFIG.third_party_tools.bamnado.bam_coverage.threads
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
@@ -107,7 +108,7 @@ if CONFIG.third_party_tools.bamnado is not None:
             bigwig=OUTPUT_DIR + "/bigwigs/bamnado/merged/spikein/{spikein_method}/{group}.bigWig",
         params:
             scale=lambda wc: get_norm_factor_spikein_for_merged_group(wc, SAMPLE_GROUPINGS, OUTPUT_DIR, negative=False),
-            options=str(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments),
+            options=format_bamnado_options(CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments, raw_counts=True),
         threads: CONFIG.third_party_tools.bamnado.bam_coverage.threads
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
