@@ -27,7 +27,7 @@ rule fastqc_raw_paired:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/fastqc_raw/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/fastqc_raw/{sample}.tsv",
     message: "Running FastQC on raw FASTQ files for sample {wildcards.sample}",
@@ -50,7 +50,7 @@ rule fastqc_raw_single:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/fastqc_raw/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/fastqc_raw/{sample}.tsv",
     message: "Running FastQC on raw FASTQ files for sample {wildcards.sample}",
@@ -76,7 +76,7 @@ rule qualimap_bamqc:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=32, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
     threads: 16
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/qualimap_bamqc/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/qualimap_bamqc/{sample}.tsv",
     message: "Running Qualimap BAMQC for sample {wildcards.sample}",
@@ -104,7 +104,7 @@ rule qualimap_rnaseq:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=32, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
     threads: 16
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/qualimap_rnaseq/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/qualimap_rnaseq/{sample}.tsv",
     message: "Running Qualimap RNA-seq for sample {wildcards.sample}",
@@ -130,7 +130,7 @@ rule bam_stats:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_alignment_stats.log",
     benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_alignment_stats.tsv",
     message: "Compiling alignment post-processing stats for sample {wildcards.sample}",
@@ -148,7 +148,7 @@ rule prepare_stats_report:
         ),
     output:
         OUTPUT_DIR + "/qc/alignment_stats.tsv",
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/alignment_stats.log",
     benchmark: OUTPUT_DIR + "/.benchmark/alignment_stats.tsv",
     message: "Generating alignment stats report for all samples",
@@ -209,7 +209,7 @@ rule seqnado_report:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/multiqc/seqnado_report.log",
     benchmark: OUTPUT_DIR + "/.benchmark/multiqc/seqnado_report.tsv",
     message: "Generating SeqNado report",

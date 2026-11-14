@@ -1,13 +1,12 @@
 
-import yaml
+import copy
 
 
-# Load config for each assay upfront
+# Per-assay module configs, from the YAML already loaded (and, for browser
+# plots, adjusted) in Snakefile_multi.
 LOADED_CONFIGS = {}
 for assay in ASSAYS:
-    config_path = ASSAY_CONFIGS[assay]
-    with open(config_path, 'r') as f:
-        assay_config = yaml.safe_load(f)
+    assay_config = copy.deepcopy(RAW_CONFIGS_PER_ASSAY[assay])
     assay_config["output_dir"] = f"{OUTPUT_DIR}/{assay.clean_name}"
     if MULTIOMICS_CONFIG.create_dataset:
         assay_config.setdefault("assay_config", {})

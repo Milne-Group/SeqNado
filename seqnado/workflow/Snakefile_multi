@@ -1,3 +1,4 @@
+import copy
 import os
 from pathlib import Path
 import glob
@@ -5,9 +6,11 @@ import yaml
 
 from seqnado.cli.commands.config import config
 from seqnado.outputs import MultiomicsOutputBuilder, SeqnadoOutputFactory
-from seqnado.outputs.multiomics import (find_metadata_paths, find_assay_config_paths, validate_config_and_metadata)
+from seqnado.outputs.multiomics import (find_metadata_paths, find_assay_config_paths, take_browser_plotting, validate_config_and_metadata)
 from seqnado.config import SeqnadoConfig
+from seqnado.config.configs import PlottingConfig
 from seqnado.config.multiomics import MultiomicsConfig
+from seqnado import containers as CONTAINERS
 from seqnado.inputs import (
     SampleGroupings,
     get_sample_collection,
@@ -54,7 +57,24 @@ input_files_per_assay = {
     assay: get_sample_collection(assay=assay, path=metadata_paths[assay])
     for assay in ASSAYS
 }
-CONFIGS_PER_ASSAY = {assay: SeqnadoConfig(**yaml.safe_load(open(config_paths[assay]))) for assay in ASSAYS}
+RAW_CONFIGS_PER_ASSAY = {}
+for assay in ASSAYS:
+    with open(config_paths[assay]) as f:
+        RAW_CONFIGS_PER_ASSAY[assay] = yaml.safe_load(f)
+
+# Browser plots combine all assays' tracks in one figure per region, so the
+# per-assay plots are switched off and their plotting settings reused here.
+_browser_plotting = (
+    take_browser_plotting(RAW_CONFIGS_PER_ASSAY)
+    if MULTIOMICS_CONFIG.create_browser_plots
+    else None
+)
+BROWSER_PLOTTING = PlottingConfig(**_browser_plotting) if _browser_plotting else None
+
+CONFIGS_PER_ASSAY = {
+    assay: SeqnadoConfig(**copy.deepcopy(RAW_CONFIGS_PER_ASSAY[assay]))
+    for assay in ASSAYS
+}
 EXAMPLE_CONFIG = CONFIGS_PER_ASSAY[ASSAYS[0]]
 
 OUTPUTS_PER_ASSAY = {
@@ -89,6 +109,12 @@ if MULTIOMICS_CONFIG.create_dataset:
     multiomics_builder.add_multiomics_dataset()
 if MULTIOMICS_CONFIG.create_summary:
     multiomics_builder.add_summary_report()
+if MULTIOMICS_CONFIG.create_browser_plots:
+    if not multiomics_builder.add_browser_plots(BROWSER_PLOTTING):
+        print(
+            "[Multiomic Mode] Skipping browser plots: no assay config has "
+            "plotting coordinates, or no assay produces bigWigs"
+        )
 
 MULTIOMICS_OUTPUT = multiomics_builder.build()
 
@@ -115,6 +141,9 @@ include: "rules/multiomics/all.smk"
 
 if MULTIOMICS_CONFIG.create_dataset:
     include: "rules/dataset/multiomics_dataset.smk"
+
+if MULTIOMICS_CONFIG.create_browser_plots and multiomics_builder.browser_plot_files(BROWSER_PLOTTING):
+    include: "rules/multiomics/browser.smk"
 
 ########################################
 # Define workflow targets

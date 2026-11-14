@@ -37,8 +37,10 @@ from seqnado.outputs.files import (
     SNPFilesAnnotated,
     SNPFilesRaw,
     SpikeInFiles,
+    region_plot_paths,
 )
 
+from seqnado.config.configs import PlottingConfig
 from seqnado.utils import FileSelector
 
 
@@ -1290,6 +1292,67 @@ class MultiomicsOutputBuilder:
             pks = output_files.peak_files
             peaks.extend(pks)
         self.file_collections.append(BasicFileCollection(files=peaks))
+
+    #: Pileup methods tried, in order, when choosing one bigWig track per sample
+    #: for the multiomics genome-browser plots.
+    BROWSER_PILEUP_PREFERENCE = (
+        PileupMethod.DEEPTOOLS,
+        PileupMethod.BAMNADO,
+        PileupMethod.HOMER,
+        PileupMethod.METHYLDACKEL,
+    )
+
+    @property
+    def browser_plot_dir(self) -> Path:
+        return Path(self.output_dir) / "multiomics" / "track_plots"
+
+    @property
+    def browser_tracks(self) -> list[tuple[str, Assay]]:
+        """One per-sample-scaled IP bigWig per sample per assay, with its assay.
+
+        For each assay the first pileup method in ``BROWSER_PILEUP_PREFERENCE``
+        that produces bigWigs is used, so each sample appears once.
+        """
+        tracks: list[tuple[str, Assay]] = []
+        for assay, output_files in self.assay_outputs.items():
+            for method in self.BROWSER_PILEUP_PREFERENCE:
+                bigwigs = output_files.select_bigwig_subtype(
+                    method=method,
+                    scale=DataScalingTechnique.PER_SAMPLE,
+                    ip_only=True,
+                )
+                if bigwigs:
+                    tracks.extend((bw, assay) for bw in bigwigs)
+                    break
+        return tracks
+
+    def browser_plot_files(self, plotting: PlottingConfig | dict | None) -> list[str]:
+        """Plot paths (one per region) for the combined browser plots."""
+        if plotting is None:
+            return []
+        plotting = PlottingConfig.model_validate(plotting)
+        if plotting.coordinates is None:
+            return []
+        return [
+            str(p)
+            for p in region_plot_paths(
+                plotting.coordinates, self.browser_plot_dir, plotting.file_format
+            )
+        ]
+
+    def add_browser_plots(self, plotting: PlottingConfig | dict | None) -> bool:
+        """Add combined genome-browser plots: one figure per region, all assays' tracks.
+
+        ``plotting`` gives the regions BED and file format (see
+        ``take_browser_plotting``). Needs at least one bigWig track. Returns
+        whether plots were added.
+        """
+        plots = self.browser_plot_files(plotting)
+        if not plots or not self.browser_tracks:
+            return False
+        template = str(self.browser_plot_dir / "template.toml")
+        self.file_collections.append(BasicFileCollection(files=[*plots, template]))
+        return True
 
     def add_summary_report(self) -> str:
         """Path to the multiomics summary report."""

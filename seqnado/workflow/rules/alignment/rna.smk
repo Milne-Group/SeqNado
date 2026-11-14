@@ -23,7 +23,7 @@ rule align_paired:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=35, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=6, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/align/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/align/{sample}.tsv",
     message: "Aligning reads for sample {wildcards.sample} using STAR",
@@ -61,7 +61,7 @@ rule align_single:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=35, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=6, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/align/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/align/{sample}.tsv",
     message: "Aligning reads for sample {wildcards.sample} using STAR",
@@ -91,7 +91,7 @@ rule rename_aligned:
     params:
         read_log=read_log_shared_path(OUTPUT_DIR, "{sample}"),
         count_flags=lambda wildcards: "-f 64" if INPUT_FILES.is_paired_end(str(wildcards.sample)) else "",
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/rename_aligned/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/rename_aligned/{sample}.tsv",
     message: "Renaming aligned BAM for sample {wildcards.sample} to standard format",

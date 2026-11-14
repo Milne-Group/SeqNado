@@ -119,7 +119,7 @@ def test_prefetch_uses_container(rules_content):
     """Test that prefetch uses sra-tools container."""
     section = _get_rule_section(rules_content, "geo_prefetch")
     assert "container:" in section
-    assert "sra-tools" in section
+    assert "CONTAINERS.SRA_TOOLS" in section
 
 
 # --- Paired rule tests ---
@@ -150,7 +150,7 @@ def test_paired_rule_uses_container(rules_content):
     """Test that paired rule uses sra-tools container."""
     section = _get_rule_section(rules_content, "geo_fastq_dump_paired")
     assert "container:" in section
-    assert "sra-tools" in section
+    assert "CONTAINERS.SRA_TOOLS" in section
 
 
 # --- Single rule tests ---

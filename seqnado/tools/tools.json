@@ -17,7 +17,7 @@
             "description": "Tools for BCF/VCF format variant files",
             "command": "bcftools",
             "category": "Analysis",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "samtools",
             "version": "1.22"
         },
@@ -27,7 +27,7 @@
             "description": "Tools for genomic arithmetic and feature analysis",
             "command": "bedtools",
             "category": "Analysis",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "bedtools",
             "version": "2.31.1"
         },
@@ -37,7 +37,7 @@
             "description": "Convert BED format files to compressed BigBed format",
             "command": "bedToBigBed",
             "category": "Utilities",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "ucsc-tools",
             "version": "482"
         },
@@ -47,7 +47,7 @@
             "description": "SeqNado BAM file manipulation and analysis tool",
             "command": "bamnado",
             "category": "Analysis",
-            "container": "docker://ghcr.io/alsmith151/bamnado:latest",
+            "container": "docker://ghcr.io/alsmith151/bamnado:0.9.0",
             "subcommands": [
                 "bam-coverage",
                 "multi-bam-coverage",
@@ -67,7 +67,7 @@
             "description": "Fast and sensitive read mapping to large genomes",
             "command": "bowtie2",
             "category": "Alignment",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "bowtie2",
             "version": "2.5.4"
         },
@@ -77,7 +77,7 @@
             "description": "Tools for high-resolution interactions and HiC contact matrices",
             "command": "cooler",
             "category": "Analysis",
-            "container": "docker://ghcr.io/alsmith151/mccnado:latest",
+            "container": "docker://ghcr.io/alsmith151/mccnado@sha256:bcc9deb2c21a912e8e5afd1ebd0b7719a140f50ed850cd072bc7b34c4a5aa8ba",
             "citation": "cooler",
             "version": "0.10.4"
         },
@@ -87,7 +87,7 @@
             "description": "Remove adapter sequences from sequencing reads",
             "command": "cutadapt",
             "category": "Preprocessing",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "cutadapt",
             "version": "5.1"
         },
@@ -97,7 +97,7 @@
             "description": "Tools for processing and visualizing deep sequencing data",
             "command": "deeptools",
             "category": "Visualization",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "deeptools",
             "subcommands": [
                 "bamCoverage",
@@ -126,7 +126,7 @@
             "description": "Screen sequencing reads against a set of databases",
             "command": "fastq_screen",
             "category": "Quality Control",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "fastq-screen",
             "version": "0.16.0"
         },
@@ -136,7 +136,7 @@
             "description": "Quality control for high-throughput sequencing data",
             "command": "fastqc",
             "category": "Quality Control",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "fastqc",
             "version": "0.12.1"
         },
@@ -146,7 +146,7 @@
             "description": "Count reads overlapping genomic features (genes/exons)",
             "command": "featureCounts",
             "category": "Quantification",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "featurecounts",
             "version": "2.1.1"
         },
@@ -156,7 +156,7 @@
             "description": "Identify genomic peaks in ChIP-seq or ATAC-seq data (HOMER)",
             "command": "findPeaks",
             "category": "Analysis",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "homer",
             "version": "5.1"
         },
@@ -166,7 +166,7 @@
             "description": "Fast length adjustment of short reads (FLASH) to improve genome assemblies",
             "command": "flash",
             "category": "Preprocessing",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "flash",
             "version": "1.2.11"
         },
@@ -176,7 +176,7 @@
             "description": "Tools for ChIP-seq, DNase-seq, and other genomic analysis",
             "command": "homer",
             "category": "Analysis",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "homer",
             "subcommands": [
                 "makeTagDirectory",
@@ -191,7 +191,7 @@
             "description": "Peak caller for high-resolution chromatin analysis",
             "command": "lanceotron",
             "category": "Analysis",
-            "container": "oras://ghcr.io/alsmith151/seqnado_ml_cpu:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_ml_cpu@sha256:065f77bba773f15130aef1c30f020b5fdadbfd58decd7dbbf92c81ef2fe4857c",
             "citation": "lanceotron",
             "version": "1.2.7"
         },
@@ -201,7 +201,7 @@
             "description": "Model-based analysis of ChIP-Seq data",
             "command": "macs",
             "category": "Analysis",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "macs",
             "version": "2.2.9.1"
         },
@@ -211,7 +211,7 @@
             "description": "Micro-Capture-C (MCC) sequencing data processing tool",
             "command": "mccnado",
             "category": "Analysis",
-            "container": "docker://ghcr.io/alsmith151/mccnado:latest",
+            "container": "docker://ghcr.io/alsmith151/mccnado@sha256:bcc9deb2c21a912e8e5afd1ebd0b7719a140f50ed850cd072bc7b34c4a5aa8ba",
             "citation": "mccnado",
             "version": "0.1.5"
         },
@@ -231,7 +231,7 @@
             "description": "Prepare and organize ChIP-seq tag directories (HOMER)",
             "command": "makeTagDirectory",
             "category": "Analysis",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "homer",
             "version": "5.1"
         },
@@ -251,7 +251,7 @@
             "description": "Tools for analyzing DNA methylation from bisulfite sequencing data",
             "command": "MethylDackel",
             "category": "Analysis",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "methyldackel",
             "version": "0.6.1"
         },
@@ -261,7 +261,7 @@
             "description": "Fast pairwise sequence alignment tool",
             "command": "minimap2",
             "category": "Alignment",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "minimap2",
             "version": "2.30"
         },
@@ -271,7 +271,7 @@
             "description": "Aggregate quality control reports from multiple QC tools",
             "command": "multiqc",
             "category": "Reporting",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "multiqc",
             "version": "1.31"
         },
@@ -281,7 +281,7 @@
             "description": "Parallel gzip compression utility",
             "command": "pigz",
             "category": "Utilities",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "pigz",
             "version": "2.8"
         },
@@ -291,7 +291,7 @@
             "description": "Tools for manipulating high-throughput sequencing data and formats",
             "command": "picard",
             "category": "Alignment",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "picard",
             "version": "3.4.0"
         },
@@ -301,8 +301,8 @@
             "description": "SeqNado genome browser visualization and plotting tool",
             "command": "plotnado",
             "category": "Visualization",
-            "container": "library://asmith151/plotnado/plotnado:latest",
-            "version": "0.1.dev101",
+            "container": "docker://ghcr.io/alsmith151/plotnado:0.3.3",
+            "version": "0.3.3",
             "citation": "plotnado"
         },
         "qualimap": {
@@ -311,7 +311,7 @@
             "description": "Quality assessment tool for next-generation sequencing data",
             "command": "qualimap",
             "category": "Quality Control",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "qualimap",
             "version": "2.3"
         },
@@ -321,7 +321,7 @@
             "description": "Scientific and technical publishing system for reports",
             "command": "quarto",
             "category": "Reporting",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "quarto",
             "version": "1.8.25"
         },
@@ -331,7 +331,7 @@
             "description": "SeqNado multiomics quantification and dataset creation tool",
             "command": "create-dataset",
             "category": "Quantification",
-            "container": "docker://ghcr.io/milne-group/quantnado:latest",
+            "container": "docker://ghcr.io/milne-group/quantnado@sha256:b07a8d5d26d49fbe4baa4072735aae9bf30884b854f7735d2b15a8531e39c7f9",
             "citation": "quantnado",
             "version": "0.4.9"
         },
@@ -341,7 +341,7 @@
             "description": "Quantification of gene expression from RNA-seq data",
             "command": "salmon",
             "category": "Quantification",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "salmon",
             "version": "1.10.3"
         },
@@ -351,7 +351,7 @@
             "description": "Tools for interacting with SAM/BAM format files",
             "command": "samtools",
             "category": "Alignment",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "samtools",
             "version": "1.22.1"
         },
@@ -361,7 +361,7 @@
             "description": "Sparse enrichment analysis for CUT&RUN",
             "command": "SEACR",
             "category": "Analysis",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "seacr",
             "version": "1.3"
         },
@@ -381,7 +381,7 @@
             "description": "Ultrafast universal RNA-seq aligner",
             "command": "STAR",
             "category": "Alignment",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "star",
             "version": "2.7.11b"
         },
@@ -391,7 +391,7 @@
             "description": "High-performance read alignment, quantification and mutation discovery",
             "command": "featureCounts",
             "category": "Quantification",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "subread",
             "version": "2.1.1"
         },
@@ -401,7 +401,7 @@
             "description": "Python library to work with track hubs",
             "command": "trackhub",
             "category": "Visualization",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "trackhub",
             "version": "1.0"
         },
@@ -421,7 +421,7 @@
             "description": "Wrapper around Cutadapt and FastQC for quality and adapter trimming",
             "command": "trim_galore",
             "category": "Preprocessing",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "trimgalore",
             "version": "0.6.10"
         },
@@ -431,7 +431,7 @@
             "description": "UCSC genome browser command-line utilities",
             "command": "bedGraphToBigWig",
             "category": "Utilities",
-            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline:latest",
+            "container": "oras://ghcr.io/alsmith151/seqnado_pipeline@sha256:af68bf364e6a507d81c1e98c2b159704404e3aa955f65bd1fecba87888bd74ae",
             "citation": "ucsc-tools",
             "version": "482"
         }

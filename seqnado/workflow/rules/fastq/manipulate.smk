@@ -8,7 +8,7 @@ rule deduplicate_fastq_raw:
     threads: 1
     resources:
         mem="1GB",
-    container:  "docker://ghcr.io/alsmith151/mccnado:latest"
+    container:  CONTAINERS.MCCNADO
     log: OUTPUT_DIR + "/logs/deduplication/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/deduplication/{sample}.tsv",
     message: "Deduplicating reads for sample {wildcards.sample}",
@@ -41,7 +41,7 @@ rule flash:
     threads: 16
     resources:
         mem_mb=1000,
-    container:  "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container:  CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/flash/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/flash/{sample}.tsv",
     message: "Merging overlapping paired-end reads for sample {wildcards.sample} using FLASH",

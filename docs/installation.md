@@ -41,6 +41,12 @@ seqnado init
 
 For all flags and details, see the CLI reference: [seqnado init](cli.md#cli-seqnado-init).
 
+## Upgrading SeqNado
+
+Upgrade with the same tool you installed with (e.g. `mamba update -c bioconda seqnado` or `pip install -U seqnado`).
+
+Each SeqNado release pins the exact container images it was tested with, so the matching containers are downloaded automatically on the next pipeline run. If you are upgrading from an older release and the pipeline crashes, see [Troubleshooting: stale container images](troubleshooting.md#pipeline-crashes-after-updating-seqnado-stale-container-images).
+
 ---
 
 **See Also:**

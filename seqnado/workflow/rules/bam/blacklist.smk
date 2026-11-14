@@ -17,7 +17,7 @@ if CONFIG.qc.remove_blacklist:
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_blacklist.log",
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_blacklist.tsv",
         message: "Removing blacklisted regions from aligned BAM for sample {wildcards.sample} using bedtools",
@@ -46,7 +46,7 @@ else:
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         log: OUTPUT_DIR + "/logs/alignment_post_process/{sample}_blacklist.log",
         benchmark: OUTPUT_DIR + "/.benchmark/alignment_post_process/{sample}_blacklist.tsv",
         message: "Skipping blacklisted regions removal for sample {wildcards.sample}",

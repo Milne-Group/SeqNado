@@ -17,7 +17,7 @@ rule tag_directory:
             initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
         ),
     container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        CONTAINERS.SEQNADO_PIPELINE
     log:
         OUTPUT_DIR + "/logs/homer/maketagdirectory_{sample}.log",
     benchmark:
@@ -46,7 +46,7 @@ rule tag_directory_merged:
             initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
         ),
     container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        CONTAINERS.SEQNADO_PIPELINE
     log:
         OUTPUT_DIR + "/logs/homer/maketagdirectory/merged/{group}.log",
     benchmark:

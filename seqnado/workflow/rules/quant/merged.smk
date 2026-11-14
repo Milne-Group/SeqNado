@@ -13,7 +13,7 @@ rule merged_saf:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/readcounts/feature_counts/{group}_saf.log",
     benchmark: OUTPUT_DIR + "/.benchmark/readcounts/feature_counts/{group}_saf.tsv",
     message: "Generating SAF file from merged peaks for group {wildcards.group}"
@@ -37,7 +37,7 @@ rule merged_counts:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=3, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/readcounts/feature_counts/{group}_counts.log",
     benchmark: OUTPUT_DIR + "/.benchmark/readcounts/feature_counts/{group}_counts.tsv",
     message: "Running featureCounts to quantify reads for merged peaks in group {wildcards.group}"

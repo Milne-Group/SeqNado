@@ -282,6 +282,13 @@ def extract_version_from_container_tag(container_uri: str) -> Optional[str]:
     if not container_uri or ":" not in container_uri:
         return None
 
+    # Digest-pinned references (image@sha256:...) carry no version tag; any
+    # tag before the "@" is still usable (image:1.2.3@sha256:...).
+    if "@" in container_uri.split("://", 1)[-1]:
+        container_uri = container_uri.rsplit("@", 1)[0]
+        if ":" not in container_uri.split("://", 1)[-1]:
+            return None
+
     # Extract tag after last colon (handles docker://registry:5000/image:tag)
     parts = container_uri.rsplit(":", 1)
     if len(parts) != 2:

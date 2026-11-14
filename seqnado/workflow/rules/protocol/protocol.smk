@@ -1,3 +1,5 @@
+from seqnado._version import __version__ as SEQNADO_VERSION
+
 assay_for_protocol = ASSAY.name
 
 protocol_inputs = [
@@ -19,7 +21,14 @@ rule protocol:
         OUTPUT_DIR + "/protocol.txt",
     params:
         assay=assay_for_protocol,
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        seqnado_version=SEQNADO_VERSION,
+        # Tools with their own containers; versions are queried from these.
+        dedicated_containers={
+            "bamnado": CONTAINERS.BAMNADO,
+            "mccnado": CONTAINERS.MCCNADO,
+            "quantnado": CONTAINERS.QUANTNADO,
+        },
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/protocol.log",
     benchmark: OUTPUT_DIR + "/.benchmark/protocol.tsv",
     message: "Producing data processing protocol",

@@ -21,7 +21,7 @@ use rule bam_sort_by_qname as sort_mcc_annotated_bam with:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/mcc/sort_genomic_aligned_reads/{group}.log",
     message: "Sorting aligned BAM by QNAME for group {wildcards.group} using samtools",
     benchmark: OUTPUT_DIR + "/.benchmark/mcc/sort_genomic_aligned_reads/{group}.tsv",
@@ -37,7 +37,7 @@ rule identify_ligation_junctions_grouped:
     threads: 1
     resources:
         mem="1GB",
-    container: 'docker://ghcr.io/alsmith151/mccnado:latest',
+    container: CONTAINERS.MCCNADO,
     wildcard_constraints:
         group="|".join(SAMPLE_GROUPINGS.get_grouping('consensus').group_names),
     log: OUTPUT_DIR + "/logs/ligation_junctions/{group}.log",
@@ -94,7 +94,7 @@ rule identify_ligation_junctions_replicates:
     threads: 1
     resources:
         mem="1GB",
-    container: 'docker://ghcr.io/alsmith151/mccnado:latest',
+    container: CONTAINERS.MCCNADO,
     log: OUTPUT_DIR + "/logs/ligation_junctions/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/ligation_junctions/{sample}.tsv",
     message: "Identifying ligation junctions for sample {wildcards.sample}",
@@ -136,7 +136,7 @@ rule cooler:
     params:
         resolution=CONFIG.assay_config.mcc.resolutions[0],
         genome=CONFIG.genome.name,
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     wildcard_constraints:
         group="|".join(SAMPLE_GROUPINGS.get_grouping('consensus').group_names),
     resources:
@@ -167,7 +167,7 @@ rule zoomify_cooler:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
     wildcard_constraints:
         group="|".join(SAMPLE_GROUPINGS.get_grouping('consensus').group_names),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/zoomify_cooler/{group}_{viewpoint}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/zoomify_cooler/{group}_{viewpoint}.tsv",
     message: "Zoomifying cooler file for viewpoint {wildcards.viewpoint} in group {wildcards.group}",
@@ -185,7 +185,7 @@ rule aggregate_coolers:
     resources:
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "docker://ghcr.io/alsmith151/mccnado:latest"
+    container: CONTAINERS.MCCNADO
     log: OUTPUT_DIR + "/logs/{group}_aggregate_coolers.log",
     benchmark: OUTPUT_DIR + "/.benchmark/{group}_aggregate_coolers.tsv",
     message: "Aggregating cooler files for group {wildcards.group}",

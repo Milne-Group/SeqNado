@@ -24,7 +24,7 @@ rule bigwigs_mcc_replicates:
     benchmark:
         OUTPUT_DIR + "/.benchmark/bigwig/{sample}_{viewpoint_group}.tsv",
     container:
-        "docker://ghcr.io/alsmith151/bamnado:latest",
+        CONTAINERS.BAMNADO,
     message:
         "Generating bigWig for MCC sample {wildcards.sample} and viewpoint group {wildcards.viewpoint_group}",
     threads: 8,
@@ -67,7 +67,7 @@ use rule bigwigs_mcc_replicates as bigwigs_mcc_grouped_norm with:
     message:
         "Generating n_cis normalized bigWig for MCC group {wildcards.group} and viewpoint group {wildcards.viewpoint_group}",
     container:
-        "docker://ghcr.io/alsmith151/bamnado:latest",
+        CONTAINERS.BAMNADO,
 
 
 use rule bigwigs_mcc_replicates as bigwigs_mcc_grouped_raw with:
@@ -90,7 +90,7 @@ use rule bigwigs_mcc_replicates as bigwigs_mcc_grouped_raw with:
     benchmark:
         OUTPUT_DIR + "/.benchmark/bigwig/{group}_{viewpoint_group}_" + DataScalingTechnique.PER_SAMPLE.value + ".tsv",
     container:
-        "docker://ghcr.io/alsmith151/bamnado:latest",
+        CONTAINERS.BAMNADO,
     message:
         "Generating per-sample bigWig for MCC group {wildcards.group} and viewpoint group {wildcards.viewpoint_group}"
 

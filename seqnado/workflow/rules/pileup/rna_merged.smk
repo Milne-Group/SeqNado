@@ -14,7 +14,7 @@ rule bigwigs_deeptools_rna_merged_plus:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/bigwigs/deeptools/merged/{group}_plus.log",
     benchmark: OUTPUT_DIR + "/.benchmark/deeptools/merged/{group}_plus.tsv",
     message: "Making plus strand merged bigWig with deeptools for group {wildcards.group}"
@@ -38,7 +38,7 @@ rule bigwigs_deeptools_rna_merged_minus:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/bigwigs/deeptools/merged/{group}_minus.log",
     benchmark: OUTPUT_DIR + "/.benchmark/deeptools/merged/{group}_minus.tsv",
     message: "Making minus strand merged bigWig with deeptools for group {wildcards.group}"
@@ -65,7 +65,7 @@ rule bigwigs_bamnado_rna_merged_plus:
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=6, attempts=attempt, scale=SCALE_RESOURCES),
     threads:
         CONFIG.third_party_tools.bamnado.bam_coverage.threads,
-    container: "docker://ghcr.io/alsmith151/bamnado:latest"
+    container: CONTAINERS.BAMNADO
     log: OUTPUT_DIR + "/logs/bigwigs/bamnado/merged/{group}_plus.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bamnado/merged/{group}_plus.tsv",
     message: "Making plus strand merged bigWig with bamnado for group {wildcards.group}"
@@ -93,7 +93,7 @@ rule bigwigs_bamnado_rna_merged_minus:
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=6, attempts=attempt, scale=SCALE_RESOURCES),
     threads:
         CONFIG.third_party_tools.bamnado.bam_coverage.threads,
-    container: "docker://ghcr.io/alsmith151/bamnado:latest"
+    container: CONTAINERS.BAMNADO
     log: OUTPUT_DIR + "/logs/bigwigs/bamnado/merged/{group}_minus.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bamnado/merged/{group}_minus.tsv",
     message: "Making minus strand merged bigWig with bamnado for group {wildcards.group}"
@@ -124,7 +124,7 @@ rule bigwigs_homer_rna_merged:
             "_minus.bigWig", "neg.ucsc.bigWig"
         ),
     container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        CONTAINERS.SEQNADO_PIPELINE
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(
             initial_value=4, attempts=attempt, scale=SCALE_RESOURCES

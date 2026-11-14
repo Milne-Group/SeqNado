@@ -5,6 +5,7 @@ rule call_mcc_peaks:
         peaks=OUTPUT_DIR + "/peaks/lanceotron-mcc/{group}_{viewpoint_group}.bed",
     params:
         options=str(CONFIG.third_party_tools.lanceotron_mcc.command_line_arguments),
+        image=CONTAINERS.LANCEOTRON_MCC,
     wildcard_constraints:
         group="|".join(SAMPLE_GROUPINGS.get_grouping("consensus").group_names),
         viewpoint_group="|".join(VIEWPOINT_TO_GROUPED_VIEWPOINT.values()),
@@ -29,7 +30,7 @@ rule call_mcc_peaks:
         # If apptainer is available, run inside the container (with NV GPU support).
         if command -v apptainer >/dev/null 2>&1; then
             echo "INFO: apptainer found — running inside container" >&2
-            apptainer exec --nv library://asmith151/lanceotron/lanceotron-mcc:latest \
+            apptainer exec --nv {params.image} \
                 lanceotron-mcc call-mcc-peaks \
                 --bigwig {input.bigwig} \
                 --outfile {output.peaks} \

@@ -16,7 +16,7 @@ if CONFIG.third_party_tools.bamnado is not None:
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=6, attempts=attempt, scale=SCALE_RESOURCES),
         threads:
             CONFIG.third_party_tools.bamnado.bam_coverage.threads,
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         log: OUTPUT_DIR + "/logs/bigwigs/bamnado/merged/{group}.log",
         benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/bamnado/merged/{group}.tsv",
         message: "Making bigWig with bamnado for merged sample {wildcards.group}"
@@ -48,7 +48,7 @@ if CONFIG.third_party_tools.deeptools is not None:
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         threads:
             CONFIG.third_party_tools.deeptools.bam_coverage.threads,
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         log: OUTPUT_DIR + "/logs/bigwigs/deeptools/merged/{group}.log",
         benchmark: OUTPUT_DIR + "/.benchmark/bigwigs/deeptools/merged/{group}.tsv",
         message: "Making bigWig with deeptools for merged sample {wildcards.group}"
@@ -75,7 +75,7 @@ if CONFIG.third_party_tools.homer is not None:
                 ".bigWig", ".ucsc.bigWig"
             ),
         container:
-            "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+            CONTAINERS.SEQNADO_PIPELINE
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(
                 initial_value=4, attempts=attempt, scale=SCALE_RESOURCES

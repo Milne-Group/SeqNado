@@ -121,3 +121,106 @@ class TestMultiomicsOutputBuilder:
         assert len(output.files) == 2
         assert str(Path("out/multiomics_summary.txt")) in output.files
         assert str(Path("out/multiomics/heatmap/heatmap.pdf")) in output.files
+
+
+
+def _plotting(coordinates, file_format="png"):
+    from seqnado.config.configs import PlottingConfig
+
+    return PlottingConfig(coordinates=str(coordinates), file_format=file_format)
+
+
+@pytest.mark.unit
+class TestMultiomicsBrowserPlots:
+    """Tests for the combined multiomics genome-browser plot outputs."""
+
+    @pytest.fixture
+    def regions(self, tmp_path):
+        bed = tmp_path / "regions.bed"
+        bed.write_text("chr1\t100\t200\tlocusA\nchr2\t300\t400\tlocusB\n")
+        return bed
+
+    @pytest.fixture
+    def assay_outputs(self):
+        return {
+            Assay.CHIP: SeqnadoOutputFiles(
+                files=[
+                    "out/chip/bigwigs/deeptools/scaled-per-sample/ip1.bigWig",
+                    "out/chip/bigwigs/deeptools/scaled-per-sample/input1.bigWig",
+                    "out/chip/bigwigs/bamnado/scaled-per-sample/ip1.bigWig",
+                    "out/chip/bigwigs/deeptools/merged/scaled-per-sample/merged/grp.bigWig",
+                ],
+                ip_sample_names=["ip1"],
+            ),
+            # No deeptools bigWigs: falls back to the next pileup method.
+            Assay.ATAC: SeqnadoOutputFiles(
+                files=["out/atac/bigwigs/bamnado/scaled-per-sample/atac1.bigWig"],
+            ),
+        }
+
+    def test_browser_tracks_pick_one_method_per_assay(self, assay_outputs):
+        builder = MultiomicsOutputBuilder(assay_outputs=assay_outputs)
+
+        assert builder.browser_tracks == [
+            ("out/chip/bigwigs/deeptools/scaled-per-sample/ip1.bigWig", Assay.CHIP),
+            ("out/atac/bigwigs/bamnado/scaled-per-sample/atac1.bigWig", Assay.ATAC),
+        ]
+
+    @pytest.mark.parametrize("as_dict", [False, True], ids=["model", "dict"])
+    def test_add_browser_plots_one_plot_per_region(self, assay_outputs, regions, as_dict):
+        """All assays share one figure per region (no per-assay plots)."""
+        plotting = _plotting(regions, "svg")
+        builder = MultiomicsOutputBuilder(output_dir=Path("out"), assay_outputs=assay_outputs)
+
+        assert builder.add_browser_plots(plotting.model_dump() if as_dict else plotting) is True
+        assert builder.file_collections[0].files == [
+            str(Path("out/multiomics/track_plots/locusA.svg")),
+            str(Path("out/multiomics/track_plots/locusB.svg")),
+            str(Path("out/multiomics/track_plots/template.toml")),
+        ]
+
+    @pytest.mark.parametrize(
+        "has_plotting,has_bigwigs",
+        [(False, True), (True, False)],
+        ids=["no-plotting-config", "no-bigwigs"],
+    )
+    def test_add_browser_plots_skipped(self, regions, has_plotting, has_bigwigs):
+        files = ["out/chip/bigwigs/deeptools/scaled-per-sample/s.bigWig"] if has_bigwigs else []
+        builder = MultiomicsOutputBuilder(
+            assay_outputs={Assay.CHIP: SeqnadoOutputFiles(files=files)},
+        )
+
+        assert builder.add_browser_plots(_plotting(regions) if has_plotting else None) is False
+        assert builder.file_collections == []
+
+
+@pytest.mark.unit
+def test_take_browser_plotting_moves_first_plotting_and_disables_per_assay():
+    from seqnado.outputs.multiomics import take_browser_plotting
+
+    raw = {
+        Assay.ATAC: {"assay_config": {"plot_with_plotnado": False}},
+        Assay.CHIP: {
+            "assay_config": {
+                "plot_with_plotnado": True,
+                "plotting": {"coordinates": "chip.bed", "file_format": "png"},
+            }
+        },
+        Assay.METH: {
+            "assay_config": {"plotting": {"coordinates": "meth.bed"}},
+        },
+        Assay.SNP: {"assay_config": None},
+    }
+
+    assert take_browser_plotting(raw) == {"coordinates": "chip.bed", "file_format": "png"}
+    for config in raw.values():
+        assay_config = config["assay_config"] or {}
+        assert "plotting" not in assay_config
+        assert assay_config.get("plot_with_plotnado", False) is False
+
+
+@pytest.mark.unit
+def test_take_browser_plotting_none_when_no_assay_plots():
+    from seqnado.outputs.multiomics import take_browser_plotting
+
+    assert take_browser_plotting({Assay.ATAC: {"assay_config": {}}}) is None

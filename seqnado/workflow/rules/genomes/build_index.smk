@@ -13,7 +13,7 @@ rule samtools_faidx:
         fasta=OUTPUT_DIR + "/{genome}/sequence/{genome}.fa",
     output:
         fai=OUTPUT_DIR + "/{genome}/sequence/{genome}.fa.fai",
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
@@ -37,7 +37,7 @@ rule build_bowtie2:
         index=OUTPUT_DIR + "/{genome}/bt2_index/{genome}.1.bt2",
     params:
         prefix=OUTPUT_DIR + "/{genome}/bt2_index/{genome}",
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     threads: THREADS
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
@@ -62,7 +62,7 @@ rule build_star:
         gtf=OUTPUT_DIR + "/{genome}/genes/{genome}.ncbiRefSeq.gtf",
     output:
         genome_dir=directory(OUTPUT_DIR + "/{genome}/STAR_2.7.10b"),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     threads: THREADS
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=32, attempts=attempt, scale=SCALE_RESOURCES),
@@ -106,7 +106,7 @@ if SPIKEIN:
             spikein=lambda wc: OUTPUT_DIR + f"/{SPIKEIN}/sequence/{SPIKEIN}.fa",
         output:
             fasta=OUTPUT_DIR + "/{primary}_{spikein}/sequence/{primary}_{spikein}.fa",
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
@@ -130,7 +130,7 @@ if SPIKEIN:
             spikein=lambda wc: OUTPUT_DIR + f"/{SPIKEIN}/genes/{SPIKEIN}.ncbiRefSeq.gtf",
         output:
             gtf=OUTPUT_DIR + "/{primary}_{spikein}/genes/{primary}_{spikein}.gtf",
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
@@ -153,7 +153,7 @@ if SPIKEIN:
             fasta=OUTPUT_DIR + "/{primary}_{spikein}/sequence/{primary}_{spikein}.fa",
         output:
             fai=OUTPUT_DIR + "/{primary}_{spikein}/sequence/{primary}_{spikein}.fa.fai",
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
@@ -177,7 +177,7 @@ if SPIKEIN:
             index=OUTPUT_DIR + "/{primary}_{spikein}/bt2_index/{primary}_{spikein}.1.bt2",
         params:
             prefix=OUTPUT_DIR + "/{primary}_{spikein}/bt2_index/{primary}_{spikein}",
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         threads: THREADS
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
@@ -202,7 +202,7 @@ if SPIKEIN:
             gtf=OUTPUT_DIR + "/{primary}_{spikein}/genes/{primary}_{spikein}.gtf",
         output:
             genome_dir=directory(OUTPUT_DIR + "/{primary}_{spikein}/STAR_2.7.10b"),
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=32, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
