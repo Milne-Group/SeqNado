@@ -34,7 +34,7 @@ rule bigwigs_mcc_replicates:
     bam-coverage \
     -b {input.bam} \
     -o {output.bigwig} \
-    --scale-factor {params.scale_factor} \
+    --scale-factor={params.scale_factor} \
     --blacklisted-locations {input.excluded_regions} \
     --min-mapq 0 \
     --filter-tag VP \
