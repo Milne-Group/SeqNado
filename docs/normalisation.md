@@ -14,7 +14,8 @@ Need help choosing? See [Choosing a Method](#choosing-a-method) below.
 
 | Method | Assay | Input data | Per-sample formula | Merged formula | Signal Unit |
 |---|---|---|---|---|---|
-| **scaled-per-sample** | Any | BAM files | \(1\) | \(1\) |  As set in deeptools/bamnado/homer configuration |
+| **raw** | Any except MCC | BAM files | \(1\) | — (individual only) | Unnormalised read coverage |
+| **scaled-per-sample** | Any | BAM files | \(1\) | \(1\) |  As set in deeptools/bamnado/homer configuration (default RPKM for deeptools and bamnado) |
 | **orlando** | ChIP-seq, CUT&TAG, CUT&RUN | Spike-in BAM read counts | \(10^6 / S_{\text{ip}}\) | \(10^6 / \sum_i S_{\text{ip},i}\) | RRPM (spike-in reference-adjusted RPM) |
 | **with_input** | ChIP-seq, CUT&TAG, CUT&RUN | Spike-in BAM read counts (IP + input) | \((S_{\text{ctrl}} \times 10^7) / (S_{\text{ip}} \times R_{\text{ctrl}})\) | \((\sum S_{\text{ctrl},i} \times 10^7) / (\sum S_{\text{ip},i} \times \sum R_{\text{ctrl},i})\) | RRPM (IP enrichment over spike-in-normalized input) |
 | **deseq2** | RNA-seq | Spike-in gene count matrix | DESeq2 median-ratio \(\hat{s}_j\) | Arithmetic mean \(\bar{\hat{s}}\) | Library-size normalized |
@@ -37,6 +38,30 @@ Need help choosing? See [Choosing a Method](#choosing-a-method) below.
 ## Spike-in Normalisation
 
 Spike-in normalisation uses a known amount of exogenous material (chromatin or RNA from a different species) added to each library before sequencing. Because the amount added is constant, the number of reads mapping to the spike-in reflects sequencing depth and can be used to normalise samples to a comparable scale. SeqNado implements three spike-in strategies — two based on total spike-in read counts (orlando, with_input) and two based on gene-level counting from a spike-in-aware count matrix (deseq2, edgeR).
+
+### How reads are assigned to the reference or spike-in genome
+
+Reads are aligned to a combined reference + spike-in genome and then split by **contig (chromosome) name**:
+
+1. **Spike-in** — the contig name equals `exogenous_genome` or starts with `<exogenous_genome>_` (e.g. `dm6_chr2L`). `seqnado genomes build --spikein` names spike-in contigs this way automatically.
+2. **Reference** — the contig name starts with `chr` (UCSC style, e.g. `chr1`, `chr1_KI270706v1_random`) or is a standard chromosome name (`1`–`99`, `X`, `Y`, `Z`, `W`, `M`, `MT`; Ensembl/NCBI style).
+3. Anything else (e.g. unplaced Ensembl scaffolds such as `GL000220.1`) is dropped from both.
+
+For standard genomes no extra configuration is needed. If your combined genome uses other names, set either or both optional keys in the `spikein` section of the config:
+
+```yaml
+assay_config:
+  spikein:
+    method: [orlando]
+    exogenous_genome: plasmid
+    endogenous_genome: hg38
+    # Optional: contig names/prefixes of the spike-in genome (default: exogenous_genome)
+    exogenous_contig_prefix: [AmpR, Cas9_3p, Cas9_5p]
+    # Optional: contig prefixes of the reference genome (default: chr*, 1-99, X, Y, MT, ...)
+    endogenous_contig_prefix: [NC_]
+```
+
+Both keys accept a single value or a list. The split log (`logs/bam_split/<sample>.log`) lists which contigs were assigned to each genome. If no spike-in (or no reference) contigs are found, the run stops with an error that lists the contigs present in the BAM, so you can set the right prefix.
 
 ### Orlando (Reads-Per-Million Spike-in)
 
@@ -224,12 +249,31 @@ Scaling factors are stored in `seqnado_output/{assay}/resources/{scaling_method}
 
 ---
 
+## Raw Coverage (`raw`)
+
+Unnormalised read coverage: the same `bam-coverage`/`bamCoverage` call as `scaled-per-sample`, but with every normalisation and scale-factor option stripped. Reads are still filtered exactly as in the other tracks (MAPQ, blacklist, duplicates, etc.) — "raw" refers to the signal values, not the reads.
+
+Intended for machine-learning and custom downstream normalisation, where you want counts rather than depth-adjusted values. Produced by deeptools and bamnado (not HOMER) for individual samples only, written to `bigwigs/{method}/raw/`. Raw tracks are not used for heatmaps, metaplots or track plots. Not available for MCC, whose bigwigs are always n_cis-scaled.
+
+```yaml
+bigwigs:
+  pileup_method: [bamnado]
+  scale_methods: [raw, scaled-per-sample]
+```
+
+---
+
 ## Per-Sample Scaling (`scaled-per-sample`)
 
-Each sample is scaled independently of every other sample — SeqNado applies no cross-sample scale factor. Unless a deeptools/bamnado/homer `--normalizeUsing`-style option is configured, this means no scaling factor at all. Signal represents raw read pileup, which is affected by sequencing depth. Use this only for exploratory analysis or when samples are known to have matched sequencing depth.
+Each sample is normalised independently of every other sample — SeqNado applies no cross-sample scale factor, only the pileup tool's own normalisation. By default both deeptools (`--normalizeUsing RPKM`) and bamnado (`--norm-method rpkm`) produce RPKM tracks; change this in `third_party_tools.{deeptools,bamnado}.bam_coverage.command_line_arguments` (e.g. `--normalizeUsing CPM` / `--norm-method cpm`). If you remove the normalisation option, signal is raw read pileup, which is affected by sequencing depth.
+
+!!! note "bamnado default changed"
+    bamnado `scaled-per-sample` tracks previously defaulted to `--norm-method raw`. New configs default to `rpkm`, matching deeptools. Existing project configs that still contain `--norm-method raw` keep producing raw `scaled-per-sample` tracks — use the `raw` scale method below if you want raw coverage alongside normalised tracks.
+
+For per-group and spike-in scaling, SeqNado strips any tool normalisation flags (`--normalizeUsing`, `--norm-method`, etc.) and applies its own scale factor to raw coverage, so these are never double-normalised.
 
 !!! note "In plain terms"
-    No adjustment is made. A sample sequenced to twice the depth will appear twice as tall in the genome browser, regardless of whether there is a genuine biological difference. Only use this if your samples were sequenced to the same depth, or if you just want a quick look at the data without worrying about comparability.
+    With RPKM/CPM, each track is adjusted for its own sequencing depth but nothing else — no attempt is made to correct for differences in signal composition between samples. Without a normalisation option no adjustment is made at all: a sample sequenced to twice the depth will appear twice as tall in the genome browser, regardless of whether there is a genuine biological difference. Only use this if your samples were sequenced to the same depth, or if you just want a quick look at the data without worrying about comparability.
 
 ---
 

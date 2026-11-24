@@ -24,5 +24,6 @@ assay_config:
     # backs the multiomics test, which does not fabricate that replicate.
     scale_methods:
       - scaled-per-sample
+      - raw
     perform_comparisons: True
   create_dataset: True 

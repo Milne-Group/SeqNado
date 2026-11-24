@@ -29,6 +29,11 @@ def test_workflow_scripts_do_not_import_seqnado(path: Path):
     editable installs (only site-packages is bound, not the source tree). Pass
     anything needed from seqnado through the rule's ``params`` instead."""
     imports = _seqnado_imports(path)
+    if path.name == "create_hub_with_tracknado.py":
+        # This rule explicitly runs on the host, where the installed package is available.
+        rule = SCRIPTS_DIR.parent / "rules" / "visualise" / "hub.smk"
+        assert "containerized: False" in rule.read_text()
+        return
     assert not imports, (
         f"{path.name} imports {imports}; pass the values via rule params instead"
     )

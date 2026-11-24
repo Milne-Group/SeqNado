@@ -118,7 +118,7 @@ if SPIKEIN:
             "Concatenating FASTA: {wildcards.primary} + {wildcards.spikein}"
         shell:
             """
-            sed 's/^>chr/>{wildcards.spikein}_chr/' {input.spikein} > {output.fasta}.spikein_tmp 2>&1 | tee {log}
+            sed 's/^>/>{wildcards.spikein}_/' {input.spikein} > {output.fasta}.spikein_tmp 2>&1 | tee {log}
             cat {input.primary} {output.fasta}.spikein_tmp > {output.fasta} 2>&1 | tee -a {log}
             rm -f {output.fasta}.spikein_tmp
             """
@@ -142,7 +142,7 @@ if SPIKEIN:
             "Concatenating GTF: {wildcards.primary} + {wildcards.spikein}"
         shell:
             """
-            sed 's/^chr/{wildcards.spikein}_chr/' {input.spikein} > {output.gtf}.spikein_tmp 2>&1 | tee {log}
+            sed -E '/^(#|$)/!s/^/{wildcards.spikein}_/' {input.spikein} > {output.gtf}.spikein_tmp 2>&1 | tee {log}
             cat {input.primary} {output.gtf}.spikein_tmp > {output.gtf} 2>&1 | tee -a {log}
             rm -f {output.gtf}.spikein_tmp
             """

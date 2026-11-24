@@ -115,6 +115,41 @@ seqnado design atac fastqs/* --condition-by "-(control|treated)-"
 
 **`group` / `deseq2`** — RNA-seq only, used to drive DESeq2's design formula (relevant when spike-in normalisation is configured). `group` holds the human-readable group name (e.g. `control`, `treated`); `deseq2` is a strictly binary encoding (`0` = reference/control group, `1` = treatment group) fed directly into the DESeq2 model — it is not a general-purpose numeric code, so don't try to represent three or more groups as `0`/`1`/`2`. For experiments with more than two groups, leave `deseq2` blank (the design tool will do this automatically and warn you) and set up contrasts manually — see [Multi-Group Comparisons](#rna-seq-grouping-for-deseq2) below.
 
+### Extract metadata from filenames
+
+Use filename extraction when FASTQs cannot be renamed but contain useful
+experiment annotations. `seqnado design` matches patterns against each R1 FASTQ
+basename, including the `.fastq.gz` suffix, and writes the values as ordinary
+design columns. Custom columns are retained when SeqNado loads the design and
+are available to downstream consumers such as UCSC hub grouping/colouring.
+
+`--metadata-regex` uses named capture groups and can add several columns at once:
+
+```bash
+seqnado design chip fastqs/* \
+  --metadata-regex '^(?P<cell_line>SEM-(?:RES5|STOCK))-(?P<condition>VTP)-(?P<replicate>Rep\d+)_(?P<target>[^_]+)_R[12]\.fastq\.gz$' \
+  --consensus-by target
+```
+
+Both Python-style `(?P<name>...)` and PCRE-style `(?<name>...)` named captures
+are accepted.
+
+For `SEM-RES5-VTP-Rep1_MLL_R1.fastq.gz`, this adds `cell_line=SEM-RES5`,
+`condition=VTP`, `replicate=Rep1`, and `target=MLL`. Existing grouping options
+can use an extracted column immediately, as shown with `--consensus-by target`.
+
+For one column, use `--metadata-field NAME=REGEX`, where the regex has exactly
+one capture group:
+
+```bash
+seqnado design atac fastqs/* --metadata-field 'batch=^SEM-(RES5|STOCK)-'
+```
+
+Files that do not match receive a blank value. Destination names must be unique
+across extraction options. The derived `uid` and filename/path columns (`r1`,
+`r2`, `r1_control`, and `r2_control`) cannot be replaced; SeqNado-managed
+metadata such as `condition`, `sample_id`, and `ip` can be supplied when needed.
+
 #### Metadata Column Rules
 
 The design CSV columns that get embedded directly into output file and directory names — `sample_id`, `ip`, `control`, `condition`, `group`, `consensus_group`, `scaling_group` — must match `^[a-zA-Z0-9_-]+$`: letters, numbers, underscores, and hyphens only. Spaces and other special characters are rejected at validation time (before the pipeline runs) because they would otherwise produce broken or ambiguous paths.

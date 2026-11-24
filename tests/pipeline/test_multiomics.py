@@ -120,6 +120,14 @@ def test_multiomics(
         f"Multiomics metaplot not found at {metaplot_pdf}"
     )
 
+    # Combined genome-browser plots (PlotNado)
+    track_plot_dir = output_dir / "multiomics" / "track_plots"
+    assert (track_plot_dir / "template.toml").exists(), (
+        f"Multiomics PlotNado template not found in {track_plot_dir}"
+    )
+    track_plots = [p for p in track_plot_dir.iterdir() if p.suffix != ".toml"]
+    assert track_plots, f"No multiomics browser plots found in {track_plot_dir}"
+
     # ML dataset (using QuantNado)
     dataset_dir = output_dir / "dataset"
     dataset_zarrs = sorted(dataset_dir.glob("*.zarr"))

@@ -73,7 +73,7 @@ if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
         wildcard_constraints:
             pileup_method="|".join([m.value for m in _PILEUP_METHODS]) if _PILEUP_METHODS else ".*",
             condition="|".join(_CONDITION_GROUPS) if _CONDITION_GROUPS else ".*",
-            strand="_plus|_minus|" if _IS_RNA else "",
+            strand="_plus|_minus|" if _IS_RNA else "|",
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
@@ -114,7 +114,7 @@ if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
             pileup_method="|".join([m.value for m in _PILEUP_METHODS]) if _PILEUP_METHODS else ".*",
             condition1="|".join(_CONDITION_GROUPS) if _CONDITION_GROUPS else ".*",
             condition2="|".join(_CONDITION_GROUPS) if _CONDITION_GROUPS else ".*",
-            strand="_plus|_minus|" if _IS_RNA else "",
+            strand="_plus|_minus|" if _IS_RNA else "|",
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
@@ -172,7 +172,7 @@ if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
                 pileup_method="|".join([m.value for m in _PILEUP_METHODS]) if _PILEUP_METHODS else ".*",
                 spikein_method="|".join(_SPIKEIN_METHODS) if _SPIKEIN_METHODS else ".*",
                 condition="|".join(_CONDITION_GROUPS) if _CONDITION_GROUPS else ".*",
-                strand="_plus|_minus|" if _IS_RNA else "",
+                strand="_plus|_minus|" if _IS_RNA else "|",
             resources:
                 mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
                 runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
@@ -214,7 +214,7 @@ if _PERFORM_COMPARISONS and len(_CONDITION_GROUPS) >= 2:
                 spikein_method="|".join(_SPIKEIN_METHODS) if _SPIKEIN_METHODS else ".*",
                 condition1="|".join(_CONDITION_GROUPS) if _CONDITION_GROUPS else ".*",
                 condition2="|".join(_CONDITION_GROUPS) if _CONDITION_GROUPS else ".*",
-                strand="_plus|_minus|" if _IS_RNA else "",
+                strand="_plus|_minus|" if _IS_RNA else "|",
             resources:
                 mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
                 runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),

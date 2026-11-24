@@ -110,3 +110,23 @@ def validate_config_and_metadata(
                 f"Missing metadata file for assay {assay.name}.\n"
                 f"Please create it using 'seqnado config {assay.name}'"
             )
+
+
+def take_browser_plotting(raw_configs: dict[Assay, dict]) -> dict | None:
+    """Move per-assay plotting settings to the combined multiomics browser plot.
+
+    In multiomics mode the genome-browser plots combine every assay's tracks in
+    one figure per region, so the per-assay plots are switched off: ``plotting``
+    is removed and ``plot_with_plotnado`` set False in each raw assay config
+    (modified in place). Returns the first ``plotting`` section found, in
+    ``raw_configs`` order, or None if no assay defines one.
+    """
+    browser_plotting = None
+    for raw in raw_configs.values():
+        assay_config = raw.get("assay_config") or {}
+        plotting = assay_config.pop("plotting", None)
+        if "plot_with_plotnado" in assay_config:
+            assay_config["plot_with_plotnado"] = False
+        if browser_plotting is None and plotting:
+            browser_plotting = plotting
+    return browser_plotting
