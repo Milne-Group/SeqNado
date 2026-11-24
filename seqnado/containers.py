@@ -37,8 +37,9 @@ SEQNADO_ML_CPU: Final[str] = (
 )
 
 # Independently versioned tool images.
+# MCC peaks v0.2.0. Apptainer 1.3 does not support tag@digest references.
 MCC_PEAKS: Final[str] = (
-    "docker://ghcr.io/alsmith151/mcc-peaks:0.2.0"
+    "docker://ghcr.io/alsmith151/mcc-peaks"
     "@sha256:b3a9e4a322e38b934874db5d3025a2b0fe65a10be57aca2a996f80ae54943d5c"
 )
 BAMNADO: Final[str] = "docker://ghcr.io/alsmith151/bamnado:0.9.0"
