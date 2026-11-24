@@ -61,6 +61,10 @@ jobs:
           python -c "import pytest; print(f'pytest version: {pytest.__version__}')"
 
       - name: Setup Apptainer runtime
+        # The disk cleanup above removes apt package lists.
+        run: sudo apt-get update
+
+      - name: Install Apptainer runtime
         uses: eWaterCycle/setup-apptainer@v2
         with:
           apptainer-version: 1.3.4
@@ -71,6 +75,16 @@ jobs:
           mkdir -p "${{ github.workspace }}/.apptainer/cache"
           mkdir -p "${{ github.workspace }}/.apptainer/tmp"
           
+      - name: Test MCC peak-calling container
+        if: matrix.assay == 'mcc'
+        shell: bash -el {0}
+        env:
+          APPTAINER_CACHEDIR: "${{ github.workspace }}/.apptainer/cache"
+          APPTAINER_TMPDIR: "${{ github.workspace }}/.apptainer/tmp"
+        run: |
+          python -m pytest tests/pipeline/test_mcc_peaks.py -k container \
+            -vv -s --run-pipeline
+
       - name: Run SeqNado pipeline test for ${{ matrix.assay }}
         shell: bash -el {0}
         env:

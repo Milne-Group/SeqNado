@@ -58,6 +58,9 @@ jobs:
           which seqnado
           python -c "import pytest; print(f'pytest version: {pytest.__version__}')"
 
+      - name: Refresh apt package lists
+        run: sudo apt-get update
+
       - name: Setup Apptainer runtime
         uses: eWaterCycle/setup-apptainer@v2
         with:

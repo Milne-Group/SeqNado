@@ -1,7 +1,13 @@
 """Tests for seqnado.config.third_party_tools module."""
 
 from seqnado import Assay
-from seqnado.config.third_party_tools import Bamnado, ThirdPartyToolsConfig
+from seqnado.config.third_party_tools import Bamnado, LanceotronMCC, ThirdPartyToolsConfig
+
+
+def test_mcc_peak_caller_defaults_use_supported_options():
+    config = LanceotronMCC()
+    assert str(config.command_line_arguments).strip() == "--max-peak-size 2000"
+    assert config.threads == 8
 
 
 class TestBamnado:

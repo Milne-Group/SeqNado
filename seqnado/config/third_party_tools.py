@@ -268,7 +268,7 @@ class Cutadapt(ToolConfig):
 
 
 class LanceotronMCC(ToolConfig):
-    """Lanceotron MCC peak calling tool configuration."""
+    """MCC peak calling tool configuration (legacy configuration key)."""
     
     @model_validator(mode="before")
     @classmethod
@@ -278,7 +278,7 @@ class LanceotronMCC(ToolConfig):
         data.setdefault(
             "command_line_arguments",
             CommandLineArguments(
-                value="--max-peak-size 2000 --no-mcc-filter-enriched-regions --no-mcc-filter-background"
+                value="--max-peak-size 2000"
             ),
         )
         return data
@@ -780,7 +780,7 @@ class ThirdPartyToolsConfig(BaseModel):
     # Peak calling tools
     macs: Annotated[Optional[Macs], BeforeValidator(none_str_to_none)] = Field(default=None, description="MACS peak caller configuration")
     lanceotron: Annotated[Optional[Lanceotron], BeforeValidator(none_str_to_none)] = Field(default=None, description="Lanceotron peak caller configuration")
-    lanceotron_mcc: Annotated[Optional[LanceotronMCC], BeforeValidator(none_str_to_none)] = Field(default=None, description="Lanceotron MCC configuration")
+    lanceotron_mcc: Annotated[Optional[LanceotronMCC], BeforeValidator(none_str_to_none)] = Field(default=None, description="MCC peak calling configuration")
     seacr: Annotated[Optional[Seacr], BeforeValidator(none_str_to_none)] = Field(default=None, description="SEACR peak caller configuration")
     
     # Analysis tools

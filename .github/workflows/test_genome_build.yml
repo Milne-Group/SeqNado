@@ -131,6 +131,9 @@ jobs:
           python -c "import seqnado; print(f'SeqNado installed at: {seqnado.__file__}')"
           which seqnado
 
+      - name: Refresh apt package lists
+        run: sudo apt-get update
+
       - name: Setup Apptainer runtime
         uses: eWaterCycle/setup-apptainer@v2
         with:

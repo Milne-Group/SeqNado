@@ -68,14 +68,6 @@ default-resources:
     slurm_partition: "SOME_PARTITION_NAME"
     runtime: "1h"
     mem: "3G"
-
-set-resources:
-    call_mcc_peaks:
-        slurm_partition: "gpu"
-        runtime: 30  # in minutes
-        mem_mb_per_cpu: 3000
-        cpus_per_task: 8
-        gpus: 1
 ```
 
 See the [Snakemake documentation](https://snakemake.readthedocs.io/en/stable/executing/cli.html#executing-profiles) for more details on how to customise profiles.
@@ -215,7 +207,9 @@ The MCC pipeline follows a multi-phase workflow:
 
 **Phase 8: Peak Calling** 
 
-- **LanceOtron-MCC**: A deep-learning peak caller identifies significant interaction peaks from the raw (unnormalised) group BigWigs. This runs on GPU when available.
+- **mcc-peaks**: A peak caller identifies interaction peaks from each raw (unnormalised) group BigWig, excluding the configured viewpoint regions. The group track is treated as a single input, not as evidence of replicate support. BED calls and score, unresolved-region, and provenance sidecars are written under `peaks/lanceotron-mcc/`.
+
+  The existing `lanceotron-mcc` method and `third_party_tools.lanceotron_mcc` configuration key are retained for compatibility. Existing configs that explicitly specify old LanceOtron-MCC options must be updated: for example, remove `--no-mcc-filter-enriched-regions` and `--no-mcc-filter-background`. See the [mcc-peaks CLI documentation](https://github.com/alsmith151/mcc-peaks/blob/v0.2.0/docs/cli.md) for supported options. This caller uses a different algorithm, so peak calls may change. The published container supports Linux x86-64; when running without container deployment, install `mcc-peaks` 0.2.0 in the execution environment.
 
 ### CRISPR Screens (CRISPR)
 Quantifies guide RNA representation across pooled CRISPR screen experiments.
