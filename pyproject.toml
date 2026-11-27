@@ -20,7 +20,7 @@ dynamic = ["version"]
 dependencies = [
     "click<=8.4.2",
     "cookiecutter<=2.7.1",
-    "numpy>=2,<=2.2.6",
+    "numpy>=2,<=2.4.6",
     "pandas>=2,<3.0.0",
     "pandera<=0.32.1",
     "pexpect<=4.9.0",
