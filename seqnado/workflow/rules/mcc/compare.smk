@@ -20,7 +20,7 @@ rule aggregate_bigwigs:
             + "/.benchmark/bigwig/{group}_{viewpoint_group}_aggregated-using-mean.tsv"
         )
     container:
-        "docker://ghcr.io/alsmith151/bamnado:latest"
+        CONTAINERS.BAMNADO
     message:
         "Generating consensus bigWig for MCC group {wildcards.group} and viewpoint group {wildcards.viewpoint_group}"
     resources:
@@ -60,7 +60,7 @@ rule comparison_bigwigs:
             + "/.benchmark/bigwig/{group1}_vs_{group2}_{viewpoint_group}_subtraction.tsv"
         )
     container:
-        "docker://ghcr.io/alsmith151/bamnado:latest"
+        CONTAINERS.BAMNADO
     message:
         "Generating comparison bigWig for MCC groups {wildcards.group1} vs {wildcards.group2} and viewpoint group {wildcards.viewpoint_group}"
     resources:

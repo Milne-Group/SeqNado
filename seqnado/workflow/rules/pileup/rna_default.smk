@@ -10,7 +10,7 @@ rule bigwigs_deeptools_rna_plus:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/pileups/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}_plus.log",
     benchmark: OUTPUT_DIR + "/.benchmark/deeptools/makebigwigs_{sample}_plus.tsv",
     message: "Making plus strand bigWig with deeptools for sample {wildcards.sample}"
@@ -31,7 +31,7 @@ rule bigwigs_deeptools_rna_minus:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/pileups/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/{sample}_minus.log",
     benchmark: OUTPUT_DIR + "/.benchmark/deeptools/makebigwigs_{sample}_minus.tsv",
     message: "Making minus strand bigWig with deeptools for sample {wildcards.sample}"
@@ -57,7 +57,7 @@ rule bigwigs_homer_rna:
             "_minus.bigWig", "neg.ucsc.bigWig"
         ),
     container:
-        "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        CONTAINERS.SEQNADO_PIPELINE
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(
             initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
@@ -91,7 +91,7 @@ rule bigwigs_bamnado_rna_plus:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "docker://ghcr.io/alsmith151/bamnado:latest"
+    container: CONTAINERS.BAMNADO
     log: OUTPUT_DIR + "/logs/pileups/bamnado/{sample}_plus.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bamnado/makebigwigs_{sample}_plus.tsv",
     message: "Making plus strand bigWig with bamnado for sample {wildcards.sample}"
@@ -112,7 +112,7 @@ rule bigwigs_bamnado_rna_minus:
     resources: 
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "docker://ghcr.io/alsmith151/bamnado:latest"
+    container: CONTAINERS.BAMNADO
     log: OUTPUT_DIR + "/logs/pileups/bamnado/{sample}_minus.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bamnado/makebigwigs_{sample}_minus.tsv",
     message: "Making minus strand bigWig with bamnado for sample {wildcards.sample}"

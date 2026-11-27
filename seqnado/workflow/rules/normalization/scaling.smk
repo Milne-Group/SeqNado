@@ -24,7 +24,7 @@ rule bamnado_scaling_factors:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "docker://ghcr.io/alsmith151/bamnado:latest"
+    container: CONTAINERS.BAMNADO
     log:
         OUTPUT_DIR + "/logs/normalization/{scaling_method}/{group}_scaling_factors.log"
     benchmark:

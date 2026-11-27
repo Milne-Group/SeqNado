@@ -115,7 +115,7 @@ rule dataset_create:
         runtime=lambda wildcards, attempt: define_time_requested(
             initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
         ),
-    container: "docker://ghcr.io/milne-group/quantnado:latest"
+    container: CONTAINERS.QUANTNADO
     log: OUTPUT_DIR + "/logs/dataset/{sample_id}.log"
     benchmark: OUTPUT_DIR + "/.benchmark/dataset/{sample_id}.tsv"
     message: "Creating dataset for sample {wildcards.sample_id} using QuantNado."
@@ -148,7 +148,7 @@ rule dataset_combine:
         runtime=lambda wildcards, attempt: define_time_requested(
             initial_value=4, attempts=attempt, scale=SCALE_RESOURCES
         ),
-    container: "docker://ghcr.io/milne-group/quantnado:latest"
+    container: CONTAINERS.QUANTNADO
     log: OUTPUT_DIR + "/logs/dataset/dataset_combine.log"
     benchmark: OUTPUT_DIR + "/.benchmark/dataset/dataset_combine.tsv"
     message: "Combining single-assay datasets using QuantNado."
@@ -173,7 +173,7 @@ rule dataset_compress:
         runtime=lambda wildcards, attempt: define_time_requested(
             initial_value=2, attempts=attempt, scale=SCALE_RESOURCES
         ),
-    container: "docker://ghcr.io/milne-group/quantnado:latest"
+    container: CONTAINERS.QUANTNADO
     log: OUTPUT_DIR + "/logs/dataset/dataset_compress.log"
     benchmark: OUTPUT_DIR + "/.benchmark/dataset/dataset_compress.tsv"
     message: "Compressing combined dataset using gzip."

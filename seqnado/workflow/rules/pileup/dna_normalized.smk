@@ -69,7 +69,7 @@ if CONFIG.third_party_tools.bamnado is not None:
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-        container: "docker://ghcr.io/alsmith151/bamnado:latest"
+        container: CONTAINERS.BAMNADO
         log: OUTPUT_DIR + "/logs/pileups/bamnado/scaled/{scaling_method}/{sample}.log",
         benchmark: OUTPUT_DIR + "/.benchmark/pileups/bamnado/scaled/{scaling_method}/{sample}.tsv",
         message: "Making {wildcards.scaling_method}-scaled bigWig with bamnado for sample {wildcards.sample}"
@@ -93,7 +93,7 @@ if CONFIG.third_party_tools.bamnado is not None:
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-        container: "docker://ghcr.io/alsmith151/bamnado:latest"
+        container: CONTAINERS.BAMNADO
         log: OUTPUT_DIR + "/logs/pileups/bamnado/spikein/{spikein_method}/{sample}.log",
         benchmark: OUTPUT_DIR + "/.benchmark/pileups/bamnado/spikein/{spikein_method}/{sample}.tsv",
         message: "Making spike-in normalized bigWig with bamnado for sample {wildcards.sample} using {wildcards.spikein_method}"

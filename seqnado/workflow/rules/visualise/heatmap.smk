@@ -45,7 +45,7 @@ if ASSAY == Assay.METH:
         resources:
             runtime=lambda wildcards, attempt: f"{1 * 2**attempt}h",
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         log: OUTPUT_DIR + "/logs/heatmap/methyldackel/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.log"
         benchmark: OUTPUT_DIR + "/.benchmark/heatmap/methyldackel/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.tsv"
         message: "Computing methylation heatmap matrix from bigWig files"
@@ -65,7 +65,7 @@ if ASSAY == Assay.METH:
             options=_deeptools_heatmap_options,
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         log: OUTPUT_DIR + "/logs/heatmap/methyldackel/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.log"
         benchmark: OUTPUT_DIR + "/.benchmark/heatmap/methyldackel/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.tsv"
         message: "Generating methylation heatmap from matrix"
@@ -83,7 +83,7 @@ if ASSAY == Assay.METH:
             ),
         resources:
             mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
-        container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+        container: CONTAINERS.SEQNADO_PIPELINE
         log: OUTPUT_DIR + "/logs/heatmap/methyldackel/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.log"
         benchmark: OUTPUT_DIR + "/.benchmark/heatmap/methyldackel/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.tsv"
         message: "Generating methylation metaplot from heatmap matrix"
@@ -111,7 +111,7 @@ rule heatmap_deeptools_per_sample_matrix:
     resources:
         runtime=lambda wildcards, attempt: f"{1 * 2**attempt}h",
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/heatmap/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.log",
     benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/matrix.tsv",
     message: "Computing deeptools per_sample heatmap matrix from bigWig files"
@@ -130,7 +130,7 @@ rule heatmap_deeptools_per_sample_plot:
         options=str(CONFIG.third_party_tools.deeptools.plot_heatmap.command_line_arguments),
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/heatmap/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.log",
     benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/heatmap.tsv",
     message: "Generating deeptools per_sample heatmap from matrix"
@@ -147,7 +147,7 @@ rule heatmap_deeptools_per_sample_metaplot:
             DataScalingTechnique.PER_SAMPLE),
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/heatmap/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.log",
     benchmark: OUTPUT_DIR + "/.benchmark/heatmap/deeptools/" + DataScalingTechnique.PER_SAMPLE.value + "/metaplot.tsv",
     message: "Generating deeptools per_sample metaplot from heatmap matrix"

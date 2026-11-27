@@ -10,7 +10,7 @@ use rule bam_sort_by_qname as sort_genomic_aligned_reads with:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/mcc/sort_genomic_aligned_reads/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/mcc/sort_genomic_aligned_reads/{sample}.tsv",
 
@@ -25,7 +25,7 @@ rule identify_viewpoint_reads:
     threads: 1
     resources:
         mem="1GB",
-    container: "docker://ghcr.io/alsmith151/mccnado:latest"
+    container: CONTAINERS.MCCNADO
     log: OUTPUT_DIR + "/logs/identify_viewpoint_reads/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/identify_viewpoint_reads/{sample}.tsv",
     message: "Identifying viewpoint reads for sample {wildcards.sample}",
@@ -43,7 +43,7 @@ rule bam_deduplicate_file:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=3, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "docker://ghcr.io/alsmith151/mccnado:latest"
+    container: CONTAINERS.MCCNADO
     log: OUTPUT_DIR + "/logs/bam_deduplicate/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/bam_deduplicate/{sample}.tsv",
     message: "Deduplicating BAM file for sample {wildcards.sample}",
@@ -60,7 +60,7 @@ rule bam_fix_header:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=3, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/fix_bam_header/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/fix_bam_header/{sample}.tsv",
     message: "Adding SM tag to BAM header for sample {wildcards.sample}",

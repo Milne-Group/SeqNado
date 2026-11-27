@@ -10,7 +10,7 @@ rule get_fasta:
         genome=CONFIG.genome.fasta,
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/motifs/meme/{method}/fasta/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/motifs/meme/{method}/fasta/{sample}.tsv",
     message: "Extracting FASTA sequences for peaks of sample {wildcards.sample}",
@@ -32,7 +32,7 @@ rule motif_meme_chip:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
     threads: 8
-    container: "docker://quay.io/biocontainers/meme:5.5.9--pl5321h1ca524f_0"
+    container: CONTAINERS.MEME
     log: OUTPUT_DIR + "/logs/motifs/meme/{method}/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/motifs/meme/{method}/{sample}.tsv",
     message: "Running MEME-ChIP motif analysis for sample {wildcards.sample}"
@@ -63,7 +63,7 @@ rule motif_homer:
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     log: OUTPUT_DIR + "/logs/motifs/homer/{method}/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/motifs/homer/{method}/{sample}.tsv",
     message: "Running HOMER motif analysis for sample {wildcards.sample}"

@@ -1,6 +1,7 @@
 import os
 import re
 
+from seqnado import containers as CONTAINERS
 from seqnado.workflow.helpers.geo import load_geo_samples
 from seqnado.workflow.helpers.common import (
     define_memory_requested,
@@ -28,7 +29,7 @@ rule geo_prefetch:
     benchmark:
         OUT_DIR + "/.benchmark/geo_prefetch/{srr}.benchmark.tsv"
     container:
-        "docker://quay.io/biocontainers/sra-tools:3.0.10--h9f5acd7_0"
+        CONTAINERS.SRA_TOOLS
     shell:
         """
         exec &> {log}
@@ -66,7 +67,7 @@ rule geo_fastq_dump_paired:
     benchmark:
         OUT_DIR + "/.benchmark/geo_fastq_dump/{sample_name}.benchmark.tsv"
     container:
-        "docker://quay.io/biocontainers/sra-tools:3.0.10--h9f5acd7_0"
+        CONTAINERS.SRA_TOOLS
     shell:
         """
         exec &> {log}
@@ -110,7 +111,7 @@ rule geo_fastq_dump_single:
     benchmark:
         OUT_DIR + "/.benchmark/geo_fastq_dump/{sample_name}.benchmark.tsv"
     container:
-        "docker://quay.io/biocontainers/sra-tools:3.0.10--h9f5acd7_0"
+        CONTAINERS.SRA_TOOLS
     shell:
         """
         exec &> {log}

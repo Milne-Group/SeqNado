@@ -9,6 +9,7 @@ from pathlib import Path
 from seqnado.workflow.helpers.common import define_memory_requested, define_time_requested
 from seqnado.utils import remove_unwanted_run_files
 from seqnado.config.configs import GenomeBuildConfig
+from seqnado import containers as CONTAINERS
 
 ################################
 # Hardcoded Config

@@ -418,6 +418,24 @@ top
 
 If jobs are queued but not starting, your cluster partition may be busy. Consider switching to a less-busy queue with `--queue`.
 
+### Pipeline crashes after updating SeqNado — stale container images
+
+**Symptoms:** After upgrading SeqNado, rules that previously worked fail with unknown command-line options, missing scripts, `ModuleNotFoundError`, or tool version mismatches.
+
+**Cause:** Older SeqNado releases referenced containers by the floating `:latest` tag. Snakemake caches each image under `.snakemake/singularity/` keyed on its URL, so when a new `:latest` image was published the old cached copy kept being used. Current releases pin images to a fixed version or digest, so upgrading pulls the matching containers automatically. You can still hit this when running an older release, or with the genome-browser plot (`plotnado`) and MCC peak-calling (`lanceotron-mcc`) images, which are not pinned yet.
+
+**Fix:** Delete the cached images so they are pulled fresh on the next run:
+
+```bash
+rm -rf .snakemake/singularity/    # in the directory you run `seqnado pipeline` from
+apptainer cache clean --force     # or: singularity cache clean --force
+```
+
+The next run re-downloads its containers, so it will take longer than usual.
+
+!!! warning
+    Only remove `.snakemake/singularity/`. Deleting the whole `.snakemake/` directory also discards Snakemake's record of completed jobs and incomplete-file markers.
+
 ---
 
 ## GEO/SRA Downloads (`seqnado download`)

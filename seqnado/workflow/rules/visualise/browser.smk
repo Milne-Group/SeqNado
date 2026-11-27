@@ -93,7 +93,7 @@ rule plotnado_deeptools:
     resources:
         mem="1.5GB",
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-    container: "library://asmith151/plotnado/plotnado:latest"
+    container: CONTAINERS.PLOTNADO
     log: OUTPUT_DIR + "/logs/visualise/plotnado_deeptools_per_sample.log",
     benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_deeptools_per_sample.tsv",
     message: "Generating deeptools per_sample genome browser visualisations with Plotnado"
@@ -412,7 +412,7 @@ if ASSAY == Assay.METH:
         resources:
             mem="1.5GB",
             runtime=lambda wildcards, attempt: define_time_requested(initial_value=1, attempts=attempt, scale=SCALE_RESOURCES),
-        container: "library://asmith151/plotnado/plotnado:latest"
+        container: CONTAINERS.PLOTNADO
         log: OUTPUT_DIR + "/logs/visualise/plotnado_methyldackel_per_sample.log"
         benchmark: OUTPUT_DIR + "/.benchmark/visualise/plotnado_methyldackel_per_sample.tsv"
         message: "Generating methyldackel per_sample genome browser visualisations with Plotnado"

@@ -3,7 +3,7 @@ rule extract_ligation_stats:
         bam=OUTPUT_DIR + "/mcc/replicates/{sample}/{sample}.bam",
     output:
         stats=OUTPUT_DIR + "/resources/replicates/{sample}_ligation_stats.json"
-    container: 'docker://ghcr.io/alsmith151/mccnado:latest'
+    container: CONTAINERS.MCCNADO
     log: OUTPUT_DIR + "/logs/extract_ligation_stats/{sample}.log",
     benchmark: OUTPUT_DIR + "/.benchmark/extract_ligation_stats/{sample}.tsv",
     message: "Extracting ligation stats for MCC BAM of sample {wildcards.sample}",

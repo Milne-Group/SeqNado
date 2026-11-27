@@ -44,7 +44,7 @@ rule calculate_normalisation_factors_deseq2:
     params:
         spikein_genes=CONFIG.assay_config.spikein.control_genes or [],
         bam_dir=OUTPUT_DIR + "/aligned",
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
@@ -67,7 +67,7 @@ rule calculate_normalisation_factors_edger:
         bam_dir=OUTPUT_DIR + "/aligned",
         outdir=OUTPUT_DIR + "/resources/edger",
         outfile="normalisation_factors.json",
-    container: "oras://ghcr.io/alsmith151/seqnado_pipeline:latest"
+    container: CONTAINERS.SEQNADO_PIPELINE
     resources:
         mem=lambda wildcards, attempt: define_memory_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
         runtime=lambda wildcards, attempt: define_time_requested(initial_value=2, attempts=attempt, scale=SCALE_RESOURCES),
