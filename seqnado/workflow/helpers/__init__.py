@@ -29,6 +29,11 @@ from .peaks import (
 )
 from .qc import format_frip_enrichment_options, format_qualimap_options
 from .quant import get_bams_to_count
+from .spikein import (
+    reference_contig_regex,
+    spikein_contig_regex,
+    spikein_regexes_from_config,
+)
 
 __all__ = [
     # Common
@@ -68,4 +73,8 @@ __all__ = [
     "get_assay_all_inputs",
     # Quant
     "get_bams_to_count",
+    # Spike-in
+    "reference_contig_regex",
+    "spikein_contig_regex",
+    "spikein_regexes_from_config",
 ]

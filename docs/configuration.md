@@ -299,8 +299,9 @@ Below is a comprehensive list of tools integrated into SeqNado, organized by fun
 
 - **deeptools bamCoverage** — Generates BigWig files from BAM alignments
   - **Using deeptools' native `--normalizeUsing` ** — To use deeptools' built-in normalization methods (`RPKM`, `CPM`, `BPM`, `RPGC`), select `scaled-per-sample` for your bigwig scaling method, then manually edit `third_party_tools.deeptools.bam_coverage.command_line_arguments` to add `--normalizeUsing` (e.g., `"--binSize 10 --normalizeUsing RPKM"`). This disables SeqNado's scaling entirely. Example use case: comparing standard RPKM-normalized bigwigs across studies
-  - **Bigwig scaling technique** — You choose during config (options: `scaled-per-sample`, `scaled-per-group`):
-    - **`scaled-per-sample`**: Each sample is scaled independently — no cross-sample scale factor. Raw read coverage; useful for visual inspection and as input for downstream analysis tools
+  - **Bigwig scaling technique** — You choose during config (options: `raw`, `scaled-per-sample`, `scaled-per-group`):
+    - **`raw`**: Unnormalised read coverage (deeptools/bamnado, individual samples only) — e.g. for machine-learning or custom downstream normalisation. Not used for heatmaps or track plots
+    - **`scaled-per-sample`**: Each sample is normalised independently by the pileup tool (RPKM by default for deeptools and bamnado) — no cross-sample scale factor
     - **`scaled-per-group`**: Samples within a scaling group are scaled relative to each other so their signal is directly comparable; equalizes library depth while preserving broad features. Recommended when comparing ChIP-seq samples without a spike-in; see [Normalisation Methods](normalisation.md)
       - Parametrised by `bigwigs.group_scaling_methods` — `csaw-background` (default), `tmm`, `median-of-ratios`, or `cpm`. Each selected method produces its own set of bigwigs. Requires `bamnado` (`seqnado tools install bamnado`)
 

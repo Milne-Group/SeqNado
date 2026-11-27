@@ -177,6 +177,36 @@ def format_deeptools_options(wildcards, options, input_files, sample_groupings=N
     return str(options)
 
 
+BAMNADO_NORMALISATION_FLAGS = {"-n", "--normalize", "--norm-method", "-f", "--scale-factor"}
+
+
+def format_bamnado_options(options, raw_counts: bool = False) -> str:
+    """Format ``bamnado bam-coverage`` options.
+
+    With ``raw_counts=True`` any user normalisation (``-n/--normalize/--norm-method``)
+    and ``-f/--scale-factor`` flags are stripped and ``--norm-method raw`` is set
+    explicitly, so the rule produces raw coverage (or applies its own
+    ``--scale-factor`` for per-group, spike-in or MCC n_cis scaling) regardless of
+    the user's options or bamnado's default.
+
+    Args:
+        options: CommandLineArguments or string with options
+        raw_counts: Force raw coverage: strip normalisation/scale-factor flags and
+            add ``--norm-method raw``
+
+    Returns:
+        Formatted options string
+    """
+    from seqnado.config.third_party_tools import CommandLineArguments
+
+    if raw_counts:
+        stripped = CommandLineArguments(
+            value=str(options), exclude=set(BAMNADO_NORMALISATION_FLAGS)
+        )
+        return f"{str(stripped).strip()} --norm-method raw".strip()
+    return str(options)
+
+
 def get_read_count_flags(wildcards, input_files, sample_groupings=None) -> str:
     """Return samtools flags for fragment-style counting on paired-end data.
 

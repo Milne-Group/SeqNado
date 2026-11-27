@@ -1,7 +1,15 @@
 """Tests for seqnado.config.third_party_tools module."""
 
+import pytest
+
 from seqnado import Assay
-from seqnado.config.third_party_tools import Bamnado, ThirdPartyToolsConfig
+from seqnado.config.third_party_tools import Bamnado, LanceotronMCC, ThirdPartyToolsConfig
+
+
+def test_mcc_peak_caller_defaults_use_supported_options():
+    config = LanceotronMCC()
+    assert str(config.command_line_arguments).strip() == "--max-peak-size 2000"
+    assert config.threads == 8
 
 
 class TestBamnado:
@@ -38,3 +46,27 @@ class TestThirdPartyToolsConfigBinsizeInheritance:
         config = ThirdPartyToolsConfig.for_assay(Assay.CHIP)
         assert "--binSize 10" in str(config.deeptools.bam_coverage.command_line_arguments)
         assert "--bin-size 10" in str(config.bamnado.bam_coverage.command_line_arguments)
+
+
+class TestBamnadoNormalisationDefaults:
+    """bamnado scaled-per-sample tracks are depth-normalised by default (matching
+    deeptools RPKM); MCC stays raw because its bigwigs are n_cis-scaled."""
+
+    @pytest.mark.parametrize("assay_type", [Assay.ATAC, Assay.CHIP, Assay.CAT, Assay.RNA])
+    def test_bam_coverage_defaults_to_rpkm(self, assay_type):
+        config = ThirdPartyToolsConfig.for_assay(assay_type)
+        args = str(config.bamnado.bam_coverage.command_line_arguments)
+        assert "--norm-method rpkm" in args
+        assert "--norm-method raw" not in args
+
+    def test_mcc_bam_coverage_is_raw(self):
+        config = ThirdPartyToolsConfig.for_assay(Assay.MCC)
+        args = str(config.bamnado.bam_coverage.command_line_arguments)
+        assert "--norm-method raw" in args
+        assert "rpkm" not in args
+
+    def test_mcc_binsize_still_propagates(self):
+        config = ThirdPartyToolsConfig.for_assay(Assay.MCC, binsize=25)
+        args = str(config.bamnado.bam_coverage.command_line_arguments)
+        assert "--bin-size 25" in args
+        assert "--norm-method raw" in args

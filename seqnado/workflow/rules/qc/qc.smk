@@ -119,6 +119,46 @@ rule qualimap_rnaseq:
         """
 
 ##############################################
+#             Library complexity             #
+##############################################
+
+
+def get_library_complexity_bam(wildcards) -> str:
+    """Earliest coordinate-sorted BAM for a sample, before any read filtering.
+
+    With spike-in, this is the alignment to the combined reference+spike-in
+    genome, so complexity reflects the whole library, not just reference reads.
+    """
+    if getattr(CONFIG.assay_config, "has_spikein", False):
+        return OUTPUT_DIR + f"/aligned/spikein/sorted/{wildcards.sample}.bam"
+    return OUTPUT_DIR + f"/aligned/sorted/{wildcards.sample}.bam"
+
+
+rule library_complexity:
+    input:
+        bam=get_library_complexity_bam,
+    output:
+        metrics=OUTPUT_DIR + "/qc/library_complexity/{sample}.metrics",
+    resources:
+        mem=lambda wildcards, attempt: define_memory_requested(initial_value=8, attempts=attempt, scale=SCALE_RESOURCES),
+        runtime=lambda wildcards, attempt: define_time_requested(initial_value=4, attempts=attempt, scale=SCALE_RESOURCES),
+    container: CONTAINERS.SEQNADO_PIPELINE
+    log: OUTPUT_DIR + "/logs/library_complexity/{sample}.log",
+    benchmark: OUTPUT_DIR + "/.benchmark/library_complexity/{sample}.tsv",
+    message: "Estimating library complexity for sample {wildcards.sample} using Picard MarkDuplicates",
+    shell:
+        """
+        picard MarkDuplicates \
+        I={input.bam} \
+        O=/dev/null \
+        M={output.metrics} \
+        REMOVE_DUPLICATES=false \
+        ASSUME_SORT_ORDER=coordinate \
+        VALIDATION_STRINGENCY=LENIENT \
+        > {log} 2>&1
+        """
+
+##############################################
 #            BAM filtering stats             #
 ##############################################
 

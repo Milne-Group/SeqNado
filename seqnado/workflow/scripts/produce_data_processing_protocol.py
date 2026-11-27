@@ -11,24 +11,10 @@ import subprocess
 from pathlib import Path
 from typing import Any, Optional
 
-from seqnado import containers
-
-# Try to import version from installed package, fallback to reading _version.py
-try:
-    from seqnado._version import __version__ as seqnado_version
-except (ImportError, ModuleNotFoundError):
-    # When running in Singularity container, seqnado may not be installed
-    # Try to read version from _version.py file
-    try:
-        version_file = Path(__file__).parent.parent.parent / "_version.py"
-        if version_file.exists():
-            version_locals = {}
-            exec(version_file.read_text(), version_locals)
-            seqnado_version = version_locals.get("__version__", "unknown")
-        else:
-            seqnado_version = "unknown"
-    except Exception:
-        seqnado_version = "unknown"
+# Workflow scripts run inside the pipeline container, where the seqnado
+# package may not be importable (e.g. editable installs), so everything taken
+# from seqnado is passed in through the rule's params.
+seqnado_version = snakemake.params.seqnado_version
 
 # ============================================================================
 # Configuration and Logger Setup
@@ -182,11 +168,7 @@ TOOL_VERSIONS = {
 # version must be queried from that same container - anything installed
 # locally into the pipeline container (or hardcoded here) can silently drift
 # out of sync with what the rules actually ran.
-DEDICATED_CONTAINERS = {
-    "bamnado": containers.BAMNADO,
-    "mccnado": containers.MCCNADO,
-    "quantnado": containers.QUANTNADO,
-}
+DEDICATED_CONTAINERS: dict[str, str] = dict(snakemake.params.dedicated_containers)
 
 
 def get_apptainer_command() -> Optional[str]:
@@ -1155,8 +1137,6 @@ class MCCSection(ProtocolSection):
             versions["cooler"] = get_tool_version("cooler")
             versions["samtools"] = get_tool_version("samtools")
             versions["bamnado"] = get_tool_version("bamnado")
-            if tool_configured("lanceotron_mcc") or tool_configured("lanceotron"):
-                versions["lanceotron"] = get_tool_version("lanceotron")
         return versions
 
     def generate_text(self) -> list[str]:
@@ -1207,10 +1187,9 @@ class MCCSection(ProtocolSection):
             f"Cooler files were merged using MCCNado combine-ligation-junction-coolers (v{self.versions.get('mccnado', 'unknown')}) to create a single .mcool file containing all viewpoints for a single sample/group.",
         ]
 
-        # Add lanceotron peak calling if configured
-        if "lanceotron" in self.versions:
+        if tool_configured("lanceotron_mcc"):
             lines.append(
-                "Regions of interactions were identified using a custom implementation of lanceotron-mcc (https://github.com/alsmith151/lanceotron-mcc) on the generated bigwig files."
+                "Regions of interactions were identified from raw group BigWigs using mcc-peaks (https://github.com/alsmith151/mcc-peaks)."
             )
 
         return lines
@@ -1299,7 +1278,11 @@ class ProtocolBuilder:
         # Standardize version formatting: wrap all versions in parentheses
         # Match patterns like "tool v1.2.3" or "tool vunknown" and convert to "tool (v1.2.3)"
         # This regex looks for tool names followed by a space and v(version) not already in parentheses
-        content = re.sub(r'\b(\w+)\s+v([\d\.]+|unknown)\b(?!\))', r'\1 (v\2)', content)
+        # Versions may carry PEP 440 suffixes (e.g. 1.1.1.dev5, 2.7.11a, 1.0+local);
+        # a trailing "." ends the sentence, not the version.
+        content = re.sub(
+            r'\b(\w+)\s+v(\d+(?:[.+-]?[A-Za-z0-9]+)*|unknown)\b(?!\))', r'\1 (v\2)', content
+        )
 
         # Remove empty lines
         content = "\n".join(

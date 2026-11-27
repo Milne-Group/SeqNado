@@ -14,11 +14,3 @@ default-resources:
     slurm_partition: "short"
     runtime: "1h"
     mem: "3G"
-
-set-resources:
-    call_mcc_peaks:
-        slurm_partition: "gpu"
-        runtime: 30  # in minutes
-        mem_mb_per_cpu: 3000
-        cpus_per_task: 8
-        gpus: 1

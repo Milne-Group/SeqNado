@@ -45,7 +45,9 @@ elif CONFIG.pcr_duplicates.strategy == PCRDuplicateHandling.REMOVE and picard_ma
         output:
             bam=temp(OUTPUT_DIR + "/aligned/duplicates_removed/{sample}.bam"),
             bai=temp(OUTPUT_DIR + "/aligned/duplicates_removed/{sample}.bam.bai"),
-            metrics=OUTPUT_DIR + "/qc/library_complexity/{sample}.metrics",
+            # Dedup-only metrics on the filtered BAM; library complexity proper comes
+            # from rule library_complexity (qc.smk) on the unfiltered alignment.
+            metrics=temp(OUTPUT_DIR + "/aligned/duplicates_removed/{sample}.picard_metrics"),
         threads: picard_mark_duplicates.threads
         params:
             options=str(picard_mark_duplicates.command_line_arguments),

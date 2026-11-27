@@ -68,14 +68,6 @@ default-resources:
     slurm_partition: "SOME_PARTITION_NAME"
     runtime: "1h"
     mem: "3G"
-
-set-resources:
-    call_mcc_peaks:
-        slurm_partition: "gpu"
-        runtime: 30  # in minutes
-        mem_mb_per_cpu: 3000
-        cpus_per_task: 8
-        gpus: 1
 ```
 
 See the [Snakemake documentation](https://snakemake.readthedocs.io/en/stable/executing/cli.html#executing-profiles) for more details on how to customise profiles.
@@ -162,7 +154,7 @@ Identifies single nucleotide variants from sequencing data.
 Measures DNA methylation at single-base resolution using bisulfite sequencing.
 
 - **Processing**: Bisulfite treatment converts unmethylated cytosines to uracil (read as thymine), so alignment requires a specialised approach that accounts for C-to-T conversions rather than treating them as mismatches. TAPS (TET-assisted pyridine borane sequencing) is also supported as an alternative chemistry — methylation values are automatically inverted to produce the correct output.
-- **Spike-in BAM Splitting**: When spike-in genomes are configured (e.g., lambda DNA, pUC19), aligned reads are split by genome based on chromosome prefix. Reference and spike-in reads are then processed independently through all downstream steps.
+- **Spike-in BAM Splitting**: When spike-in genomes are configured (e.g., lambda DNA, pUC19), aligned reads are split by genome based on contig name. A contig belongs to a spike-in genome if it is named exactly after it (e.g. `Lambda`) or starts with `<name>_`. Reference contigs are those starting with `chr` or named `1`–`99`/`X`/`Y`/`M`/`MT`; set `endogenous_contig_prefix` in the `methylation` config section if your reference uses other names. A spike-in genome missing from the BAM only gives a warning; missing reference contigs stop the run. Reference and spike-in reads are then processed independently through all downstream steps.
 - **Bias Correction**: MethylDackel calculates the M-bias plot for each genome (reference and spike-in separately), identifying positions with systematic bias at read ends. These biased positions are excluded during extraction to avoid skewing methylation estimates.
 - **Conversion Rate QC**: Conversion rates are calculated from the M-bias data for each sample and genome, and aggregated into a summary table (`methylation_conversion.tsv`) and visualisation (`methylation_conversion.png`). For spike-in DNA (which is unmethylated), conversion should be >95% — a low spike-in conversion rate indicates incomplete bisulfite treatment and unreliable methylation calls. Read 1 and Read 2 are reported separately to detect strand-specific bias.
 - **Methylation Calls**: MethylDackel extracts per-cytosine methylation levels from the aligned reads, producing CpG bedGraph files for each sample-genome combination. This gives you both the biological methylation state (from the reference genome) and the technical control (from the spike-in).
@@ -215,7 +207,9 @@ The MCC pipeline follows a multi-phase workflow:
 
 **Phase 8: Peak Calling** 
 
-- **LanceOtron-MCC**: A deep-learning peak caller identifies significant interaction peaks from the raw (unnormalised) group BigWigs. This runs on GPU when available.
+- **mcc-peaks**: A peak caller identifies interaction peaks from each raw (unnormalised) group BigWig, excluding the configured viewpoint regions. The group track is treated as a single input, not as evidence of replicate support. BED calls and score, unresolved-region, and provenance sidecars are written under `peaks/lanceotron-mcc/`.
+
+  The existing `lanceotron-mcc` method and `third_party_tools.lanceotron_mcc` configuration key are retained for compatibility. Existing configs that explicitly specify old LanceOtron-MCC options must be updated: for example, remove `--no-mcc-filter-enriched-regions` and `--no-mcc-filter-background`. See the [mcc-peaks CLI documentation](https://github.com/alsmith151/mcc-peaks/blob/v0.2.0/docs/cli.md) for supported options. This caller uses a different algorithm, so peak calls may change. The published container supports Linux x86-64; when running without container deployment, install `mcc-peaks` 0.2.0 in the execution environment.
 
 ### CRISPR Screens (CRISPR)
 Quantifies guide RNA representation across pooled CRISPR screen experiments.

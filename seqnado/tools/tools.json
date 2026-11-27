@@ -301,8 +301,8 @@
             "description": "SeqNado genome browser visualization and plotting tool",
             "command": "plotnado",
             "category": "Visualization",
-            "container": "library://asmith151/plotnado/plotnado:latest",
-            "version": "0.1.dev101",
+            "container": "docker://ghcr.io/alsmith151/plotnado:0.3.3",
+            "version": "0.3.3",
             "citation": "plotnado"
         },
         "qualimap": {

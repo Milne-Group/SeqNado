@@ -37,8 +37,10 @@ from seqnado.outputs.files import (
     SNPFilesAnnotated,
     SNPFilesRaw,
     SpikeInFiles,
+    region_plot_paths,
 )
 
+from seqnado.config.configs import PlottingConfig
 from seqnado.utils import FileSelector
 
 
@@ -594,10 +596,12 @@ class SeqnadoOutputBuilder:
         if self.config.assay_config.bigwigs is None:
             return
 
-        per_sample_scales = [m for m in self.scale_methods if m == DataScalingTechnique.PER_SAMPLE]
-        normalized_scales = [m for m in self.scale_methods if m != DataScalingTechnique.PER_SAMPLE]
+        # Per-sample and raw bigwigs need no cross-sample factor, so they are made for
+        # every sample (including controls); normalised ones only for IP samples.
+        _all_sample_scales = {DataScalingTechnique.PER_SAMPLE, DataScalingTechnique.RAW}
+        per_sample_scales = [m for m in self.scale_methods if m in _all_sample_scales]
+        normalized_scales = [m for m in self.scale_methods if m not in _all_sample_scales]
 
-        # Unscaled bigwigs are generated for all samples (including controls)
         if per_sample_scales:
             bigwig_files = BigWigFiles(
                 assay=self.assay,
@@ -972,7 +976,8 @@ class SeqnadoOutputBuilder:
                         continue
                     scales = [DataScalingTechnique.PER_SAMPLE]
                 else:
-                    scales = list(self.scale_methods)
+                    # Raw bigwigs are for downstream/ML use, not visualisation.
+                    scales = [s for s in self.scale_methods if s != DataScalingTechnique.RAW]
                     if has_spikein and DataScalingTechnique.SPIKEIN not in scales:
                         scales.append(DataScalingTechnique.SPIKEIN)
 
@@ -1065,7 +1070,8 @@ class SeqnadoOutputBuilder:
                         continue
                     method_scales = [DataScalingTechnique.PER_SAMPLE]
                 else:
-                    method_scales = list(self.scale_methods)
+                    # Raw bigwigs are for downstream/ML use, not visualisation.
+                    method_scales = [s for s in self.scale_methods if s != DataScalingTechnique.RAW]
                     if has_spikein and DataScalingTechnique.SPIKEIN not in method_scales:
                         method_scales.append(DataScalingTechnique.SPIKEIN)
 
@@ -1290,6 +1296,67 @@ class MultiomicsOutputBuilder:
             pks = output_files.peak_files
             peaks.extend(pks)
         self.file_collections.append(BasicFileCollection(files=peaks))
+
+    #: Pileup methods tried, in order, when choosing one bigWig track per sample
+    #: for the multiomics genome-browser plots.
+    BROWSER_PILEUP_PREFERENCE = (
+        PileupMethod.DEEPTOOLS,
+        PileupMethod.BAMNADO,
+        PileupMethod.HOMER,
+        PileupMethod.METHYLDACKEL,
+    )
+
+    @property
+    def browser_plot_dir(self) -> Path:
+        return Path(self.output_dir) / "multiomics" / "track_plots"
+
+    @property
+    def browser_tracks(self) -> list[tuple[str, Assay]]:
+        """One per-sample-scaled IP bigWig per sample per assay, with its assay.
+
+        For each assay the first pileup method in ``BROWSER_PILEUP_PREFERENCE``
+        that produces bigWigs is used, so each sample appears once.
+        """
+        tracks: list[tuple[str, Assay]] = []
+        for assay, output_files in self.assay_outputs.items():
+            for method in self.BROWSER_PILEUP_PREFERENCE:
+                bigwigs = output_files.select_bigwig_subtype(
+                    method=method,
+                    scale=DataScalingTechnique.PER_SAMPLE,
+                    ip_only=True,
+                )
+                if bigwigs:
+                    tracks.extend((bw, assay) for bw in bigwigs)
+                    break
+        return tracks
+
+    def browser_plot_files(self, plotting: PlottingConfig | dict | None) -> list[str]:
+        """Plot paths (one per region) for the combined browser plots."""
+        if plotting is None:
+            return []
+        plotting = PlottingConfig.model_validate(plotting)
+        if plotting.coordinates is None:
+            return []
+        return [
+            str(p)
+            for p in region_plot_paths(
+                plotting.coordinates, self.browser_plot_dir, plotting.file_format
+            )
+        ]
+
+    def add_browser_plots(self, plotting: PlottingConfig | dict | None) -> bool:
+        """Add combined genome-browser plots: one figure per region, all assays' tracks.
+
+        ``plotting`` gives the regions BED and file format (see
+        ``take_browser_plotting``). Needs at least one bigWig track. Returns
+        whether plots were added.
+        """
+        plots = self.browser_plot_files(plotting)
+        if not plots or not self.browser_tracks:
+            return False
+        template = str(self.browser_plot_dir / "template.toml")
+        self.file_collections.append(BasicFileCollection(files=[*plots, template]))
+        return True
 
     def add_summary_report(self) -> str:
         """Path to the multiomics summary report."""

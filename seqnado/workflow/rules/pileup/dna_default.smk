@@ -1,5 +1,5 @@
 import re
-from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested, format_deeptools_options
+from seqnado.workflow.helpers.common import define_time_requested, define_memory_requested, format_deeptools_options, format_bamnado_options
 from seqnado.config.third_party_tools import CommandLineArguments
 
 # Only define HOMER bigwig rule if HOMER is configured (to avoid accessing None attributes)
@@ -105,6 +105,42 @@ if CONFIG.third_party_tools.bamnado is not None:
         export RAYON_NUM_THREADS={threads}
         bamnado bam-coverage {params.options} -b {input.bam} -o {output.bigwig} > {log} 2>&1
         """
+
+
+# Raw (unnormalised) coverage: same rules with tool normalisation flags stripped.
+if CONFIG.third_party_tools.deeptools is not None:
+    use rule bigwigs_deeptools as bigwigs_deeptools_raw with:
+        output:
+            bigwig=OUTPUT_DIR + "/bigwigs/deeptools/" + DataScalingTechnique.RAW.value + "/{sample}.bigWig",
+        params:
+            options=lambda wildcards: format_deeptools_options(
+                wildcards,
+                str(CONFIG.third_party_tools.deeptools.bam_coverage.command_line_arguments),
+                INPUT_FILES,
+                SAMPLE_GROUPINGS,
+                raw_counts=True,
+            ),
+        log:
+            OUTPUT_DIR + "/logs/pileups/deeptools/" + DataScalingTechnique.RAW.value + "/{sample}.log",
+        benchmark:
+            OUTPUT_DIR + "/.benchmark/deeptools/makebigwigs_raw_{sample}.tsv"
+        message:
+            "Making raw (unnormalised) bigWig with deeptools for sample {wildcards.sample}"
+
+if CONFIG.third_party_tools.bamnado is not None:
+    use rule bigwigs_bamnado as bigwigs_bamnado_raw with:
+        output:
+            bigwig=OUTPUT_DIR + "/bigwigs/bamnado/" + DataScalingTechnique.RAW.value + "/{sample}.bigWig",
+        params:
+            options=format_bamnado_options(
+                CONFIG.third_party_tools.bamnado.bam_coverage.command_line_arguments, raw_counts=True
+            ),
+        log:
+            OUTPUT_DIR + "/logs/pileups/bamnado/" + DataScalingTechnique.RAW.value + "/{sample}.log",
+        benchmark:
+            OUTPUT_DIR + "/.benchmark/bamnado/makebigwigs_raw_{sample}.tsv"
+        message:
+            "Making raw (unnormalised) bigWig with bamnado for sample {wildcards.sample}"
 
 
 rule fragment_bedgraph:

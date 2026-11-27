@@ -86,3 +86,11 @@ def test_pipeline(
     assert (
         test_dir / f"seqnado_output/{assay_type}/seqnado_report_{assay_type}.html"
     ).exists()
+    if assay == "mcc":
+        output = test_dir / f"seqnado_output/{assay_type}"
+        group_tracks = list((output / "bigwigs/mcc").glob("*.bigWig"))
+        assert group_tracks, "No MCC group BigWigs were generated"
+        for track in group_tracks:
+            peaks = output / "peaks/lanceotron-mcc" / f"{track.stem}.bed"
+            for suffix in ("", ".tsv", ".unresolved.bed", ".json"):
+                assert Path(f"{peaks}{suffix}").is_file()

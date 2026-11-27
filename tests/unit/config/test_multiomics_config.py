@@ -15,6 +15,7 @@ class TestMultiomicsConfig:
         assert config.create_heatmaps is True
         assert config.create_dataset is True
         assert config.create_summary is True
+        assert config.create_browser_plots is True
 
     def test_custom_assays(self):
         """Test MultiomicsConfig with custom assays list."""
@@ -27,7 +28,9 @@ class TestMultiomicsConfig:
             create_heatmaps=False,
             create_dataset=False,
             create_summary=False,
+            create_browser_plots=False,
         )
+        assert config.create_browser_plots is False
         assert config.create_heatmaps is False
         assert config.create_dataset is False
         assert config.create_summary is False

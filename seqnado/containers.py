@@ -37,6 +37,11 @@ SEQNADO_ML_CPU: Final[str] = (
 )
 
 # Independently versioned tool images.
+# MCC peaks v0.2.0. Apptainer 1.3 does not support tag@digest references.
+MCC_PEAKS: Final[str] = (
+    "docker://ghcr.io/alsmith151/mcc-peaks"
+    "@sha256:b3a9e4a322e38b934874db5d3025a2b0fe65a10be57aca2a996f80ae54943d5c"
+)
 BAMNADO: Final[str] = "docker://ghcr.io/alsmith151/bamnado:0.9.0"
 MCCNADO: Final[str] = (
     "docker://ghcr.io/alsmith151/mccnado"
@@ -49,14 +54,7 @@ QUANTNADO: Final[str] = (
     "@sha256:b07a8d5d26d49fbe4baa4072735aae9bf30884b854f7735d2b15a8531e39c7f9"
 )
 
-# TODO: pin plotnado. It is hosted on the Sylabs library, which only publishes
-# `latest`; replace with `library://asmith151/plotnado/plotnado:sha256.<hash>`
-# (hash from `apptainer inspect` / the Sylabs web UI) or move it to GHCR.
-PLOTNADO: Final[str] = "library://asmith151/plotnado/plotnado:latest"
-
-# TODO: pin lanceotron-mcc (GPU MCC peak calling, run via `apptainer exec --nv`
-# in the call_mcc_peaks rule). Also Sylabs-hosted with only `latest`.
-LANCEOTRON_MCC: Final[str] = "library://asmith151/lanceotron/lanceotron-mcc:latest"
+PLOTNADO: Final[str] = "docker://ghcr.io/alsmith151/plotnado:0.3.3"
 
 # Third-party biocontainers (already immutable build tags).
 MAGECK: Final[str] = "docker://quay.io/biocontainers/mageck:0.5.9.5--py310h184ae93_8"
@@ -75,4 +73,4 @@ ALL_CONTAINERS: Final[dict[str, str]] = {
 }
 
 #: Images still on a floating tag. Must stay empty apart from known exceptions.
-UNPINNED_ALLOWLIST: Final[frozenset[str]] = frozenset({PLOTNADO, LANCEOTRON_MCC})
+UNPINNED_ALLOWLIST: Final[frozenset[str]] = frozenset()

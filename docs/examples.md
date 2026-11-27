@@ -46,11 +46,11 @@ Peak detection results:
 
 #### 5. Library Complexity
 
-Picard duplicate metrics:
+Enabled with `qc.calculate_library_complexity: true` (ATAC, ChIP, CUT&Tag, RNA, SNP and methylation assays, FASTQ input only). Picard MarkDuplicates runs in mark-only mode on the unfiltered, coordinate-sorted alignment, before blacklist removal, duplicate removal or any other filtering. With spike-in, it uses the combined reference + spike-in alignment, so the estimate covers the whole library. This step runs regardless of `pcr_duplicates.strategy`.
 
 - **Unique reads**: Non-duplicate read counts
 - **Duplication rates**: PCR duplicate percentages
-- **Library complexity estimates**: From Picard MarkDuplicates metrics
+- **Library complexity estimates**: `ESTIMATED_LIBRARY_SIZE` (paired-end only)
 
 ## ChIP-seq Example Output
 
@@ -95,7 +95,7 @@ seqnado_output/chip/
 │   │   ├── chip-rx_MLL/qualimapReport.html
 │   │   └── chip-rx_input/qualimapReport.html
 │   ├── alignment_stats.tsv
-│   └── library_complexity/
+│   └── library_complexity/               # If enabled
 │       ├── chip-rx_MLL.metrics
 │       └── chip-rx_input.metrics
 ├── hub/
@@ -150,7 +150,7 @@ seqnado_output/atac/
 │   │   └── atac_sample/
 │   │       └── qualimapReport.html
 │   ├── alignment_stats.tsv
-│   └── library_complexity/
+│   └── library_complexity/               # If enabled
 │       └── atac_sample.metrics
 └── hub/
     └── seqnado_hub.hub.txt
