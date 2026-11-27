@@ -66,6 +66,23 @@ def none_str_to_none(v):
     return v
 
 
+def coerce_contig_prefixes(v):
+    """Normalise a contig-prefix option to a list of non-empty strings or None.
+
+    Accepts a single string, a comma-separated string, or a list. YAML
+    ``"none"``-like strings and empty values become ``None``.
+    """
+    v = none_str_to_none(v)
+    if v is None:
+        return None
+    if isinstance(v, str):
+        v = v.split(",")
+    if not isinstance(v, (list, tuple)):
+        raise ValueError("Contig prefixes must be a string or a list of strings.")
+    cleaned = [str(p).strip() for p in v if p is not None and str(p).strip()]
+    return cleaned or None
+
+
 class UserFriendlyError(Exception):
     """Custom exception for user-friendly error messages that should be displayed without traceback."""
 
@@ -515,6 +532,25 @@ class SpikeInConfig(BaseModel):
     exogenous_genome: str | None = None
     endogenous_genome: str | None = None
     control_genes: list[str] | None = None
+    endogenous_contig_prefix: Annotated[
+        list[str] | None, BeforeValidator(coerce_contig_prefixes)
+    ] = Field(
+        default=None,
+        description=(
+            "Contig name prefix(es) identifying the reference (endogenous) genome. "
+            "If unset, contigs starting with 'chr' or named 1-99/X/Y/Z/W/M/MT are used."
+        ),
+    )
+    exogenous_contig_prefix: Annotated[
+        list[str] | None, BeforeValidator(coerce_contig_prefixes)
+    ] = Field(
+        default=None,
+        description=(
+            "Contig name(s)/prefix(es) identifying the spike-in (exogenous) genome. "
+            "A contig matches if it equals a prefix or starts with '<prefix>_'. "
+            "Defaults to exogenous_genome."
+        ),
+    )
 
 
 class UCSCHubConfig(BaseModel):
@@ -592,39 +628,61 @@ class UCSCHubConfig(BaseModel):
 
     @classmethod
     def for_assay(cls, assay: Assay) -> "UCSCHubConfig":
+        """Per-assay hub layout defaults.
+
+        Fields referenced here must be produced for *every* track of the assay by
+        seqnado.workflow.helpers.hub.extract_seqnado_track_metadata, otherwise
+        tracknado's TrackDesign raises a missing-column assertion. Grouping
+        semantics: supergroup_by -> collapsible SuperTracks (coarsest split);
+        subgroup_by -> composite-track filter dimensions; overlay_by -> multiWig
+        overlay (signals drawn in one track); color_by -> track colouring.
+        """
         match assay:
             case Assay.RNA:
+                # Overlay the +/- strands of each sample (at a given method/scale)
+                # into one stranded multiWig track, coloured by strand.
                 return cls(
-                    supergroup_by=["file_type"],
+                    supergroup_by=None,
                     subgroup_by=["method", "norm", "strand"],
                     overlay_by=["samplename", "method", "norm"],
-                    color_by=["samplename", "strand"],
+                    color_by=["strand"],
                 )
 
             case Assay.MCC:
+                # One collapsible section per viewpoint (and signal vs peaks),
+                # split by track kind (replicate/aggregated/subtraction).
                 return cls(
-                    supergroup_by=["norm", "file_type"],
-                    color_by=["viewpoint", "samplename"],
-                    subgroup_by=["viewpoint"],
-                    overlay_by=["samplename"],
+                    supergroup_by=["file_type", "viewpoint"],
+                    subgroup_by=["track_kind"],
+                    overlay_by=None,
+                    color_by=["samplename"],
                 )
 
             case Assay.CHIP | Assay.CAT:
+                # One collapsible section per antibody (and signal vs peaks);
+                # samples/methods/scales are composite dimensions within.
                 return cls(
-                    supergroup_by=["file_type"],
-                    subgroup_by=["method", "norm", "antibody"],
-                    color_by=["antibody", "samplename"],
+                    supergroup_by=["file_type", "antibody"],
+                    subgroup_by=["method", "norm"],
+                    overlay_by=None,
+                    color_by=["samplename"],
                 )
 
             case Assay.ATAC:
                 return cls(
                     supergroup_by=["file_type"],
                     subgroup_by=["method", "norm"],
+                    overlay_by=None,
                     color_by=["samplename"],
                 )
 
             case _:
-                return cls()
+                return cls(
+                    supergroup_by=["file_type"],
+                    subgroup_by=["method", "norm"],
+                    overlay_by=None,
+                    color_by=["samplename"],
+                )
 
 
 class RNAQuantificationConfig(BaseModel, PathValidatorMixin):
@@ -677,6 +735,15 @@ class MethylationConfig(BaseModel, PathValidatorMixin):
     spikein_genomes: list[str] = Field(
         default_factory=lambda: ["Lambda", "250bp-v1", "2kb-unmod"],
         description="List of spike-in genomes",
+    )
+    endogenous_contig_prefix: Annotated[
+        list[str] | None, BeforeValidator(coerce_contig_prefixes)
+    ] = Field(
+        default=None,
+        description=(
+            "Contig name prefix(es) identifying the reference genome. If unset, "
+            "contigs starting with 'chr' or named 1-99/X/Y/Z/W/M/MT are used."
+        ),
     )
 
     @field_validator("spikein_genomes")

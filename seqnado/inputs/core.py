@@ -5,7 +5,7 @@ import re
 from enum import Enum
 from typing import Optional, Union, Callable, Self, TYPE_CHECKING, Any
 from abc import ABC, abstractmethod
-from pydantic import BaseModel, Field, computed_field, field_validator, model_validator, ValidationInfo
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator, ValidationInfo
 from seqnado import Assay, Organism
 import pandas as pd
 
@@ -45,6 +45,12 @@ class Metadata(BaseModel):
 
     These fields can be used independently or in combination.
     """
+    # A design CSV may contain experiment-specific annotations (for example
+    # donor, treatment, or replicate).  They are not all workflow concepts,
+    # but must survive a CSV -> collection -> dataframe round trip so that
+    # downstream consumers such as track hubs can use them.
+    model_config = ConfigDict(extra="allow")
+
     assay: Assay | None = Field(
         default=None,
         description="Assay type, should be one of the Assay enum values"
@@ -264,5 +270,4 @@ def extract_read_number(filename: str) -> Optional[int]:
 def is_control_sample(ip_name: str) -> bool:
     """Check if sample is a control based on IP name."""
     return any(substring in ip_name.lower() for substring in INPUT_CONTROL_SUBSTRINGS)
-
 

@@ -32,4 +32,12 @@ class MultiomicsConfig(BaseModel):
     create_summary: bool = Field(
         default=True, description="Generate summary report of multiomics analysis"
     )
+    create_browser_plots: bool = Field(
+        default=True,
+        description=(
+            "Generate genome-browser plots combining bigWigs from all assays. "
+            "Uses the plotting coordinates of the first assay config with a "
+            "'plotting' section; skipped if no assay defines one."
+        ),
+    )
 

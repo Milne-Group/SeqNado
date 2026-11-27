@@ -123,3 +123,51 @@ class TestGenomeConfigValidation:
             BowtieIndex(prefix=str(tmp_path / "missing/index"))
 
 
+
+
+class TestContigPrefixConfig:
+    """Contig-prefix options used to split spike-in / methylation BAMs."""
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "field", ["endogenous_contig_prefix", "exogenous_contig_prefix"]
+    )
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            (None, None),
+            ("none", None),
+            ("", None),
+            ("dm6", ["dm6"]),
+            ("AmpR, Cas9_3p", ["AmpR", "Cas9_3p"]),
+            (["AmpR", " Cas9_3p ", ""], ["AmpR", "Cas9_3p"]),
+            ([], None),
+        ],
+    )
+    def test_spikein_contig_prefix_coercion(self, field, value, expected):
+        from seqnado import SpikeInMethod
+        from seqnado.config.configs import SpikeInConfig
+
+        cfg = SpikeInConfig(method=[SpikeInMethod.ORLANDO], **{field: value})
+        assert getattr(cfg, field) == expected
+
+    @pytest.mark.unit
+    def test_spikein_contig_prefix_defaults(self):
+        from seqnado import SpikeInMethod
+        from seqnado.config.configs import SpikeInConfig
+
+        cfg = SpikeInConfig(method=[SpikeInMethod.ORLANDO], exogenous_genome="dm6")
+        assert cfg.endogenous_contig_prefix is None
+        assert cfg.exogenous_contig_prefix is None
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "value, expected", [(None, None), ("NC_", ["NC_"]), (["1", "X"], ["1", "X"])]
+    )
+    def test_methylation_endogenous_contig_prefix(self, value, expected):
+        from seqnado import MethylationMethod
+        from seqnado.config.configs import MethylationConfig
+
+        method = list(MethylationMethod)[0]
+        cfg = MethylationConfig(method=method, endogenous_contig_prefix=value)
+        assert cfg.endogenous_contig_prefix == expected

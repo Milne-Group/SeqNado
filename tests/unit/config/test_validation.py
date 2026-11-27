@@ -37,29 +37,35 @@ class TestUCSCHubConfig:
         """Test UCSC hub config for RNA assay."""
         config = UCSCHubConfig.for_assay(Assay.RNA)
 
+        # Strands are overlaid per sample (multiWig) and coloured by strand.
         assert config.subgroup_by == ["method", "norm", "strand"]
         assert config.overlay_by == ["samplename", "method", "norm"]
+        assert config.color_by == ["strand"]
 
     def test_ucsc_hub_config_for_mcc_assay(self):
         """Test UCSC hub config for MCC assay."""
         config = UCSCHubConfig.for_assay(Assay.MCC)
 
-        assert config.color_by == ['viewpoint', 'samplename']
-        assert config.subgroup_by == ['viewpoint']
+        # One collapsible section per viewpoint (and signal vs peaks).
+        assert config.supergroup_by == ["file_type", "viewpoint"]
+        assert config.subgroup_by == ["track_kind"]
+        assert config.color_by == ["samplename"]
 
     def test_ucsc_hub_config_for_other_assays(self):
         """Test UCSC hub config for other assays (ATAC, ChIP, etc.)."""
-        # CHIP and CAT have antibody in color_by and subgroup_by, others don't
+        # ATAC and the generic fallback: split signal/peaks, dimensions method/norm.
         for assay in [Assay.ATAC, Assay.SNP]:
             config = UCSCHubConfig.for_assay(assay)
             assert config.color_by == ['samplename']
             assert config.subgroup_by == ['method', 'norm']
-        
-        # CHIP and CAT include antibody in color_by and subgroup_by
+            assert config.supergroup_by == ['file_type']
+
+        # CHIP and CAT get one superTrack section per antibody.
         for assay in [Assay.CHIP, Assay.CAT]:
             config = UCSCHubConfig.for_assay(assay)
-            assert config.color_by == ['antibody', 'samplename']
-            assert config.subgroup_by == ['method', 'norm', 'antibody']
+            assert config.color_by == ['samplename']
+            assert config.subgroup_by == ['method', 'norm']
+            assert config.supergroup_by == ['file_type', 'antibody']
 
     def test_ucsc_hub_config_invalid_name(self):
         """Test that invalid hub name raises error."""

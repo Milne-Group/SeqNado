@@ -20,6 +20,10 @@ assay_config:
       - with_input
     exogenous_genome: "plasmid"
     endogenous_genome: "hg38"
+    exogenous_contig_prefix:
+      - AmpR
+      - Cas9_3p
+      - Cas9_5p
     control_genes:
       - AmpR_seq
       - Cas9_3p_seq
